@@ -59,4 +59,25 @@ public class QueryBuilderTest extends TestBase {
         assertEquals(10, results.size());
     }
 
+    @Test
+    void testChainedQueryBuilder() {
+
+        for (int i = 0; i < 10 ; i++) {
+            SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(21, 1, 1));
+            long id = orm.insert(sampleModel);
+            sampleModel.setId(id);
+        }
+
+        var query = orm.query(SampleModel.class)
+                .where("date_val < :val")
+                .with("val", new Date(150, 1, 1))
+                .where("date_val > :val2")
+                .with("val2", new Date(100, 1, 1));
+
+        List<SampleModel> results = query.run();
+
+        assertEquals(10, results.size());
+
+    }
+
 }
