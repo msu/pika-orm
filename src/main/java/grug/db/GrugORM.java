@@ -18,15 +18,13 @@ import java.util.regex.Pattern;
 public class GrugORM {
 
     private static GrugORM DEFAULT_ORM = null;
-    private static final ThreadLocal<ConnectionInfo> DEFAULT_CONNECTION = new ThreadLocal<>();
+    private static final ThreadLocal<ConnectionInfo> CURRENT_CONNECTION = new ThreadLocal<>();
 
     private Callable<Connection> connectionSource = null;
 
     // default to a stdout logger @ INFO
     private GrugLogger.Level internalLoggerLevel = GrugLogger.Level.INFO;
     private GrugLogger logger = new DefaultLogger();
-
-    private final ConcurrentHashMap<Class, DBMetaData> metadataCache = new ConcurrentHashMap<Class, DBMetaData>();
 
     //====================================================================
     // constructors & builders
@@ -92,7 +90,7 @@ public class GrugORM {
             int val = count.decrementAndGet();
             if (val == 0) {
                 conn.close();
-                DEFAULT_CONNECTION.set(this.previous());
+                CURRENT_CONNECTION.set(this.previous());
             }
         }
     }
@@ -110,11 +108,11 @@ public class GrugORM {
     }
 
     private ConnectionInfo getConnectionInfo() {
-        ConnectionInfo connectionInfo = DEFAULT_CONNECTION.get();
+        ConnectionInfo connectionInfo = CURRENT_CONNECTION.get();
         if (connectionInfo == null) {
             Connection connection = getNewConnection();
             connectionInfo = new ConnectionInfo(connection, new AtomicInteger(0), null);
-            DEFAULT_CONNECTION.set(connectionInfo);
+            CURRENT_CONNECTION.set(connectionInfo);
         }
         connectionInfo.increment();
         return connectionInfo;
