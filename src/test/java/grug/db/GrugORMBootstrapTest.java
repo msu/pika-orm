@@ -1,5 +1,7 @@
 package grug.db;
 
+import grug.db.models.SampleModel;
+import grug.db.models.SampleRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -34,18 +36,28 @@ public class GrugORMBootstrapTest {
 
         orm = new GrugORM("jdbc:sqlite:test/test.db")
                 .withLogLevel(TRACE)
+//                .withTypeMapping(Date.class, Long.class, Date::getTime, Date::new)
                 .makeDefaultORM();
 
-        var ddl = """
+        orm.exec("""
                 CREATE TABLE IF NOT EXISTS sample_model (
                     id INTEGER PRIMARY KEY,
                     str_val TEXT NOT NULL,
                     int_val INTEGER NOT NULL,
                     bool_val INTEGER NOT NULL,
-                    date_val TEXT NOT NULL
-                );""";
+                    date_val INTEGER NOT NULL
+                );
+                """);
 
-        orm.exec(ddl);
+        orm.exec("""
+                CREATE TABLE IF NOT EXISTS sample_record (
+                    id INTEGER PRIMARY KEY,
+                    str_val TEXT NOT NULL,
+                    int_val INTEGER NOT NULL,
+                    bool_val INTEGER NOT NULL,
+                    date_val INTEGER NOT NULL
+                );
+                """);
     }
 
     @Test
@@ -56,7 +68,7 @@ public class GrugORMBootstrapTest {
 
     @Test
     void testInsertAsRecord() {
-        SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
+        SampleRecord sampleModel = new SampleRecord("foo", 10, true, new Date(2021, 1, 1));
         assertEquals(1, sampleModel.insert());
     }
 
@@ -177,17 +189,16 @@ public class GrugORMBootstrapTest {
     void testBasicQueryBuilderWithStaticMethod() {
 
         for (int i = 0; i < 10 ; i++) {
-
-            SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
+            SampleRecord sampleModel = new SampleRecord("bar", 10, true, new Date(2021, 1, 1));
             long id = orm.insert(sampleModel);
             sampleModel.setId(id);
         }
 
-        var query = SampleModel
+        var query = SampleRecord
                 .where("date_val < :val")
                 .with("val", new Date(2050, 1, 1));
 
-        List<SampleModel> results = query.run();
+        List<SampleRecord> results = query.run();
 
         assertEquals(10, results.size());
     }

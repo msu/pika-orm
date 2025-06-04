@@ -1,20 +1,18 @@
 package grug.db;
 
 import grug.db.GrugORM.Interfaces.GrugLogger;
-import grug.db.GrugORM.Interfaces.GrugRecord;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.*;
 import java.text.MessageFormat;
 import java.time.Instant;
 import java.util.*;
+import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -66,7 +64,7 @@ public class GrugORM {
 
     public static GrugORM getDefaultOrThrow() {
         GrugORM defaultORM = getDefault();
-        if(defaultORM == null) {
+        if (defaultORM == null) {
             throw new IllegalStateException("No default GrugORM found");
         }
         return defaultORM;
@@ -84,7 +82,8 @@ public class GrugORM {
     // Connection management
     //====================================================================
 
-    private record ConnectionInfo(Connection conn, AtomicInteger count, ConnectionInfo previous) implements AutoCloseable {
+    private record ConnectionInfo(Connection conn, AtomicInteger count,
+                                  ConnectionInfo previous) implements AutoCloseable {
         public void increment() {
             count.incrementAndGet();
         }
@@ -92,7 +91,7 @@ public class GrugORM {
         @Override
         public void close() throws Exception {
             int val = count.decrementAndGet();
-            if(val == 0) {
+            if (val == 0) {
                 conn.close();
                 DEFAULT_CONNECTION.set(this.previous());
             }
@@ -103,7 +102,7 @@ public class GrugORM {
         try {
             return connectionSource.call();
         } catch (Exception e) {
-            if(e instanceof RuntimeException re) {
+            if (e instanceof RuntimeException re) {
                 throw re;
             } else {
                 throw new RuntimeException(e);
@@ -113,7 +112,7 @@ public class GrugORM {
 
     private ConnectionInfo getConnectionInfo() {
         ConnectionInfo connectionInfo = DEFAULT_CONNECTION.get();
-        if(connectionInfo == null) {
+        if (connectionInfo == null) {
             Connection connection = getNewConnection();
             connectionInfo = new ConnectionInfo(connection, new AtomicInteger(0), null);
             DEFAULT_CONNECTION.set(connectionInfo);
@@ -143,7 +142,8 @@ public class GrugORM {
         try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement ps = conn.prepareStatement("SELECT * FROM " + dbMetaData.getTableName() + " WHERE " + key + "=?");
-            ps.setObject(1, val);
+            int parameterIndex = 1;
+            setValueForQuery(ps, parameterIndex, val);
             ResultSet resultSet = ps.executeQuery();
             if (resultSet.next()) {
                 T obj = dbMetaData.newObjectFromResult(resultSet);
@@ -175,7 +175,7 @@ public class GrugORM {
             PreparedStatement ps = conn.prepareStatement(updatedSql);
             for (int i = 0; i < vals.size(); i++) {
                 Object val = vals.get(i);
-                ps.setObject(i + 1, val);
+                setValueForQuery(ps, i + 1, val);
             }
             ResultSet resultSet = ps.executeQuery();
             List<T> list = new ArrayList<>();
@@ -196,9 +196,9 @@ public class GrugORM {
         StringBuilder sb = new StringBuilder();
         int start = 0;
         int end;
-        while(matcher.find()) {
+        while (matcher.find()) {
             String match = matcher.group().substring(1);
-            if(args.containsKey(match)) {
+            if (args.containsKey(match)) {
                 end = matcher.start();
                 sb.append(sql.substring(start, end));
                 sb.append("?");
@@ -261,16 +261,16 @@ public class GrugORM {
         sb.append(")");
         String insertString = sb.toString();
         logger.log(GrugLogger.Level.INFO, "INSERT SQL: {}\n  Args:{}", insertString, values.values());
-        try(ConnectionInfo ci = getConnectionInfo()) {
+        try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement preparedStatement = conn.prepareStatement(insertString);
             int col = 1;
             for (Object o : values.values()) {
-                preparedStatement.setObject(col++, o);
+                setValueForQuery(preparedStatement, col++, o);
             }
             int updated = preparedStatement.executeUpdate();
             ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
-            if(generatedKeys.next()) {
+            if (generatedKeys.next()) {
                 return generatedKeys.getLong(1);
             } else {
                 return -1;
@@ -298,14 +298,14 @@ public class GrugORM {
         }
         sb.append(") WHERE ");
         sb.append(keyCol).append("=?");
-        try(ConnectionInfo ci = getConnectionInfo()) {
+        try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement preparedStatement = conn.prepareStatement(sb.toString());
             int col = 1;
             for (Object o : values.values()) {
-                preparedStatement.setObject(col++, o);
+                setValueForQuery(preparedStatement, col++, o);
             }
-            preparedStatement.setObject(col++, keyVal);
+            setValueForQuery(preparedStatement, col, keyVal);
             return preparedStatement.executeUpdate() == 1;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -317,10 +317,10 @@ public class GrugORM {
         sb.append(tableName);
         sb.append(" WHERE ");
         sb.append(keyCol).append("=?");
-        try(ConnectionInfo ci = getConnectionInfo()) {
+        try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement preparedStatement = conn.prepareStatement(sb.toString());
-            preparedStatement.setObject(1, keyVal);
+            setValueForQuery(preparedStatement, 1, keyVal);
             return preparedStatement.executeUpdate() == 1;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -328,7 +328,7 @@ public class GrugORM {
     }
 
     public void exec(String sql) {
-        try(ConnectionInfo ci = getConnectionInfo()) {
+        try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement preparedStatement = conn.prepareStatement(sql);
             preparedStatement.execute();
@@ -365,19 +365,26 @@ public class GrugORM {
             enum Level {
                 ERROR, WARN, INFO, DEBUG, TRACE;
             }
+
             void log(Level level, String msg, Object... args);
         }
 
-        interface GrugRecord {
+        interface BeforeSet {
+            default Object beforeSet(Field field, Object value) {
+                return value;
+            }
+        }
 
+        interface AfterSet {
+            default void afterSet(Field field, Object value) {
+            }
+        }
+
+        interface GrugRecord extends BeforeSet, AfterSet {
             default long insert() {
                 GrugORM orm = getDefaultOrThrow();
                 return orm.insert(this);
             }
-
-            default Object transformFromResultSet(Field columnName, Object fieldVal){ return fieldVal; };
-            default boolean ignoreField(Field field) {return false;}
-
         }
     }
 
@@ -421,6 +428,7 @@ public class GrugORM {
     private class DefaultLogger implements GrugLogger {
         // thank you slf4j for using a non-standard logging format, very cool
         final Pattern parens = Pattern.compile("\\{}");
+
         @Override
         public void log(Level level, String msg, Object... args) {
             if (level.ordinal() <= internalLoggerLevel.ordinal()) {
@@ -429,7 +437,7 @@ public class GrugORM {
                     int index = 0;
                     Matcher matcher = parens.matcher(logMsg);
                     StringBuilder fixedString = new StringBuilder();
-                    while(matcher.find()) {
+                    while (matcher.find()) {
                         matcher.appendReplacement(fixedString, "{" + index + "}");
                         index = index + 1;
                     }
@@ -448,6 +456,53 @@ public class GrugORM {
     //==================================================================
     //  Metadata stuff
     //==================================================================
+
+    private void setValueForQuery(PreparedStatement ps, int parameterIndex, Object val) throws SQLException {
+        if(val == null) {
+            ps.setNull(parameterIndex, Types.NULL);
+            return;
+        }
+
+        switch (val) {
+            case Boolean b -> ps.setBoolean(parameterIndex, b);
+            case Integer i -> ps.setInt(parameterIndex, i);
+            case Long l -> ps.setLong(parameterIndex, l);
+            case Float f -> ps.setDouble(parameterIndex, f);
+            case Double d -> ps.setDouble(parameterIndex, d);
+            case String str -> ps.setString(parameterIndex, str);
+            case Time d -> ps.setTime(parameterIndex, d);
+            case Date d -> {
+                Timestamp timestamp = new Timestamp(d.getTime());
+                ps.setTimestamp(parameterIndex, timestamp);
+            }
+            case Blob blob -> ps.setBlob(parameterIndex, blob);
+            case null, default -> ps.setObject(parameterIndex, val);
+        }
+    }
+
+    private Object getValueFromQuery(String fieldName, Class fieldType, ResultSet resultSet) throws Exception {
+        Object fieldVal;
+
+        if (fieldType == String.class) {
+            fieldVal = resultSet.getString(fieldName);
+        } else if (fieldType == Integer.class || fieldType == int.class) {
+            fieldVal = resultSet.getInt(fieldName);
+        } else if (fieldType == Boolean.class || fieldType == boolean.class) {
+            fieldVal = resultSet.getBoolean(fieldName);
+        } else if (fieldType == Long.class || fieldType == long.class) {
+            fieldVal = resultSet.getLong(fieldName);
+        } else if (fieldType == Double.class || fieldType == double.class) {
+            fieldVal = resultSet.getDouble(fieldName);
+        } else if (fieldType == Date.class) {
+            Timestamp timestamp = resultSet.getTimestamp(fieldName);
+            fieldVal = new Date(timestamp.getTime());
+        } else {
+            fieldVal = resultSet.getObject(fieldName, fieldType);
+        }
+
+        return fieldVal;
+    }
+
     private DBMetaData getDBMetaData(Class<?> clazz) {
         return new DBMetaData(clazz);
     }
@@ -472,8 +527,8 @@ public class GrugORM {
             fieldNameToColumnNames = new HashMap<>();
             columnNameToFieldNames = new HashMap<>();
 
-            for (Field field : aClass.getDeclaredFields()) {
-                if (!Modifier.isStatic(field.getModifiers())) {
+            for (Field field : getAllFields(aClass)) {
+                if (!shouldIgnore(field)) {
                     field.setAccessible(true);
                     fields.add(field);
                     String fieldName = field.getName();
@@ -484,6 +539,17 @@ public class GrugORM {
             }
 
             idColumnName = DEFAULT_ID_COL_NAME;
+        }
+
+        private static List<Field> getAllFields(Class aClass) {
+            List<Field> fieldsToReturn = new ArrayList<>();
+            while (aClass != null) {
+                Field[] fields = aClass.getDeclaredFields();
+                List<Field> tmpList = Arrays.asList(fields);
+                fieldsToReturn.addAll(tmpList);
+                aClass = aClass.getSuperclass();
+            }
+            return fieldsToReturn;
         }
 
         public String getTableName() {
@@ -509,45 +575,35 @@ public class GrugORM {
             return values;
         }
 
-        private <T> void setFieldFromResultSet(T object, Field field, ResultSet resultSet) throws Exception {
-            field.setAccessible(true);
-            String fieldName = snakeCase(field.getName());
-            Object fieldVal;
-            if(field.getType() == String.class) {
-                fieldVal = resultSet.getString(fieldName);
-            } else if(field.getType() == Integer.class || field.getType() == int.class) {
-                fieldVal = resultSet.getInt(fieldName);
-            } else if(field.getType() == Boolean.class || field.getType() == boolean.class) {
-                fieldVal = resultSet.getBoolean(fieldName);
-            } else if(field.getType() == Long.class || field.getType() == long.class) {
-                fieldVal = resultSet.getLong(fieldName);
-            } else if(field.getType() == Double.class || field.getType() == double.class) {
-                fieldVal = resultSet.getDouble(fieldName);
-            } else {
-                fieldVal = resultSet.getObject(fieldName);
-            }
-            if(object instanceof GrugRecord transformer) {
-                fieldVal = transformer.transformFromResultSet(field, fieldVal);
-            }
-            field.set(object, fieldVal);
-        }
 
         public <T> T newObjectFromResult(ResultSet resultSet) throws Exception {
             T object = (T) classForTable.newInstance();
             for (Field field : fields) {
-                if(object instanceof GrugRecord record) {
-                    if (record.ignoreField(field)) {
-                        continue;
-                    }
-                }
                 // ignore static fields always
-                if(Modifier.isStatic(field.getModifiers())){
+                if (shouldIgnore(field)) {
                     continue;
                 }
-                setFieldFromResultSet(object, field, resultSet);
+                String fieldName = snakeCase(field.getName());
+                Object val = getValueFromQuery(fieldName, field.getType(), resultSet);
+
+                if (object instanceof Interfaces.BeforeSet beforeSet) {
+                    val = beforeSet.beforeSet(field, val);
+                }
+
+                field.set(object, val);
+
+                if (object instanceof Interfaces.AfterSet afterSet) {
+                    afterSet.afterSet(field, val);
+                }
+
             }
             return object;
 
+        }
+
+        // TODO - make pluggable
+        private static boolean shouldIgnore(Field field) {
+            return Modifier.isStatic(field.getModifiers());
         }
     }
 }

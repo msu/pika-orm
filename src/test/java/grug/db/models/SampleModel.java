@@ -1,11 +1,13 @@
-package grug.db;
+package grug.db.models;
 
+import grug.db.GrugORM;
+import grug.db.GrugORM.Interfaces.BeforeSet;
 import grug.db.GrugORM.Interfaces.GrugRecord;
 
 import java.lang.reflect.Field;
 import java.util.Date;
 
-public class SampleModel implements GrugRecord {
+public class SampleModel implements BeforeSet {
 
     static String SHOULD_NOT_BE_PERSISTED = "Should not be persisted";
 
@@ -30,14 +32,6 @@ public class SampleModel implements GrugRecord {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    @Override
-    public Object transformFromResultSet(Field field, Object fieldVal) {
-        if(field.getName().equals("dateVal")) {
-            return new Date(Long.parseLong(fieldVal.toString()));
-        }
-        return fieldVal;
     }
 
     public String getStrVal() {
@@ -72,7 +66,4 @@ public class SampleModel implements GrugRecord {
         this.dateVal = dateVal;
     }
 
-    public static GrugORM.GrugQuery<SampleModel> where(String str){
-        return GrugORM.getDefault().query(SampleModel.class).where(str);
-    }
 }
