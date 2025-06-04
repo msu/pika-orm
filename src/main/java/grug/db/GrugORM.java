@@ -26,6 +26,8 @@ public class GrugORM {
     private GrugLogger.Level internalLoggerLevel = GrugLogger.Level.INFO;
     private GrugLogger logger = new DefaultLogger();
 
+    private final ConcurrentHashMap<Class, DBMetaData> metadataCache = new ConcurrentHashMap<Class, DBMetaData>();
+
     //====================================================================
     // constructors & builders
     //====================================================================
@@ -510,7 +512,7 @@ public class GrugORM {
     }
 
     private DBMetaData getDBMetaData(Class<?> clazz) {
-        return new DBMetaData(clazz);
+        return metadataCache.computeIfAbsent(clazz, DBMetaData::new);
     }
 
     private class DBMetaData {
