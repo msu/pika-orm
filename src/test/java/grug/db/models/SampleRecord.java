@@ -10,6 +10,17 @@ import java.util.Date;
  */
 public class SampleRecord extends SampleModel implements GrugRecord {
 
+    public static final String DDL = """
+            CREATE TABLE IF NOT EXISTS sample_record (
+                id INTEGER PRIMARY KEY,
+                str_val TEXT NOT NULL,
+                int_val INTEGER NOT NULL,
+                bool_val INTEGER NOT NULL,
+                date_val INTEGER NOT NULL
+            );
+            """;
+
+
     public SampleRecord() {
     }
 
@@ -17,7 +28,7 @@ public class SampleRecord extends SampleModel implements GrugRecord {
         super(strVal, intVal, boolVal, dateVal);
     }
 
-    public static GrugORM.GrugQuery<SampleRecord> where(String str){
+    public static GrugORM.GrugQuery<SampleRecord> where(String str) {
         return GrugORM.getDefault().query(SampleRecord.class).where(str);
     }
 

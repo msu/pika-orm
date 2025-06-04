@@ -6,7 +6,7 @@ import java.nio.file.Path;
 
 import static grug.db.GrugORM.Interfaces.GrugLogger.Level.TRACE;
 
-public class TestBase {
+public abstract class TestBase {
 
 
 

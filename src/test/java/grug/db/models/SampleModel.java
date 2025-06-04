@@ -9,6 +9,16 @@ import java.util.Date;
 
 public class SampleModel implements BeforeSet {
 
+    public static String DDL = """
+            CREATE TABLE IF NOT EXISTS sample_model (
+                id INTEGER PRIMARY KEY,
+                str_val TEXT NOT NULL,
+                int_val INTEGER NOT NULL,
+                bool_val INTEGER NOT NULL,
+                date_val INTEGER NOT NULL
+            );
+            """;
+
     static String SHOULD_NOT_BE_PERSISTED = "Should not be persisted";
 
     private Long id;

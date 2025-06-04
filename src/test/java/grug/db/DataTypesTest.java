@@ -17,22 +17,9 @@ public class DataTypesTest extends TestBase {
 
     @BeforeEach
     public void setUp() throws IOException {
-
         orm = initDBFileAndORM();
-
-        orm.exec("""
-                CREATE TABLE IF NOT EXISTS has_enum (
-                    id INTEGER PRIMARY KEY,
-                    my_enum TEXT NOT NULL
-                );
-                """);
-
-        orm.exec("""
-                CREATE TABLE IF NOT EXISTS has_date (
-                    id INTEGER PRIMARY KEY,
-                    date INTEGER NOT NULL
-                );
-                """);
+        orm.exec(HasEnum.DDL);
+        orm.exec(HasDate.DDL);
     }
 
     @Test
