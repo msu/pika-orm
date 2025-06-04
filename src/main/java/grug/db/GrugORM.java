@@ -12,7 +12,6 @@ import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -618,14 +617,13 @@ public class GrugORM {
 
     public static class Migrations {
 
-        Long id;
-        String name;
-        Long createdAt;
-        String description;
-        MigrationStatus status;
-
         public static class Migration {
-
+            Long id;
+            Long createdAt;
+            String description;
+            String up;
+            String down;
+            MigrationStatus status;
         }
 
         public enum MigrationStatus {
