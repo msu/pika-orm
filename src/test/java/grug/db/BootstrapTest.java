@@ -10,34 +10,20 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.Date;
 import java.util.List;
 import java.util.Map;
 
-import static grug.db.GrugORM.Interfaces.GrugLogger.Level.TRACE;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class GrugORMBootstrapTest {
+public class BootstrapTest extends TestBase{
 
     GrugORM orm = null;
 
     @BeforeEach
     public void setUp() throws IOException {
 
-        // remove old db
-        Path path = Path.of("test", "test.db");
-        if (Files.exists(path)) {
-            Files.delete(path);
-        }
-
-        path.toFile().getParentFile().mkdirs();
-
-        orm = new GrugORM("jdbc:sqlite:test/test.db")
-                .withLogLevel(TRACE)
-//                .withTypeMapping(Date.class, Long.class, Date::getTime, Date::new)
-                .makeDefaultORM();
+        orm = initDBFileAndORM();
 
         orm.exec("""
                 CREATE TABLE IF NOT EXISTS sample_model (
@@ -134,7 +120,7 @@ public class GrugORMBootstrapTest {
 
     @Test
     void testCustomLogger() {
-        Logger logger = LoggerFactory.getLogger(GrugORMBootstrapTest.class);
+        Logger logger = LoggerFactory.getLogger(BootstrapTest.class);
 
         // SLF4J logger adapter
         orm.withLogger((level, msg, args) -> {

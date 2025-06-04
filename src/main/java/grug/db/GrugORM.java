@@ -463,6 +463,11 @@ public class GrugORM {
             return;
         }
 
+        // enums serialize as strings
+        if (val instanceof Enum<?> e) {
+            val = e.name();
+        }
+
         switch (val) {
             case Boolean b -> ps.setBoolean(parameterIndex, b);
             case Integer i -> ps.setInt(parameterIndex, i);
@@ -493,6 +498,10 @@ public class GrugORM {
             fieldVal = resultSet.getLong(fieldName);
         } else if (fieldType == Double.class || fieldType == double.class) {
             fieldVal = resultSet.getDouble(fieldName);
+        } else if (fieldType.isEnum()) {
+            // enums deserialize as strings
+            String strValue = resultSet.getString(fieldName);
+            fieldVal = Enum.valueOf(fieldType, strValue);
         } else if (fieldType == Date.class) {
             Timestamp timestamp = resultSet.getTimestamp(fieldName);
             fieldVal = new Date(timestamp.getTime());
@@ -604,6 +613,25 @@ public class GrugORM {
         // TODO - make pluggable
         private static boolean shouldIgnore(Field field) {
             return Modifier.isStatic(field.getModifiers());
+        }
+    }
+
+    public static class Migrations {
+
+        Long id;
+        String name;
+        Long createdAt;
+        String description;
+        MigrationStatus status;
+
+        public static class Migration {
+
+        }
+
+        public enum MigrationStatus {
+            PENDING,
+            APPLIED,
+            SKIPPED
         }
     }
 }
