@@ -19,6 +19,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@SuppressWarnings({"rawtypes", "UnusedReturnValue", "UnnecessaryLocalVariable"})
 public class GrugORM {
 
     public static final String SQL_VARS_PATTERN = "(:[\\w][\\d\\w]*)";
@@ -135,13 +136,6 @@ public class GrugORM {
     // Database interaction
     //====================================================================
 
-    public long insert(Object object) {
-        Class<?> clazz = object.getClass();
-        DBMetaData metaData = getDBMetaData(clazz);
-        Map<String, Object> values = metaData.asDBMap(object);
-        return insert(metaData.getTableName(), values);
-    }
-
     public <T> T find(Class<T> clazz, Object pk) {
         DBMetaData dbMetaData = getDBMetaData(clazz);
         return find(clazz, dbMetaData.getIdColumnName(), pk);
@@ -180,7 +174,7 @@ public class GrugORM {
         try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
             ArrayList<Object> vals = new ArrayList<>();
-            String updatedSql = updateSqlVars(sql, args, vals);//ok so our where clause and values all meet here, to be parsed and processed in our actual exectution
+            String updatedSql = updateSqlVars(sql, args, vals);
             logger.log(GrugLogger.Level.INFO, "Select SQL: {}\n  Args:{}", updatedSql, vals);
             PreparedStatement ps = conn.prepareStatement(updatedSql);
             for (int i = 0; i < vals.size(); i++) {
@@ -189,7 +183,7 @@ public class GrugORM {
             }
             ResultSet resultSet = ps.executeQuery();
             ResultList<T> result = new ResultList<>();
-            while (resultSet.next()) {//this part is the broken part of the query
+            while (resultSet.next()) {
                 DBMetaData dbMetaData = getDBMetaData(clazz);
                 T object = dbMetaData.newObjectFromResult(resultSet);
                 result.add(object);
@@ -200,66 +194,33 @@ public class GrugORM {
         }
     }
 
-    private String updateSqlVars(String sql, Map<String, Object> args, List<Object> argList) {
-        Pattern compile = Pattern.compile(SQL_VARS_PATTERN);
-        Matcher matcher = compile.matcher(sql);
-        StringBuilder sb = new StringBuilder();
-        int start = 0;
-        int end;
-        while (matcher.find()) {
-            String match = matcher.group().substring(1);
-            if (args.containsKey(match)) {
-                end = matcher.start();
-                sb.append(sql.substring(start, end));
-                sb.append("?");
-                start = matcher.end();
-                argList.add(args.get(match));
-            } else {
-                throw new IllegalArgumentException("No value found for variable " + match + " in " + args);
-            }
-        }
-        sb.append(sql.substring(start));
-        return sb.toString();
-    }
-
     public void save(Object object) {
         Class<?> clazz = object.getClass();
-        DBMetaData dbMetaData = getDBMetaData(clazz);
-        String tableName = dbMetaData.getTableName();
-        String keyCol = dbMetaData.getIdColumnName();
-        Map<String, Object> valuesToUpdate = dbMetaData.asDBMap(object);
+        DBMetaData metaData = getDBMetaData(clazz);
+        String tableName = metaData.getTableName();
+        String keyCol = metaData.getIdColumnName();
+        Map<String, Object> valuesToUpdate = metaData.asDBMap(object);
         Object keyVal = valuesToUpdate.remove(keyCol); // remove the key
         if (keyVal == null) {
-            insert(tableName, valuesToUpdate);
+            long id = insert(tableName, valuesToUpdate);
+            metaData.setId(object, id);
         } else {
             update(tableName, keyCol, keyVal, valuesToUpdate);
         }
     }
 
-    public boolean update(Object object) {
+    public long insert(Object object) {
         Class<?> clazz = object.getClass();
-        DBMetaData dbMetaData = getDBMetaData(clazz);
-        String tableName = dbMetaData.getTableName();
-        String keyCol = dbMetaData.getIdColumnName();
-        Map<String, Object> valuesToUpdate = dbMetaData.asDBMap(object);
-        Object keyVal = valuesToUpdate.remove(keyCol); // remove the key
-        return update(tableName, keyCol, keyVal, valuesToUpdate);
+        DBMetaData metaData = getDBMetaData(clazz);
+        Map<String, Object> values = metaData.asDBMap(object);
+        long id = insert(metaData.getTableName(), values);
+        metaData.setId(object, id);
+        return id;
     }
 
-    public boolean delete(Object object) {
-        Class<?> clazz = object.getClass();
-        DBMetaData dbMetaData = getDBMetaData(clazz);
-        String tableName = dbMetaData.getTableName();
-        String keyCol = dbMetaData.getIdColumnName();
-        Map<String, Object> valuesToUpdate = dbMetaData.asDBMap(object);
-        Object keyVal = valuesToUpdate.get(keyCol);
-        return delete(tableName, keyCol, keyVal);
-    }
-
-    // TODO replace TreeMap w/ LinkedHashMap
     private long insert(String tableName, Map<String, Object> values) {
-        if (!(values instanceof TreeMap<String, Object>)) {
-            values = new TreeMap<>(values);
+        if (!(values instanceof LinkedHashMap<String, Object>)) {
+            values = new LinkedHashMap<>(values);
         }
         StringBuilder sb = new StringBuilder("INSERT INTO ");
         sb.append(tableName);
@@ -305,13 +266,23 @@ public class GrugORM {
         }
     }
 
+    public boolean update(Object object) {
+        Class<?> clazz = object.getClass();
+        DBMetaData dbMetaData = getDBMetaData(clazz);
+        String tableName = dbMetaData.getTableName();
+        String keyCol = dbMetaData.getIdColumnName();
+        Map<String, Object> valuesToUpdate = dbMetaData.asDBMap(object);
+        Object keyVal = valuesToUpdate.remove(keyCol); // remove the key
+        return update(tableName, keyCol, keyVal, valuesToUpdate);
+    }
+
     private boolean update(String tableName, String keyCol, Object keyVal, Map<String, Object> values) {
         if (!(values instanceof TreeMap<String, Object>)) {
             values = new TreeMap<>(values);
         }
         StringBuilder sb = new StringBuilder("UPDATE ");
         sb.append(tableName);
-        sb.append(" SET (");
+        sb.append(" SET ");
         boolean first = true;
         for (String name : values.keySet()) {
             if (first) {
@@ -319,9 +290,9 @@ public class GrugORM {
             } else {
                 sb.append(", ");
             }
-            sb.append(name).append("=?");
+            sb.append(name).append(" = ?");
         }
-        sb.append(") WHERE ");
+        sb.append(" WHERE ");
         sb.append(keyCol).append("=?");
         String updateSQL = sb.toString();
         logger.log(GrugLogger.Level.INFO, "UPDATE SQL: {}\n  Args:{}", updateSQL, values.values());
@@ -337,6 +308,16 @@ public class GrugORM {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public boolean delete(Object object) {
+        Class<?> clazz = object.getClass();
+        DBMetaData dbMetaData = getDBMetaData(clazz);
+        String tableName = dbMetaData.getTableName();
+        String keyCol = dbMetaData.getIdColumnName();
+        Map<String, Object> valuesToUpdate = dbMetaData.asDBMap(object);
+        Object keyVal = valuesToUpdate.get(keyCol);
+        return delete(tableName, keyCol, keyVal);
     }
 
     private boolean delete(String tableName, String keyCol, Object keyVal) {
@@ -367,6 +348,29 @@ public class GrugORM {
         }
     }
 
+    // utilities
+
+    private String updateSqlVars(String sql, Map<String, Object> args, List<Object> argList) {
+        Pattern compile = Pattern.compile(SQL_VARS_PATTERN);
+        Matcher matcher = compile.matcher(sql);
+        StringBuilder sb = new StringBuilder();
+        int start = 0;
+        int end;
+        while (matcher.find()) {
+            String match = matcher.group().substring(1);
+            if (args.containsKey(match)) {
+                end = matcher.start();
+                sb.append(sql, start, end);
+                sb.append("?");
+                start = matcher.end();
+                argList.add(args.get(match));
+            } else {
+                throw new IllegalArgumentException("No value found for variable " + match + " in " + args);
+            }
+        }
+        sb.append(sql.substring(start));
+        return sb.toString();
+    }
 
     public static String snakeCase(String string) {
         StringBuilder result = new StringBuilder();
@@ -386,7 +390,7 @@ public class GrugORM {
     }
 
     public <T> GrugQuery<T> query(Class<T> clazz) {
-        return new GrugQuery<T>(clazz);
+        return new GrugQuery<>(clazz);
     }
 
     public interface Interfaces {
@@ -420,8 +424,8 @@ public class GrugORM {
 
     public class GrugQuery<T> {
         private final Class<?> clazz;
-        private StringBuilder whereClause = new StringBuilder();
-        private Map<String, Object> valMap = new TreeMap<>();
+        private final StringBuilder whereClause = new StringBuilder();
+        private final Map<String, Object> valMap = new TreeMap<>();
 
         public GrugQuery(Class<?> clazz) {
             this.clazz = clazz;
@@ -511,7 +515,7 @@ public class GrugORM {
                 ps.setTimestamp(parameterIndex, timestamp);
             }
             case Blob blob -> ps.setBlob(parameterIndex, blob);
-            case null, default -> ps.setObject(parameterIndex, val);
+            default -> ps.setObject(parameterIndex, val);
         }
     }
 
@@ -546,15 +550,17 @@ public class GrugORM {
         return metadataCache.computeIfAbsent(clazz, DBMetaData::new);
     }
 
+    @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
     private class DBMetaData {
         public static final String DEFAULT_ID_COL_NAME = "id";
 
         Class classForTable;
-        private String tableName;
+        private final String tableName;
         ArrayList<Field> fields;
         Map<String, String> fieldNameToColumnNames;
         Map<String, String> columnNameToFieldNames;
-        private String idColumnName;
+        private final String idColumnName;
+        private Field idField;
 
         public DBMetaData(Class aClass) {
             classForTable = aClass;
@@ -566,6 +572,7 @@ public class GrugORM {
             fieldNameToColumnNames = new HashMap<>();
             columnNameToFieldNames = new HashMap<>();
 
+            idColumnName = DEFAULT_ID_COL_NAME;
             for (Field field : getAllFields(aClass)) {
                 if (!shouldIgnore(field)) {
                     field.setAccessible(true);
@@ -574,10 +581,12 @@ public class GrugORM {
                     String columnName = snakeCase(fieldName);
                     fieldNameToColumnNames.put(fieldName, columnName);
                     columnNameToFieldNames.put(columnName, fieldName);
+                    if(columnName.equals(idColumnName)) {
+                        idField = field;
+                    }
                 }
             }
 
-            idColumnName = DEFAULT_ID_COL_NAME;
         }
 
         private static List<Field> getAllFields(Class aClass) {
@@ -616,6 +625,7 @@ public class GrugORM {
 
 
         public <T> T newObjectFromResult(ResultSet resultSet) throws Exception {
+            @SuppressWarnings({"unchecked", "deprecation"})
             T object = (T) classForTable.newInstance();
             for (Field field : fields) {
                 // ignore static fields always
@@ -643,6 +653,14 @@ public class GrugORM {
         // TODO - make pluggable
         private static boolean shouldIgnore(Field field) {
             return Modifier.isStatic(field.getModifiers());
+        }
+
+        public void setId(Object object, long id) {
+            try {
+                idField.set(object, id);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -709,8 +727,10 @@ public class GrugORM {
             GrugORM orm = getORM();
             orm.exec(Migration.DDL);
             Console console = System.console();
+            label:
             while(true) {
                 String cmd = console.readLine("migrations > ").strip();
+                //noinspection IfCanBeSwitch
                 if (cmd.equals("show")) {
                     console.printf(show());
                 } else if (cmd.equals("raw")) {
@@ -723,10 +743,10 @@ public class GrugORM {
                 } else if (cmd.equals("all")) {
                     applyAll();
                     console.printf("All pending migrations have been applied");
-                } else if(cmd.equals("help") || cmd.equals("?")) {
+                } else if (cmd.equals("help") || cmd.equals("?")) {
                     console.printf(HELP_MSG);
-                } else if(cmd.equals("exit") || cmd.equals("quit")) {
-                    break;
+                } else if (cmd.equals("exit") || cmd.equals("quit")) {
+                    break label;
                 } else {
                     console.printf("Unknown command : " + cmd + "\n");
                     console.printf(HELP_MSG);
@@ -797,8 +817,8 @@ public class GrugORM {
             migrations = new LinkedHashMap<>();
             migrations();
             // compute migrations with persisted migrations merged in
-            LinkedHashMap<String, Migration> mergedMigrations = new LinkedHashMap<>(migrations);
             ResultList<Migration> persistedMigrations = orm.findAll(Migration.class);
+            var mergedMigrations = new LinkedHashMap<>(migrations);
             for (Migration persistedMigration : persistedMigrations.copy()) {
                 Migration existingMigration = mergedMigrations.get(persistedMigration.getName());
                 if (existingMigration != null) {

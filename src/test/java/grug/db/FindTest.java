@@ -10,9 +10,9 @@ import java.sql.Date;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class BootstrapTest extends TestBase{
+public class FindTest extends TestBase{
 
     GrugORM orm = null;
 
@@ -24,27 +24,13 @@ public class BootstrapTest extends TestBase{
     }
 
     @Test
-    void testInsert() {
-        SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
-        assertEquals(1, orm.insert(sampleModel));
-    }
-
-    @Test
-    void testInsertAsRecord() {
-        SampleRecord sampleModel = new SampleRecord("foo", 10, true, new Date(2021, 1, 1));
-        assertEquals(1, sampleModel.insert());
-    }
-
-    @Test
     void testFind() {
         SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
         long id = orm.insert(sampleModel);
-        sampleModel.setId(id);
 
         SampleModel fromDb = orm.find(SampleModel.class, "id", id);
 
         assertEquals(id, sampleModel.getId());
-
         assertEquals(fromDb.getStrVal(), sampleModel.getStrVal());
         assertEquals(fromDb.getDateVal(), sampleModel.getDateVal());
         assertEquals(fromDb.getBoolVal(), sampleModel.getBoolVal());

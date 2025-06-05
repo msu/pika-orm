@@ -9,14 +9,14 @@ public final class HasEnum {
                 my_enum TEXT NOT NULL
             );
             """;
-    private int id;
+    private long id;
     private MyEnum myEnum;
 
-    public int getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(long id) {
         this.id = id;
     }
 
