@@ -2,6 +2,7 @@ package grug.db;
 
 import grug.db.GrugORM.Interfaces.GrugLogger;
 
+import java.io.Console;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.sql.*;
@@ -45,9 +46,9 @@ public class GrugORM {
     }
 
     public GrugORM withLogger(GrugLogger logger) {
+        this.logger = logger;
         // custom loggers get everything by default
-        this.withLogLevel(GrugLogger.Level.TRACE)
-                .logger = logger;
+        this.withLogLevel(GrugLogger.Level.TRACE);
         return this;
     }
 
@@ -322,9 +323,11 @@ public class GrugORM {
         }
         sb.append(") WHERE ");
         sb.append(keyCol).append("=?");
+        String updateSQL = sb.toString();
+        logger.log(GrugLogger.Level.INFO, "UPDATE SQL: {}\n  Args:{}", updateSQL, values.values());
         try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
-            PreparedStatement preparedStatement = conn.prepareStatement(sb.toString());
+            PreparedStatement preparedStatement = conn.prepareStatement(updateSQL);
             int col = 1;
             for (Object o : values.values()) {
                 setValueForQuery(preparedStatement, col++, o);
@@ -341,6 +344,8 @@ public class GrugORM {
         sb.append(tableName);
         sb.append(" WHERE ");
         sb.append(keyCol).append("=?");
+        String deleteSQL = sb.toString();
+        logger.log(GrugLogger.Level.INFO, "DELETE SQL: {}\n  Args:{}", deleteSQL, List.of(keyVal));
         try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement preparedStatement = conn.prepareStatement(sb.toString());
@@ -354,6 +359,7 @@ public class GrugORM {
     public void exec(String sql) {
         try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
+            logger.log(GrugLogger.Level.INFO, "EXECUTING RAW SQL: {}\n", sql);
             PreparedStatement preparedStatement = conn.prepareStatement(sql);
             preparedStatement.execute();
         } catch (Exception e) {
@@ -646,12 +652,18 @@ public class GrugORM {
 
     public static abstract class Migrations {
 
-        private final LinkedHashMap<String, Migration> migrations = new LinkedHashMap<>();
+        public static final String HELP_MSG = """
+                Migrations Commands
+                
+                  show      - show all migrations
+                  up        - apply one pending migration
+                  down      - back out the latest migration
+                  all       - apply all pending migrations
+                  exit/quit - exit this tool
+                  help/?    - show this help message
+                """;
+        private LinkedHashMap<String, Migration> migrations;
         private GrugORM orm;
-
-        protected Migrations() {
-            migrations(); // init migrations
-        }
 
         public void setORM(GrugORM orm) {
             this.orm = orm;
@@ -672,13 +684,12 @@ public class GrugORM {
         }
 
         protected void add(Migration migration) {
-            String migrationName = migration.getClass().getSimpleName();
+            String migrationName = migration.getName();
             if(migrations.containsKey(migrationName)) {
                 throw new IllegalArgumentException("Migration " + migrationName + " already exists!");
             }
             migrations.put(migrationName, migration);
         }
-
 
         /**
          * @return the initial pre-migrations schema for the database
@@ -687,42 +698,93 @@ public class GrugORM {
             return "";
         };
 
-        public void migrations() {
-            throw new RuntimeException("Override the migrations() method and add migrations to this migration file!");
-        }
+        public abstract void migrations();
 
         public static Migration makeMigration(String name) {
-            Migration migration = new Migration();
-            migration.name = name;
+            Migration migration = new Migration(name);
             return migration;
+        }
+
+        public void console() {
+            GrugORM orm = getORM();
+            orm.exec(Migration.DDL);
+            Console console = System.console();
+            while(true) {
+                String cmd = console.readLine("migrations > ").strip();
+                if (cmd.equals("show")) {
+                    console.printf(show());
+                } else if (cmd.equals("raw")) {
+                    var mergedMigrations = loadMigrations(orm);
+                    console.printf(new ResultList<>(mergedMigrations.values()).join("\n"));
+                } else if (cmd.equals("up")) {
+                    up();
+                } else if (cmd.equals("down")) {
+                    down();
+                } else if (cmd.equals("all")) {
+                    applyAll();
+                    console.printf("All pending migrations have been applied");
+                } else if(cmd.equals("help") || cmd.equals("?")) {
+                    console.printf(HELP_MSG);
+                } else if(cmd.equals("exit") || cmd.equals("quit")) {
+                    break;
+                } else {
+                    console.printf("Unknown command : " + cmd + "\n");
+                    console.printf(HELP_MSG);
+                }
+            }
+        }
+
+        private String show() {
+            GrugORM orm = getORM();
+            orm.exec(Migration.DDL);
+            var mergedMigrations = loadMigrations(orm);
+
+            StringBuilder sb = new StringBuilder("All Migrations:\n");
+            String formatString = "%-30.30s | %-15.15s | %-30.30s | %-30.30s | %-30.30s | %-30.30s\n";
+            sb.append(String.format(formatString, "name", "status", "applied", "description", "up", "down"));
+            sb.append("-------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+            for (Migration value : mergedMigrations.values()) {
+                sb.append(String.format(formatString,
+                        value.getName(), value.getStatus(), value.appliedAtForDisplay(), value.description, value.upForDisplay(), value.downForDisplay()));
+            }
+            return sb.toString();
+        }
+
+        public void up() {
+            GrugORM orm = getORM();
+            orm.exec(Migration.DDL);
+            var mergedMigrations = loadMigrations(orm);
+
+            var values = new ResultList<>(mergedMigrations.values());
+            var firstUnappliedMigration = values.firstWhere(Migration::isPending);
+            if(firstUnappliedMigration != null) {
+                firstUnappliedMigration.runUp(orm);
+            } else {
+                orm.getLogger().log(GrugLogger.Level.WARN, "No pending migrations were found in migrations file to apply");
+            }
+        }
+
+        public void down() {
+            GrugORM orm = getORM();
+            orm.exec(Migration.DDL);
+            var mergedMigrations = loadMigrations(orm);
+
+            var values = new ResultList<>(mergedMigrations.values());
+            var lastAppliedMigration = values.lastWhere(Migration::isApplied);
+            if(lastAppliedMigration != null) {
+                lastAppliedMigration.runDown(orm);
+            } else {
+                orm.getLogger().log(GrugLogger.Level.WARN, "No applied migrations were found in migrations file to back out");
+            }
         }
 
         /**
          * Applies all outstanding migrations in the order they are declared
          */
-        public void apply() {
+        public void applyAll() {
             GrugORM orm = getORM();
             orm.exec(Migration.DDL);
-
-            // compute migrations with persisted migrations merged in
-            LinkedHashMap<String, Migration> mergedMigrations = new LinkedHashMap<>(migrations);
-            ResultList<Migration> persistedMigrations = orm.findAll(Migration.class);
-            for (Migration persistedMigration : persistedMigrations) {
-                Migration existingMigration = mergedMigrations.get(persistedMigration.getName());
-                if (existingMigration != null) {
-                    if(!existingMigration.equals(persistedMigration)) {
-                        // TODO log warning inconsistent migrations found
-                    }
-                    // update ID
-                    existingMigration.id = persistedMigration.id;
-                    persistedMigrations.remove(persistedMigration);
-                }
-            }
-
-            if(persistedMigrations.size() > 0) {
-                // TODO log warning: persisted migrations that are not found in the DB
-            }
-
+            var mergedMigrations = loadMigrations(orm);
             for (Migration migration : mergedMigrations.values()) {
                 if (!migration.isApplied()) {
                     migration.runUp(orm);
@@ -730,12 +792,54 @@ public class GrugORM {
             }
         }
 
+        private LinkedHashMap<String, Migration> loadMigrations(GrugORM orm) {
+
+            migrations = new LinkedHashMap<>();
+            migrations();
+            // compute migrations with persisted migrations merged in
+            LinkedHashMap<String, Migration> mergedMigrations = new LinkedHashMap<>(migrations);
+            ResultList<Migration> persistedMigrations = orm.findAll(Migration.class);
+            for (Migration persistedMigration : persistedMigrations.copy()) {
+                Migration existingMigration = mergedMigrations.get(persistedMigration.getName());
+                if (existingMigration != null) {
+                    if(!existingMigration.equals(persistedMigration)) {
+                        orm.getLogger().log(GrugLogger.Level.WARN, MessageFormat.format("""
+                                        Migration {0} has different content in the codebase and in the database:
+                                        
+                                        DB Content:
+                                        {1}
+                                        
+                                        Code Content:
+                                        {2}
+                                        
+                                        This may be due to ongoing development but should not be the case in production.
+                                        """,
+                                existingMigration.name,
+                                persistedMigration.getDebugString(),
+                                existingMigration.getDebugString()
+                                ));
+                    }
+                    // update ID
+                    existingMigration.id = persistedMigration.id;
+                    existingMigration.status = persistedMigration.status;
+                    persistedMigrations.remove(persistedMigration);
+                }
+            }
+
+            if(!persistedMigrations.isEmpty()) {
+                orm.getLogger().log(GrugLogger.Level.WARN,
+                        "The following migrations have been found in the database, but are not in the current migration file:\n" +
+                        persistedMigrations.join("\n"));
+            }
+            return mergedMigrations;
+        }
+
         public static final class Migration {
 
             public static final String DDL = """
                     CREATE TABLE IF NOT EXISTS migration (
-                        id INTEGER,
-                        created_at INTEGER,
+                        id INTEGER PRIMARY KEY,
+                        applied_at INTEGER,
                         name VARCHAR,
                         description VARCHAR,
                         up VARCHAR,
@@ -745,12 +849,18 @@ public class GrugORM {
                     """;
 
             private Long id;
-            private Long createdAt;
+            private Long appliedAt;
             private String name;
             private String description;
             private String up;
             private String down;
-            private MigrationStatus status;
+            private MigrationStatus status = MigrationStatus.PENDING;
+
+            private Migration(){}
+
+            public Migration(String name) {
+                this.name = name;
+            }
 
             public Migration description(String description) {
                 this.description = description;
@@ -775,9 +885,14 @@ public class GrugORM {
                 return status == MigrationStatus.APPLIED;
             }
 
+            public boolean isPending() {
+                return status == MigrationStatus.PENDING;
+            }
+
             void runUp(GrugORM orm) {
                 orm.exec(this.up);
                 this.status = MigrationStatus.APPLIED;
+                this.appliedAt = new Date().getTime();
                 if (this.id == null) {
                     orm.insert(this);
                 } else {
@@ -806,6 +921,50 @@ public class GrugORM {
             public MigrationStatus getStatus() {
                 return status;
             }
+
+            @Override
+            public String toString() {
+                return "Migration{" +
+                        "id=" + id +
+                        ", appliedAt=" + appliedAt +
+                        ", name='" + name + '\'' +
+                        ", description='" + description + '\'' +
+                        ", up='" + up + '\'' +
+                        ", down='" + down + '\'' +
+                        ", status=" + status +
+                        '}';
+            }
+
+            public Object getDebugString() {
+                return "{" +
+                        "down='" + down + '\'' +
+                        ", up='" + up + '\'' +
+                        '}';
+            }
+
+            public Object upForDisplay() {
+                String[] lines = up.split("\n");
+                for (int i = 0; i < lines.length; i++) {
+                    lines[i] = lines[i].strip();
+                }
+                return String.join(" ", lines);
+            }
+
+            public Object downForDisplay() {
+                String[] lines = down.split("\n");
+                for (int i = 0; i < lines.length; i++) {
+                    lines[i] = lines[i].strip();
+                }
+                return String.join(" ", lines);
+            }
+
+            public Object appliedAtForDisplay() {
+                if(appliedAt == null) {
+                    return null;
+                } else {
+                    return new Date(appliedAt);
+                }
+            }
         }
 
         public enum MigrationStatus {
@@ -815,11 +974,21 @@ public class GrugORM {
         }
     }
 
+    private GrugLogger getLogger() {
+        return logger;
+    }
+
     //========================================================================================
-    // GrugORM Query Result
+    // GrugORM Result List
     //========================================================================================
 
     public static class ResultList<T> extends ArrayList<T> {
+
+        public ResultList() {}
+
+        public ResultList(Collection<T> values) {
+            super(values);
+        }
 
         public <Q> ResultList<Q> map(Function<T, Q> mapper) {
             ResultList<Q> mappedResult = new ResultList<>();
@@ -841,6 +1010,56 @@ public class GrugORM {
                 }
             }
             return mappedResult;
+        }
+
+        public String join(String separator) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0, thisSize = this.size(); i < thisSize; i++) {
+                T t = this.get(i);
+                builder.append(t);
+                if(i < thisSize - 1) {
+                    builder.append(separator);
+                }
+            }
+            return builder.toString();
+        }
+
+        public T first() {
+            if(this.size() > 0) {
+                return this.get(0);
+            } else {
+                return null;
+            }
+        }
+
+        public T firstWhere(Predicate<? super T> predicate){
+            for (T t : this) {
+                if(predicate.test(t)) {
+                    return t;
+                }
+            }
+            return null;
+        }
+
+        public T last() {
+            if(this.size() == 0) {
+                return null;
+            } else {
+                return this.getLast();
+            }
+        }
+
+        public T lastWhere(Predicate<? super T> predicate){
+            for (T t : this.reversed()) {
+                if(predicate.test(t)) {
+                    return t;
+                }
+            }
+            return null;
+        }
+
+        public ResultList<T> copy() {
+            return new ResultList<>(this);
         }
     }
 

@@ -10,7 +10,7 @@ public abstract class TestBase {
 
 
 
-    protected GrugORM initDBFileAndORM() throws IOException {
+    protected static GrugORM initDBFileAndORM() throws IOException {
         // remove old db if it exists
         Path path = Path.of("test", "test.db");
         if (Files.exists(path)) {

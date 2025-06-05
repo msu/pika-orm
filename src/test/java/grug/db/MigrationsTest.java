@@ -4,6 +4,7 @@ import grug.db.GrugORM.Migrations.Migration;
 import grug.db.GrugORM.Migrations.MigrationStatus;
 import grug.db.migrations.MigrationDemoModel;
 import grug.db.migrations.MigrationsFile1;
+import grug.db.migrations.MigrationFileForConsoleTesting;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +27,7 @@ public class MigrationsTest extends TestBase {
         // migrate the database
         MigrationsFile1 migrations = new MigrationsFile1();
         orm.withMigrations(migrations);
-        migrations.apply();
+        migrations.applyAll();
 
         // insert a new model based on the migration
         MigrationDemoModel migrationDemoModel = new MigrationDemoModel();
@@ -44,7 +45,7 @@ public class MigrationsTest extends TestBase {
         // migrate the database
         MigrationsFile1 migrations = new MigrationsFile1();
         orm.withMigrations(migrations);
-        migrations.apply();
+        migrations.applyAll();
 
         var migrationsInDb = orm.findAll(Migration.class);
 
@@ -52,4 +53,11 @@ public class MigrationsTest extends TestBase {
         assertEquals(MigrationStatus.APPLIED, migrationsInDb.getFirst().getStatus());
     }
 
+
+    public static void main(String[] args) throws IOException {
+        var orm = initDBFileAndORM();
+        MigrationFileForConsoleTesting migrations = new MigrationFileForConsoleTesting();
+        orm.withMigrations(migrations);
+        migrations.console();
+    }
 }
