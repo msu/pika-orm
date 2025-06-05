@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 
 public class GrugORM {
 
-    public static final String SQL_VARS_PATTERN = "(:[a-zA-Z_]+)";
+    public static final String SQL_VARS_PATTERN = "(:[\\w][\\d\\w]*)";
     private static GrugORM DEFAULT_ORM = null;
     private static final ThreadLocal<ConnectionInfo> CURRENT_CONNECTION = new ThreadLocal<>();
 
@@ -180,7 +180,7 @@ public class GrugORM {
         try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
             ArrayList<Object> vals = new ArrayList<>();
-            String updatedSql = updateSqlVars(sql, args, vals);
+            String updatedSql = updateSqlVars(sql, args, vals);//ok so our where clause and values all meet here, to be parsed and processed in our actual exectution
             logger.log(GrugLogger.Level.INFO, "Select SQL: {}\n  Args:{}", updatedSql, vals);
             PreparedStatement ps = conn.prepareStatement(updatedSql);
             for (int i = 0; i < vals.size(); i++) {
@@ -189,7 +189,7 @@ public class GrugORM {
             }
             ResultSet resultSet = ps.executeQuery();
             ResultList<T> result = new ResultList<>();
-            while (resultSet.next()) {
+            while (resultSet.next()) {//this part is the broken part of the query
                 DBMetaData dbMetaData = getDBMetaData(clazz);
                 T object = dbMetaData.newObjectFromResult(resultSet);
                 result.add(object);

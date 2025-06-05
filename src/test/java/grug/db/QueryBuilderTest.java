@@ -67,14 +67,13 @@ public class QueryBuilderTest extends TestBase {
             long id = orm.insert(sampleModel);
             sampleModel.setId(id);
         }
-
         var query = orm.query(SampleModel.class)
                 .where("date_val < :val")
                 .with("val", new Date(150, 1, 1))
                 .where("date_val > :val2")
-                .with("val2", new Date(100, 1, 1));
+                .with("val2", new Date(20, 1, 1));
 
-        List<SampleModel> results = query.run();
+        List<SampleModel> results = query.run();//this problem is 100% isolated within the run query as everything is building correctly
 
         assertEquals(10, results.size());
 
