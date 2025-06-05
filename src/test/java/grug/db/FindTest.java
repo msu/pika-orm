@@ -6,7 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.sql.Date;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +25,7 @@ public class FindTest extends TestBase{
 
     @Test
     void testFind() {
-        SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
         long id = orm.insert(sampleModel);
 
         SampleModel fromDb = orm.find(SampleModel.class, "id", id);
@@ -61,6 +61,24 @@ public class FindTest extends TestBase{
 
         results = orm.findAll(SampleModel.class);
         assertEquals(10, results.size());
+    }
+
+    @Test
+    void testFindAllCollectionFilter() {
+        var m1 = new SampleModel("foo", 10, true, new Date());
+        var m2 = new SampleModel("bar", 10, true, new Date());
+        var m3 = new SampleModel("baz", 10, true, new Date());
+
+        // TODO - bulk insert?
+        orm.insert(m1);
+        orm.insert(m2);
+        orm.insert(m3);
+
+        var results = orm.findAll(SampleModel.class,
+                "str_val in :strs",
+                Map.of("strs", List.of("foo", "bar")));
+
+        assertEquals(2, results.size());
     }
 
 }
