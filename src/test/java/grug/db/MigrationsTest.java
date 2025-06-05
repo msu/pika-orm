@@ -53,7 +53,9 @@ public class MigrationsTest extends TestBase {
         assertEquals(MigrationStatus.APPLIED, migrationsInDb.getFirst().getStatus());
     }
 
-
+    /*
+     * A way to play around w/ the command line
+     */
     public static void main(String[] args) throws IOException {
         var orm = initDBFileAndORM();
         MigrationFileForConsoleTesting migrations = new MigrationFileForConsoleTesting();
