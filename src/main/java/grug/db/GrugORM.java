@@ -12,11 +12,15 @@ import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GrugORM {
 
+    public static final String SQL_VARS_PATTERN = "(:[a-zA-Z_]+)";
     private static GrugORM DEFAULT_ORM = null;
     private static final ThreadLocal<ConnectionInfo> CURRENT_CONNECTION = new ThreadLocal<>();
 
@@ -52,6 +56,11 @@ public class GrugORM {
         return this;
     }
 
+    public GrugORM withMigrations(Migrations migrations) {
+        migrations.setORM(this);
+        return this;
+    }
+
     public GrugORM makeDefaultORM() {
         setDefaultORM(this);
         return this;
@@ -76,6 +85,7 @@ public class GrugORM {
     public static void setDefaultORM(GrugORM orm) {
         DEFAULT_ORM = orm;
     }
+
 
     //====================================================================
     // Connection management
@@ -155,17 +165,17 @@ public class GrugORM {
         }
     }
 
-    public <T> List<T> findAll(Class<T> clazz) {
+    public <T> ResultList<T> findAll(Class<T> clazz) {
         return findAll(clazz, "true=true", Map.of());
     }
 
-    public <T> List<T> findAll(Class<T> clazz, String whereClause, Map<String, Object> values) {
+    public <T> ResultList<T> findAll(Class<T> clazz, String whereClause, Map<String, Object> values) {
         String name = clazz.getSimpleName();
         String tableName = snakeCase(name);
         return select(clazz, "SELECT * FROM " + tableName + " WHERE " + whereClause, values);
     }
 
-    public <T> List<T> select(Class<T> clazz, String sql, Map<String, Object> args) {
+    public <T> ResultList<T> select(Class<T> clazz, String sql, Map<String, Object> args) {
         try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
             ArrayList<Object> vals = new ArrayList<>();
@@ -177,20 +187,20 @@ public class GrugORM {
                 setValueForQuery(ps, i + 1, val);
             }
             ResultSet resultSet = ps.executeQuery();
-            List<T> list = new ArrayList<>();
+            ResultList<T> result = new ResultList<>();
             while (resultSet.next()) {
                 DBMetaData dbMetaData = getDBMetaData(clazz);
                 T object = dbMetaData.newObjectFromResult(resultSet);
-                list.add(object);
+                result.add(object);
             }
-            return list;
+            return result;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
     private String updateSqlVars(String sql, Map<String, Object> args, List<Object> argList) {
-        Pattern compile = Pattern.compile("(:[a-zA-Z_]+)");
+        Pattern compile = Pattern.compile(SQL_VARS_PATTERN);
         Matcher matcher = compile.matcher(sql);
         StringBuilder sb = new StringBuilder();
         int start = 0;
@@ -209,6 +219,20 @@ public class GrugORM {
         }
         sb.append(sql.substring(start));
         return sb.toString();
+    }
+
+    public void save(Object object) {
+        Class<?> clazz = object.getClass();
+        DBMetaData dbMetaData = getDBMetaData(clazz);
+        String tableName = dbMetaData.getTableName();
+        String keyCol = dbMetaData.getIdColumnName();
+        Map<String, Object> valuesToUpdate = dbMetaData.asDBMap(object);
+        Object keyVal = valuesToUpdate.remove(keyCol); // remove the key
+        if (keyVal == null) {
+            insert(tableName, valuesToUpdate);
+        } else {
+            update(tableName, keyCol, keyVal, valuesToUpdate);
+        }
     }
 
     public boolean update(Object object) {
@@ -231,6 +255,7 @@ public class GrugORM {
         return delete(tableName, keyCol, keyVal);
     }
 
+    // TODO replace TreeMap w/ LinkedHashMap
     private long insert(String tableName, Map<String, Object> values) {
         if (!(values instanceof TreeMap<String, Object>)) {
             values = new TreeMap<>(values);
@@ -615,15 +640,172 @@ public class GrugORM {
         }
     }
 
-    public static class Migrations {
+    //========================================================================================
+    // Migrations System
+    //========================================================================================
 
-        public static class Migration {
-            Long id;
-            Long createdAt;
-            String description;
-            String up;
-            String down;
-            MigrationStatus status;
+    public static abstract class Migrations {
+
+        private final LinkedHashMap<String, Migration> migrations = new LinkedHashMap<>();
+        private GrugORM orm;
+
+        protected Migrations() {
+            migrations(); // init migrations
+        }
+
+        public void setORM(GrugORM orm) {
+            this.orm = orm;
+        }
+
+        public GrugORM getORM() {
+            if(orm != null) {
+                return orm;
+            }
+            if(GrugORM.getDefault() != null) {
+                return GrugORM.getDefault();
+            }
+            throw new IllegalStateException("ORM has not been set and there is no default ORM, don't know what database to migrate!");
+        }
+
+        protected void add(Supplier<Migration> migrationCallable) {
+            add(migrationCallable.get());
+        }
+
+        protected void add(Migration migration) {
+            String migrationName = migration.getClass().getSimpleName();
+            if(migrations.containsKey(migrationName)) {
+                throw new IllegalArgumentException("Migration " + migrationName + " already exists!");
+            }
+            migrations.put(migrationName, migration);
+        }
+
+
+        /**
+         * @return the initial pre-migrations schema for the database
+         */
+        public String initialSchema() {
+            return "";
+        };
+
+        public void migrations() {
+            throw new RuntimeException("Override the migrations() method and add migrations to this migration file!");
+        }
+
+        public static Migration makeMigration(String name) {
+            Migration migration = new Migration();
+            migration.name = name;
+            return migration;
+        }
+
+        /**
+         * Applies all outstanding migrations in the order they are declared
+         */
+        public void apply() {
+            GrugORM orm = getORM();
+            orm.exec(Migration.DDL);
+
+            // compute migrations with persisted migrations merged in
+            LinkedHashMap<String, Migration> mergedMigrations = new LinkedHashMap<>(migrations);
+            ResultList<Migration> persistedMigrations = orm.findAll(Migration.class);
+            for (Migration persistedMigration : persistedMigrations) {
+                Migration existingMigration = mergedMigrations.get(persistedMigration.getName());
+                if (existingMigration != null) {
+                    if(!existingMigration.equals(persistedMigration)) {
+                        // TODO log warning inconsistent migrations found
+                    }
+                    // update ID
+                    existingMigration.id = persistedMigration.id;
+                    persistedMigrations.remove(persistedMigration);
+                }
+            }
+
+            if(persistedMigrations.size() > 0) {
+                // TODO log warning: persisted migrations that are not found in the DB
+            }
+
+            for (Migration migration : mergedMigrations.values()) {
+                if (!migration.isApplied()) {
+                    migration.runUp(orm);
+                }
+            }
+        }
+
+        public static final class Migration {
+
+            public static final String DDL = """
+                    CREATE TABLE IF NOT EXISTS migration (
+                        id INTEGER,
+                        created_at INTEGER,
+                        name VARCHAR,
+                        description VARCHAR,
+                        up VARCHAR,
+                        down VARCHAR,
+                        status VARCHAR
+                    );
+                    """;
+
+            private Long id;
+            private Long createdAt;
+            private String name;
+            private String description;
+            private String up;
+            private String down;
+            private MigrationStatus status;
+
+            public Migration description(String description) {
+                this.description = description;
+                return this;
+            }
+
+            public Migration up(String up) {
+                this.up = up;
+                return this;
+            }
+
+            public Migration down(String down) {
+                this.down = down;
+                return this;
+            }
+
+            public String getName() {
+                return name;
+            }
+
+            public boolean isApplied() {
+                return status == MigrationStatus.APPLIED;
+            }
+
+            void runUp(GrugORM orm) {
+                orm.exec(this.up);
+                this.status = MigrationStatus.APPLIED;
+                if (this.id == null) {
+                    orm.insert(this);
+                } else {
+                    orm.update(this);
+                }
+            }
+
+            void runDown(GrugORM orm) {
+                orm.exec(this.down);
+                orm.delete(this);
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                Migration migration = (Migration) o;
+                return Objects.equals(name, migration.name) && Objects.equals(up, migration.up) && Objects.equals(down, migration.down);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(name, up, down);
+            }
+
+            public MigrationStatus getStatus() {
+                return status;
+            }
         }
 
         public enum MigrationStatus {
@@ -632,4 +814,34 @@ public class GrugORM {
             SKIPPED
         }
     }
+
+    //========================================================================================
+    // GrugORM Query Result
+    //========================================================================================
+
+    public static class ResultList<T> extends ArrayList<T> {
+
+        public <Q> ResultList<Q> map(Function<T, Q> mapper) {
+            ResultList<Q> mappedResult = new ResultList<>();
+            for (T t : this) {
+                mappedResult.add(mapper.apply(t));
+            }
+            return mappedResult;
+        }
+
+        public Set<T> toSet() {
+            return new HashSet<>(this);
+        }
+
+        public ResultList<T> filter(Predicate<? super T> filter) {
+            ResultList<T> mappedResult = new ResultList<>();
+            for (T t : this) {
+                if(filter.test(t)) {
+                    mappedResult.add(t);
+                }
+            }
+            return mappedResult;
+        }
+    }
+
 }
