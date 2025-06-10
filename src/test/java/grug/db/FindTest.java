@@ -70,10 +70,13 @@ public class FindTest extends TestBase{
         SampleModel m3 = new SampleModel("baz", 10, true, new Date());
 
         // TODO - bulk insert?
+        SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
+        orm.insertAll(List.of(sampleModels));
+//        m1.setId(orm.insert(m1));
+//        m2.setId(orm.insert(m2));
+//        m3.setId(orm.insert(m3));
 
-        m1.setId(orm.insert(m1));
-        m2.setId(orm.insert(m2));
-        m3.setId(orm.insert(m3));
+
 
         var results = orm.findAll(SampleModel.class,//we are looking to create the query something like this, select * in sample model where str_val in (?) and (?) (for foo and bar)
                 "str_val in :strs",

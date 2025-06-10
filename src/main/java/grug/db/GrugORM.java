@@ -2,7 +2,6 @@ package grug.db;
 
 import grug.db.GrugORM.Interfaces.GrugLogger;
 
-import javax.management.ObjectInstance;
 import java.io.Console;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -217,6 +216,16 @@ public class GrugORM {
         long id = insert(metaData.getTableName(), values);
         metaData.setId(object, id);
         return id;
+    }
+
+    public long[] insertAll(Collection<Object> items){// TODO - look into the setID as i was having some issues and weirdness with it
+        long[] ids = new long[items.size()];
+        int count = 0;
+        for (Object o : (Collection<?>) items) {
+            ids[count] = insert(o);
+            count++;
+        }
+        return ids;
     }
 
     private long insert(String tableName, Map<String, Object> values) {
