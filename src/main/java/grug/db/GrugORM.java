@@ -93,15 +93,15 @@ public class GrugORM {
     // Connection management
     //====================================================================
 
-    private record ConnectionInfo(Connection conn, AtomicInteger count,
-                                  ConnectionInfo previous) implements AutoCloseable {
+    private record ConnectionInfo(Connection conn, AtomicInteger openCount,
+                                  ConnectionInfo previous, AtomicInteger transactionCount) implements AutoCloseable {
         public void increment() {
-            count.incrementAndGet();
+            openCount.incrementAndGet();
         }
 
         @Override
         public void close() throws Exception {
-            int val = count.decrementAndGet();
+            int val = openCount.decrementAndGet();
             if (val == 0) {
                 conn.close();
                 CURRENT_CONNECTION.set(this.previous());
@@ -109,28 +109,90 @@ public class GrugORM {
         }
     }
 
-    public Connection getNewConnection() {
+    private Connection getNewConnection() {
         try {
             return connectionSource.call();
         } catch (Exception e) {
-            if (e instanceof RuntimeException re) {
-                throw re;
-            } else {
-                throw new RuntimeException(e);
-            }
+            throw rethrow(e);
         }
     }
 
-    private ConnectionInfo getConnectionInfo() {
+    private static RuntimeException rethrow(Exception e) {
+        if (e instanceof RuntimeException re) {
+            return re;
+        } else {
+            return new RuntimeException(e);
+        }
+    }
+
+    private ConnectionInfo getOrCreateConnectionInfo() {
         ConnectionInfo connectionInfo = CURRENT_CONNECTION.get();
         if (connectionInfo == null) {
-            Connection connection = getNewConnection();
-            connectionInfo = new ConnectionInfo(connection, new AtomicInteger(0), null);
-            CURRENT_CONNECTION.set(connectionInfo);
+            connectionInfo = pushNewConnection();
+        } else {
+            connectionInfo.increment();
         }
-        connectionInfo.increment();
         return connectionInfo;
     }
+
+    private ConnectionInfo pushNewConnection() {
+        ConnectionInfo previousConnection = CURRENT_CONNECTION.get();
+        Connection connection = getNewConnection();
+        ConnectionInfo newConnectionInfo = new ConnectionInfo(connection, new AtomicInteger(0), previousConnection, new AtomicInteger(0));
+        newConnectionInfo.increment();
+        CURRENT_CONNECTION.set(newConnectionInfo);
+        return newConnectionInfo;
+    }
+
+    //====================================================================
+    // Transaction management
+    //====================================================================
+
+    public void inTransaction(Runnable runnable) {
+            try {
+                startTransaction();
+                runnable.run();
+                commitTransaction();
+            } catch (Throwable t) {
+                try {
+                    rollBackTransaction();
+                } catch (SQLException e) {
+                    logger.log(GrugLogger.Level.ERROR, "Error rolling back transaction: {}", e.getMessage());
+                }
+                if(t instanceof RuntimeException re) {
+                    throw re;
+                } else {
+                    throw new RuntimeException(t);
+                }
+            }
+    }
+
+    private void startTransaction() throws SQLException {
+        ConnectionInfo connectionInfo = getOrCreateConnectionInfo();
+        Connection conn = connectionInfo.conn;
+        if(connectionInfo.transactionCount.getAndIncrement() == 0) {
+            conn.setAutoCommit(false);
+        }
+    }
+
+    private void commitTransaction() throws SQLException {
+        ConnectionInfo connectionInfo = getOrCreateConnectionInfo();
+        Connection conn = connectionInfo.conn;
+        if(connectionInfo.transactionCount.decrementAndGet() == 0) {
+            conn.commit();            // only commit on the last transaction scope
+            conn.setAutoCommit(true); // restore autocommit on last transaction scope
+        }
+    }
+
+    private void rollBackTransaction() throws SQLException {
+        ConnectionInfo connectionInfo = getOrCreateConnectionInfo();
+        Connection conn = connectionInfo.conn;
+        conn.rollback(); // always rollback the current transaction no matter what
+        if(connectionInfo.transactionCount().decrementAndGet() == 0) { // restore autocommit on last transaction scope
+            conn.setAutoCommit(true);
+        }
+    }
+
 
     //====================================================================
     // Database interaction
@@ -143,7 +205,7 @@ public class GrugORM {
 
     public <T> T find(Class<T> clazz, String key, Object val) {
         DBMetaData dbMetaData = getDBMetaData(clazz);
-        try (ConnectionInfo ci = getConnectionInfo()) {
+        try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement ps = conn.prepareStatement("SELECT * FROM " + dbMetaData.getTableName() + " WHERE " + key + "=?");
             int parameterIndex = 1;
@@ -171,7 +233,7 @@ public class GrugORM {
     }
 
     public <T> ResultList<T> select(Class<T> clazz, String sql, Map<String, Object> args) {
-        try (ConnectionInfo ci = getConnectionInfo()) {
+        try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             ArrayList<Object> vals = new ArrayList<>();
             String updatedSql = updateSqlVars(sql, args, vals);
@@ -247,7 +309,7 @@ public class GrugORM {
         sb.append(")");
         String insertString = sb.toString();
         logger.log(GrugLogger.Level.INFO, "INSERT SQL: {}\n  Args:{}", insertString, values.values());
-        try (ConnectionInfo ci = getConnectionInfo()) {
+        try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement preparedStatement = conn.prepareStatement(insertString);
             int col = 1;
@@ -296,7 +358,7 @@ public class GrugORM {
         sb.append(keyCol).append("=?");
         String updateSQL = sb.toString();
         logger.log(GrugLogger.Level.INFO, "UPDATE SQL: {}\n  Args:{}", updateSQL, values.values());
-        try (ConnectionInfo ci = getConnectionInfo()) {
+        try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement preparedStatement = conn.prepareStatement(updateSQL);
             int col = 1;
@@ -327,7 +389,7 @@ public class GrugORM {
         sb.append(keyCol).append("=?");
         String deleteSQL = sb.toString();
         logger.log(GrugLogger.Level.INFO, "DELETE SQL: {}\n  Args:{}", deleteSQL, List.of(keyVal));
-        try (ConnectionInfo ci = getConnectionInfo()) {
+        try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement preparedStatement = conn.prepareStatement(sb.toString());
             setValueForQuery(preparedStatement, 1, keyVal);
@@ -338,7 +400,7 @@ public class GrugORM {
     }
 
     public void exec(String sql) {
-        try (ConnectionInfo ci = getConnectionInfo()) {
+        try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             logger.log(GrugLogger.Level.INFO, "EXECUTING RAW SQL: {}\n", sql);
             PreparedStatement preparedStatement = conn.prepareStatement(sql);
