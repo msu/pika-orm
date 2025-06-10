@@ -1,6 +1,7 @@
 package grug.db;
 
 import grug.db.GrugORM.Interfaces.GrugLogger;
+import grug.db.GrugORM.Interfaces.GrugRecordLifecycle;
 
 import java.io.Console;
 import java.lang.reflect.Field;
@@ -94,7 +95,8 @@ public class GrugORM {
     //====================================================================
 
     private record ConnectionInfo(Connection conn, AtomicInteger openCount,
-                                  ConnectionInfo previous, AtomicInteger transactionCount) implements AutoCloseable {
+                                  ConnectionInfo previous, AtomicInteger transactionCount,
+                                  UUID uuid) implements AutoCloseable {
         public void increment() {
             openCount.incrementAndGet();
         }
@@ -138,7 +140,8 @@ public class GrugORM {
     private ConnectionInfo pushNewConnection() {
         ConnectionInfo previousConnection = CURRENT_CONNECTION.get();
         Connection connection = getNewConnection();
-        ConnectionInfo newConnectionInfo = new ConnectionInfo(connection, new AtomicInteger(0), previousConnection, new AtomicInteger(0));
+        ConnectionInfo newConnectionInfo = new ConnectionInfo(connection, new AtomicInteger(0),
+                previousConnection, new AtomicInteger(0), UUID.randomUUID());
         newConnectionInfo.increment();
         CURRENT_CONNECTION.set(newConnectionInfo);
         return newConnectionInfo;
@@ -157,7 +160,8 @@ public class GrugORM {
                 try {
                     rollBackTransaction();
                 } catch (SQLException e) {
-                    logger.log(GrugLogger.Level.ERROR, "Error rolling back transaction: {}", e.getMessage());
+                    ConnectionInfo connInfo = getOrCreateConnectionInfo();
+                    logger.log(GrugLogger.Level.ERROR, "Error rolling back transaction for connection {}: {}", connInfo.uuid, e.getMessage());
                 }
                 if(t instanceof RuntimeException re) {
                     throw re;
@@ -167,28 +171,36 @@ public class GrugORM {
             }
     }
 
-    private void startTransaction() throws SQLException {
+    public void startTransaction() throws SQLException {
         ConnectionInfo connectionInfo = getOrCreateConnectionInfo();
         Connection conn = connectionInfo.conn;
         if(connectionInfo.transactionCount.getAndIncrement() == 0) {
             conn.setAutoCommit(false);
+            logger.log(GrugLogger.Level.INFO, "Starting new transaction for connection {}", connectionInfo.uuid);
+        } else {
+            logger.log(GrugLogger.Level.INFO, "Existing transaction for connection {}, joining it", connectionInfo.uuid);
         }
     }
 
-    private void commitTransaction() throws SQLException {
+    public void commitTransaction() throws SQLException {
         ConnectionInfo connectionInfo = getOrCreateConnectionInfo();
         Connection conn = connectionInfo.conn;
         if(connectionInfo.transactionCount.decrementAndGet() == 0) {
+            logger.log(GrugLogger.Level.INFO, "Transaction for connection {} completed, committing", connectionInfo.uuid);
             conn.commit();            // only commit on the last transaction scope
             conn.setAutoCommit(true); // restore autocommit on last transaction scope
+        } else {
+            logger.log(GrugLogger.Level.INFO, "Nested transaction detected for connection {}, deferring commit", connectionInfo.uuid);
         }
     }
 
-    private void rollBackTransaction() throws SQLException {
+    public void rollBackTransaction() throws SQLException {
         ConnectionInfo connectionInfo = getOrCreateConnectionInfo();
+        logger.log(GrugLogger.Level.INFO, "Rolling back transaction for connection {}", connectionInfo.uuid);
         Connection conn = connectionInfo.conn;
         conn.rollback(); // always rollback the current transaction no matter what
         if(connectionInfo.transactionCount().decrementAndGet() == 0) { // restore autocommit on last transaction scope
+            logger.log(GrugLogger.Level.INFO, "Restoring autoCommit for connection {}", connectionInfo.uuid);
             conn.setAutoCommit(true);
         }
     }
@@ -274,8 +286,18 @@ public class GrugORM {
     public long insert(Object object) {
         Class<?> clazz = object.getClass();
         DBMetaData metaData = getDBMetaData(clazz);
+        String keyCol = metaData.getIdColumnName();
         Map<String, Object> values = metaData.asDBMap(object);
+        values.remove(keyCol);
+        if (object instanceof GrugRecordLifecycle lifecycle) {
+            if (!lifecycle.beforeInsert()) {
+                return -1; // TODO flag value?
+            }
+        }
         long id = insert(metaData.getTableName(), values);
+        if (object instanceof GrugRecordLifecycle lifecycle) {
+            lifecycle.afterInsert();
+        }
         metaData.setId(object, id);
         return id;
     }
@@ -345,7 +367,16 @@ public class GrugORM {
         String keyCol = dbMetaData.getIdColumnName();
         Map<String, Object> valuesToUpdate = dbMetaData.asDBMap(object);
         Object keyVal = valuesToUpdate.remove(keyCol); // remove the key
-        return update(tableName, keyCol, keyVal, valuesToUpdate);
+        if(object instanceof GrugRecordLifecycle lifecycle) {
+            if (!lifecycle.beforeUpdate()) {
+                return false;
+            }
+        }
+        boolean update = update(tableName, keyCol, keyVal, valuesToUpdate);
+        if(object instanceof GrugRecordLifecycle lifecycle) {
+            lifecycle.afterUpdate();
+        }
+        return update;
     }
 
     private boolean update(String tableName, String keyCol, Object keyVal, Map<String, Object> values) {
@@ -389,7 +420,16 @@ public class GrugORM {
         String keyCol = dbMetaData.getIdColumnName();
         Map<String, Object> valuesToUpdate = dbMetaData.asDBMap(object);
         Object keyVal = valuesToUpdate.get(keyCol);
-        return delete(tableName, keyCol, keyVal);
+        if(object instanceof GrugRecordLifecycle lifecycle) {
+            if (!lifecycle.beforeDelete()) {
+                return false;
+            }
+        }
+        boolean delete = delete(tableName, keyCol, keyVal);
+        if(object instanceof GrugRecordLifecycle lifecycle) {
+            lifecycle.afterDelete();
+        }
+        return delete;
     }
 
     private boolean delete(String tableName, String keyCol, Object keyVal) {
@@ -487,6 +527,22 @@ public class GrugORM {
             }
 
             void log(Level level, String msg, Object... args);
+        }
+
+        interface GrugRecordLifecycle {
+            default boolean beforeInsert() {
+                return true;
+            }
+            default boolean beforeUpdate() {
+                return true;
+            }
+            default boolean beforeDelete() {
+                return true;
+            }
+
+            default void afterInsert() {}
+            default void afterUpdate() {}
+            default void afterDelete() {}
         }
 
         interface BeforeSet {

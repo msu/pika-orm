@@ -8,26 +8,22 @@ import static grug.db.GrugORM.Interfaces.GrugLogger.Level.TRACE;
 
 public abstract class TestBase {
 
+    protected static GrugORM initDBFileAndORM() {
+        try {
+            // remove old db if it exists
+            Path path = Path.of("test", "test.db");
+            if (Files.exists(path)) {
+                Files.delete(path);
+            }
 
+            path.toFile().getParentFile().mkdirs();
 
-    protected static GrugORM initDBFileAndORM() throws IOException {
-        // remove old db if it exists
-        Path path = Path.of("test", "test.db");
-        if (Files.exists(path)) {
-            Files.delete(path);
+            return new GrugORM("jdbc:sqlite:test/test.db")
+                    .withLogLevel(TRACE)
+                    .makeDefaultORM();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-
-        path.toFile().getParentFile().mkdirs();
-
-        return new GrugORM("jdbc:sqlite:test/test.db")
-                .withLogLevel(TRACE)
-//                .withDefaultMapping(new MyCustomMappingImplementation())
-//                .withMapping(SampleModel.class, new MyCustomMappingImplementation())
-                .makeDefaultORM();
     }
 
-//    class MyCustomMappingImplementation extends DBMetaData {
-//        /// override table name or id col or whatever
-//    }
-//
 }
