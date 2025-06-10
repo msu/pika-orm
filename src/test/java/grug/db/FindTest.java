@@ -65,19 +65,20 @@ public class FindTest extends TestBase{
 
     @Test
     void testFindAllCollectionFilter() {
-        var m1 = new SampleModel("foo", 10, true, new Date());
-        var m2 = new SampleModel("bar", 10, true, new Date());
-        var m3 = new SampleModel("baz", 10, true, new Date());
+        SampleModel m1 = new SampleModel("foo", 10, true, new Date());
+        SampleModel m2  = new SampleModel("bar", 10, true, new Date());
+        SampleModel m3 = new SampleModel("baz", 10, true, new Date());
 
         // TODO - bulk insert?
-        orm.insert(m1);
-        orm.insert(m2);
-        orm.insert(m3);
 
-        var results = orm.findAll(SampleModel.class,
+        m1.setId(orm.insert(m1));
+        m2.setId(orm.insert(m2));
+        m3.setId(orm.insert(m3));
+
+        var results = orm.findAll(SampleModel.class,//we are looking to create the query something like this, select * in sample model where str_val in (?) and (?) (for foo and bar)
                 "str_val in :strs",
-                Map.of("strs", List.of("foo", "bar")));
-
+                Map.of("strs", List.of("foo", "bar")));//we can safely assume that when there is a map with collection inside of it we need to iterate over the list and create arguements and insertions for all parameters
+                //TODO - should this test account for multiple of these collections? say there are 2 maps with different collections, we would possibly want to create question marks for all?
         assertEquals(2, results.size());
     }
 

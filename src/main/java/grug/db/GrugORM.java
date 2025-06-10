@@ -2,6 +2,7 @@ package grug.db;
 
 import grug.db.GrugORM.Interfaces.GrugLogger;
 
+import javax.management.ObjectInstance;
 import java.io.Console;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -174,7 +175,7 @@ public class GrugORM {
         try (ConnectionInfo ci = getConnectionInfo()) {
             Connection conn = ci.conn;
             ArrayList<Object> vals = new ArrayList<>();
-            String updatedSql = updateSqlVars(sql, args, vals);
+            String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
             logger.log(GrugLogger.Level.INFO, "Select SQL: {}\n  Args:{}", updatedSql, vals);
             PreparedStatement ps = conn.prepareStatement(updatedSql);
             for (int i = 0; i < vals.size(); i++) {
@@ -359,16 +360,30 @@ public class GrugORM {
         while (matcher.find()) {
             String match = matcher.group().substring(1);
             if (args.containsKey(match)) {
+                Object tempMatch = args.get(match);
                 end = matcher.start();
-                sb.append(sql, start, end);
-                sb.append("?");
-                start = matcher.end();
-                argList.add(args.get(match));
+                sb.append(sql, start, end);//this is where to make the logic for multiple entries, before the first question mark appendage, and test for a collection
+                if (tempMatch instanceof Collection<?>) {
+                   sb.append("(");//we know that at least one question mark will be here
+                   for(Iterator i = ((Collection<?>)tempMatch).iterator(); i.hasNext();) {
+                       sb.append("?");
+                       argList.add(i.next());
+                       if (i.hasNext()) {
+                           sb.append(", ");
+                       }
+                   }
+                   sb.append(")");
+                }
+                else {
+                    sb.append("?");
+                    start = matcher.end();
+                    argList.add(args.get(match));
+                }
+
             } else {
                 throw new IllegalArgumentException("No value found for variable " + match + " in " + args);
             }
         }
-        sb.append(sql.substring(start));
         return sb.toString();
     }
 
