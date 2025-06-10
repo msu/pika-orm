@@ -21,7 +21,13 @@ public abstract class TestBase {
 
         return new GrugORM("jdbc:sqlite:test/test.db")
                 .withLogLevel(TRACE)
+//                .withDefaultMapping(new MyCustomMappingImplementation())
+//                .withMapping(SampleModel.class, new MyCustomMappingImplementation())
                 .makeDefaultORM();
     }
 
+//    class MyCustomMappingImplementation extends DBMetaData {
+//        /// override table name or id col or whatever
+//    }
+//
 }
