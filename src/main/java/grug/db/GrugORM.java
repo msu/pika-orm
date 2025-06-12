@@ -13,7 +13,6 @@ import java.util.*;
 import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -94,29 +93,84 @@ public class GrugORM {
     // Connection management
     //====================================================================
 
-    private record ConnectionInfo(Connection conn, AtomicInteger openCount,
-                                  ConnectionInfo previous, AtomicInteger transactionStackCount,
-                                  UUID uuid, GrugLogger logger) implements AutoCloseable {
-        public void increment() {
-            openCount.incrementAndGet();
+    private class ConnectionInfo implements AutoCloseable {
+
+        ConnectionInfo previous;
+        Connection conn;
+        int openCount;
+        int transactionCount;
+        UUID uuid;
+
+        public ConnectionInfo(Connection connection, ConnectionInfo previousConnection) {
+            this.conn = connection;
+            this.previous = previousConnection;
+            this.uuid = UUID.randomUUID();
+            this.openCount = 0;
+            this.transactionCount = 0;
+        }
+
+        public void incrementOpenCount() {
+            openCount++;
+            logger.log(GrugLogger.Level.DEBUG, "Incremented open count on connection {}: {}", uuid, "*".repeat(openCount));
         }
 
         @Override
         public void close() {
-            int val = openCount.decrementAndGet();
-            if (val == 0) {
+            openCount--;
+            logger.log(GrugLogger.Level.DEBUG, "Decremented open count on connection {}: {}", uuid, "*".repeat(openCount));
+            if (openCount == 0) { // if we are back at the top level of the connection count we close the connection
                 logger.log(GrugLogger.Level.INFO, "Closing connection {} on Thread {}", uuid, Thread.currentThread().getName());
                 try {
                     conn.close();
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
-                CURRENT_CONNECTION.set(this.previous());
+                CURRENT_CONNECTION.set(this.previous);
             }
         }
 
-        public void decrement() {
-            this.close();
+        public boolean isInTransaction() {
+            return transactionCount > 0;
+        }
+
+        public void startTransaction() throws SQLException {
+            if(transactionCount == 0) {
+                conn.setAutoCommit(false);
+                logger.log(GrugLogger.Level.INFO, "Starting new transaction for connection {}", uuid);
+            } else {
+                logger.log(GrugLogger.Level.INFO, "Existing transaction for connection {}, joining it", uuid);
+            }
+            transactionCount++;
+        }
+
+        public void commitTransaction() throws SQLException {
+            if (isInTransaction()) {
+                transactionCount--;
+                if (transactionCount == 0) {
+                    logger.log(GrugLogger.Level.INFO, "Transaction for connection {} completed, committing", uuid);
+                    conn.commit();            // only commit on the last transaction scope
+                } else {
+                    logger.log(GrugLogger.Level.INFO, "Nested transaction detected for connection {}, deferring commit", uuid);
+                }
+                close();
+            } else {
+                logger.log(GrugLogger.Level.ERROR, "No current transaction for connection {}", uuid);
+            }
+        }
+
+        public void rollBackTransaction() throws SQLException {
+            if (isInTransaction()) {
+                logger.log(GrugLogger.Level.INFO, "Rolling back transaction for connection {}", uuid);
+                conn.rollback(); // always rollback the current transaction no matter what
+                transactionCount--;
+                if (transactionCount == 0) { // restore autocommit on last transaction scope
+                    logger.log(GrugLogger.Level.INFO, "Restoring autoCommit for connection {}", uuid);
+                    conn.setAutoCommit(true);
+                }
+                close();
+            } else {
+                logger.log(GrugLogger.Level.ERROR, "No current transaction for connection {}", uuid);
+            }
         }
     }
 
@@ -140,9 +194,8 @@ public class GrugORM {
         ConnectionInfo connectionInfo = getCurrentConnection();
         if (connectionInfo == null) {
             connectionInfo = pushNewConnection();
-        } else {
-            connectionInfo.increment();
         }
+        connectionInfo.incrementOpenCount();
         return connectionInfo;
     }
 
@@ -154,9 +207,7 @@ public class GrugORM {
     private ConnectionInfo pushNewConnection() {
         ConnectionInfo previousConnection = getCurrentConnection();
         Connection connection = createConnection();
-        ConnectionInfo newConnectionInfo = new ConnectionInfo(connection, new AtomicInteger(0),
-                previousConnection, new AtomicInteger(0), UUID.randomUUID(), logger);
-        newConnectionInfo.increment();
+        ConnectionInfo newConnectionInfo = new ConnectionInfo(connection, previousConnection);
         logger.log(GrugLogger.Level.INFO, "Created a new connection for Thread {} w/ID {}", Thread.currentThread().getName(), newConnectionInfo.uuid);
         CURRENT_CONNECTION.set(newConnectionInfo);
         return newConnectionInfo;
@@ -188,44 +239,24 @@ public class GrugORM {
 
     public void startTransaction() throws SQLException {
         ConnectionInfo connectionInfo = getOrCreateConnectionInfo();
-        Connection conn = connectionInfo.conn;
-        if(connectionInfo.transactionStackCount.getAndIncrement() == 0) {
-            conn.setAutoCommit(false);
-            logger.log(GrugLogger.Level.INFO, "Starting new transaction for connection {}", connectionInfo.uuid);
-        } else {
-            logger.log(GrugLogger.Level.INFO, "Existing transaction for connection {}, joining it", connectionInfo.uuid);
-        }
+        connectionInfo.startTransaction();
     }
 
     public void commitTransaction() throws SQLException {
         ConnectionInfo connectionInfo = getCurrentConnection();
-        if (connectionInfo == null || connectionInfo.transactionStackCount.get() == 0) {
-            logger.log(GrugLogger.Level.ERROR, "No current transaction for connection {}", connectionInfo.uuid);
+        if (connectionInfo == null) {
+            logger.log(GrugLogger.Level.ERROR, "No current connection for transaction.");
         } else {
-            Connection conn = connectionInfo.conn;
-            if (connectionInfo.transactionStackCount.decrementAndGet() == 0) {
-                logger.log(GrugLogger.Level.INFO, "Transaction for connection {} completed, committing", connectionInfo.uuid);
-                conn.commit();            // only commit on the last transaction scope
-            } else {
-                logger.log(GrugLogger.Level.INFO, "Nested transaction detected for connection {}, deferring commit", connectionInfo.uuid);
-            }
-            connectionInfo.decrement();
+            connectionInfo.commitTransaction();
         }
     }
 
     public void rollBackTransaction() throws SQLException {
         ConnectionInfo connectionInfo = getCurrentConnection();
-        if (connectionInfo == null || connectionInfo.transactionStackCount.get() == 0) {
-            logger.log(GrugLogger.Level.ERROR, "No current transaction for connection {}", connectionInfo.uuid);
+        if (connectionInfo == null) {
+            logger.log(GrugLogger.Level.ERROR, "No current connection for transaction.");
         } else {
-            logger.log(GrugLogger.Level.INFO, "Rolling back transaction for connection {}", connectionInfo.uuid);
-            Connection conn = connectionInfo.conn;
-            conn.rollback(); // always rollback the current transaction no matter what
-            if(connectionInfo.transactionStackCount().decrementAndGet() == 0) { // restore autocommit on last transaction scope
-                logger.log(GrugLogger.Level.INFO, "Restoring autoCommit for connection {}", connectionInfo.uuid);
-                conn.setAutoCommit(true);
-            }
-            connectionInfo.decrement();
+            connectionInfo.rollBackTransaction();
         }
     }
 
@@ -473,12 +504,16 @@ public class GrugORM {
         }
     }
 
-    public void exec(String sql) {
+    public boolean exec(String sql) {
+        if (sql.isBlank()) {
+            logger.log(GrugLogger.Level.WARN, "SQL is blank, will not be executed!");
+            return false;
+        }
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             logger.log(GrugLogger.Level.INFO, "EXECUTING RAW SQL: {}\n", sql);
             PreparedStatement preparedStatement = conn.prepareStatement(sql);
-            preparedStatement.execute();
+            return preparedStatement.execute();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -489,37 +524,35 @@ public class GrugORM {
     private String updateSqlVars(String sql, Map<String, Object> args, List<Object> argList) {
         Pattern compile = Pattern.compile(SQL_VARS_PATTERN);
         Matcher matcher = compile.matcher(sql);
-        StringBuilder sb = new StringBuilder();
-        int start = 0;
-        int end;
+        StringBuilder finalSql = new StringBuilder();
         while (matcher.find()) {
             String match = matcher.group().substring(1);
             if (args.containsKey(match)) {
-                Object tempMatch = args.get(match);
-                end = matcher.start();
-                sb.append(sql, start, end);//this is where to make the logic for multiple entries, before the first question mark appendage, and test for a collection
-                if (tempMatch instanceof Collection<?>) {
-                   sb.append("(");//we know that at least one question mark will be here
-                   for(Iterator i = ((Collection<?>)tempMatch).iterator(); i.hasNext();) {
-                       sb.append("?");
-                       argList.add(i.next());
-                       if (i.hasNext()) {
-                           sb.append(", ");
-                       }
-                   }
-                   sb.append(")");
+                Object valueForMatch = args.get(match);
+                StringBuilder replacementSb = new StringBuilder();
+                if (valueForMatch instanceof Collection c) {
+                    replacementSb.append("(");
+                    int size = c.size();
+                    while (size > 0) {
+                        if (size != c.size()) {
+                            replacementSb.append(",");
+                        }
+                        replacementSb.append("?");
+                        size--;
+                    }
+                    argList.addAll(c);
+                    replacementSb.append(")");
+                } else {
+                    replacementSb.append("?");
+                    argList.add(valueForMatch);
                 }
-                else {
-                    sb.append("?");
-                    start = matcher.end();
-                    argList.add(args.get(match));
-                }
-
+                matcher.appendReplacement(finalSql, replacementSb.toString());
             } else {
                 throw new IllegalArgumentException("No value found for variable " + match + " in " + args);
             }
         }
-        return sb.toString();
+        matcher.appendTail(finalSql);
+        return finalSql.toString();
     }
 
     public static String snakeCase(String string) {
@@ -704,7 +737,11 @@ public class GrugORM {
             fieldVal = Enum.valueOf(fieldType, strValue);
         } else if (fieldType == Date.class) {
             Timestamp timestamp = resultSet.getTimestamp(fieldName);
-            fieldVal = new Date(timestamp.getTime());
+            if (timestamp == null) {
+                fieldVal = null;
+            } else {
+                fieldVal = new Date(timestamp.getTime());
+            }
         } else {
             fieldVal = resultSet.getObject(fieldName, fieldType);
         }
@@ -1075,20 +1112,38 @@ public class GrugORM {
                 return status == MigrationStatus.PENDING;
             }
 
+            public String[] getUpSqlSplitOnSemicolons() {
+                return this.up.split(";");
+            }
+
+            public String[] getDownSqlSplitOnSemicolons() {
+                return this.down.split(";");
+            }
+
             void runUp(GrugORM orm) {
-                orm.exec(this.up);
-                this.status = MigrationStatus.APPLIED;
-                this.appliedAt = new Date().getTime();
-                if (this.id == null) {
-                    orm.insert(this);
-                } else {
-                    orm.update(this);
-                }
+                orm.inTransaction(() -> {
+                    String[] upSqlSplitOnSemicolons = getUpSqlSplitOnSemicolons();
+                    for (String sql : upSqlSplitOnSemicolons) {
+                        orm.exec(sql);
+                    }
+                    this.status = MigrationStatus.APPLIED;
+                    this.appliedAt = new Date().getTime();
+                    if (this.id == null) {
+                        orm.insert(this);
+                    } else {
+                        orm.update(this);
+                    }
+                });
             }
 
             void runDown(GrugORM orm) {
-                orm.exec(this.down);
-                orm.delete(this);
+                orm.inTransaction(() -> {
+                    String[] upSqlSplitOnSemicolons = getDownSqlSplitOnSemicolons();
+                    for (String sql : upSqlSplitOnSemicolons) {
+                        orm.exec(sql);
+                    }
+                    orm.delete(this);
+                });
             }
 
             @Override

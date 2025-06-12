@@ -36,9 +36,9 @@ public class LoggingTest extends TestBase {
             System.setOut(tmpOut);
             assertEquals(1, orm.insert(sampleModel));
             String loggedMessage = new String(tmpOutBuffer.toByteArray());
-            String expectedSuffix = "INSERT SQL: INSERT INTO sample_model (bool_val, date_val, id, int_val, str_val) VALUES (?, ?, ?, ?, ?)\n" +
-                    "  Args:[true, 3921-02-01, null, 10, foo]\n";
-            assertTrue(loggedMessage.endsWith(expectedSuffix));
+            String expectedLogMessage = "INSERT SQL: INSERT INTO sample_model (bool_val, date_val, int_val, str_val) VALUES (?, ?, ?, ?)\n" +
+                    "  Args:[true, 3921-02-01, 10, foo]\n";
+            assertTrue(loggedMessage.contains(expectedLogMessage), "Did not find " + expectedLogMessage + " in " + loggedMessage);
         } finally {
             System.setOut(original);
         }
@@ -70,9 +70,9 @@ public class LoggingTest extends TestBase {
             System.setErr(tmpOut);
             assertEquals(1, orm.insert(sampleModel));
             String loggedMessage = new String(tmpOutBuffer.toByteArray());
-            String expectedOutput = "[main] INFO grug.db.LoggingTest - INSERT SQL: INSERT INTO sample_model (bool_val, date_val, id, int_val, str_val) VALUES (?, ?, ?, ?, ?)\n" +
-                    "  Args:[true, 3921-02-01, null, 10, foo]\n";
-            assertEquals(expectedOutput, loggedMessage);
+            String expectedLogMessage = "[main] INFO grug.db.LoggingTest - INSERT SQL: INSERT INTO sample_model (bool_val, date_val, int_val, str_val) VALUES (?, ?, ?, ?)\n" +
+                    "  Args:[true, 3921-02-01, 10, foo]\n";
+            assertTrue(loggedMessage.contains(expectedLogMessage));
         } finally {
             System.setErr(original);
         }
