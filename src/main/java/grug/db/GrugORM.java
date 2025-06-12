@@ -25,6 +25,7 @@ public class GrugORM {
     public static final String SQL_VARS_PATTERN = "(:[\\w][\\d\\w]*)";
     private static GrugORM DEFAULT_ORM = null;
     private static final ThreadLocal<ConnectionInfo> CURRENT_CONNECTION = new ThreadLocal<>();
+    private static final ForceThrower FORCE_THROWER = generateForceThrower();
 
     private Callable<Connection> connectionSource = null;
 
@@ -95,7 +96,7 @@ public class GrugORM {
     public <T> List<T> loadN(Object owner, Class<T> nClass, String backPointerColumn) {
         DBMetaData metaData = getDBMetaData(owner.getClass());
         Object ownerPkValue = metaData.getId(owner);
-        return findAll(nClass, backPointerColumn, ownerPkValue);
+        return findAllBy(nClass, backPointerColumn, ownerPkValue);
     }
 
     public <T> T load1(Object owner, Class<T> nClass, String backPointerColumn) {
@@ -136,11 +137,10 @@ public class GrugORM {
             if (openCount == 0) { // if we are back at the top level of the connection count we close the connection
                 logger.log(GrugLogger.Level.INFO, "Closing connection {} on Thread {}", uuid, Thread.currentThread().getName());
                 try {
-                    conn.close();
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
+                    safely(() -> conn.close());
+                } finally {
+                    CURRENT_CONNECTION.set(this.previous);
                 }
-                CURRENT_CONNECTION.set(this.previous);
             }
         }
 
@@ -148,9 +148,9 @@ public class GrugORM {
             return transactionCount > 0;
         }
 
-        public void startTransaction() throws SQLException {
+        public void startTransaction()  {
             if(transactionCount == 0) {
-                conn.setAutoCommit(false);
+                safely(() -> conn.setAutoCommit(false));
                 logger.log(GrugLogger.Level.INFO, "Starting new transaction for connection {}", uuid);
             } else {
                 logger.log(GrugLogger.Level.INFO, "Existing transaction for connection {}, joining it", uuid);
@@ -158,12 +158,12 @@ public class GrugORM {
             transactionCount++;
         }
 
-        public void commitTransaction() throws SQLException {
+        public void commitTransaction() {
             if (isInTransaction()) {
                 transactionCount--;
                 if (transactionCount == 0) {
                     logger.log(GrugLogger.Level.INFO, "Transaction for connection {} completed, committing", uuid);
-                    conn.commit();            // only commit on the last transaction scope
+                    safely(() -> conn.commit());
                 } else {
                     logger.log(GrugLogger.Level.INFO, "Nested transaction detected for connection {}, deferring commit", uuid);
                 }
@@ -173,14 +173,14 @@ public class GrugORM {
             }
         }
 
-        public void rollBackTransaction() throws SQLException {
+        public void rollBackTransaction() {
             if (isInTransaction()) {
                 logger.log(GrugLogger.Level.INFO, "Rolling back transaction for connection {}", uuid);
-                conn.rollback(); // always rollback the current transaction no matter what
+                safely(() -> conn.rollback());
                 transactionCount--;
                 if (transactionCount == 0) { // restore autocommit on last transaction scope
                     logger.log(GrugLogger.Level.INFO, "Restoring autoCommit for connection {}", uuid);
-                    conn.setAutoCommit(true);
+                    safely(()->conn.setAutoCommit(true));
                 }
                 close();
             } else {
@@ -190,19 +190,7 @@ public class GrugORM {
     }
 
     private Connection createConnection() {
-        try {
-            return connectionSource.call();
-        } catch (Exception e) {
-            throw rethrow(e);
-        }
-    }
-
-    private static RuntimeException rethrow(Exception e) {
-        if (e instanceof RuntimeException re) {
-            return re;
-        } else {
-            return new RuntimeException(e);
-        }
+        return safely(() -> connectionSource.call());
     }
 
     private ConnectionInfo getOrCreateConnectionInfo() {
@@ -237,27 +225,18 @@ public class GrugORM {
                 startTransaction();
                 runnable.run();
                 commitTransaction();
-            } catch (Throwable t) {
-                try {
-                    rollBackTransaction();
-                } catch (SQLException e) {
-                    ConnectionInfo connInfo = getOrCreateConnectionInfo();
-                    logger.log(GrugLogger.Level.ERROR, "Error rolling back transaction for connection {}: {}", connInfo.uuid, e.getMessage());
-                }
-                if(t instanceof RuntimeException re) {
-                    throw re;
-                } else {
-                    throw new RuntimeException(t);
-                }
+            } catch (Exception e) {
+                rollBackTransaction();
+                rethrow(e);
             }
     }
 
-    public void startTransaction() throws SQLException {
+    public void startTransaction() {
         ConnectionInfo connectionInfo = getOrCreateConnectionInfo();
         connectionInfo.startTransaction();
     }
 
-    public void commitTransaction() throws SQLException {
+    public void commitTransaction() {
         ConnectionInfo connectionInfo = getCurrentConnection();
         if (connectionInfo == null) {
             logger.log(GrugLogger.Level.ERROR, "No current connection for transaction.");
@@ -266,7 +245,7 @@ public class GrugORM {
         }
     }
 
-    public void rollBackTransaction() throws SQLException {
+    public void rollBackTransaction() {
         ConnectionInfo connectionInfo = getCurrentConnection();
         if (connectionInfo == null) {
             logger.log(GrugLogger.Level.ERROR, "No current connection for transaction.");
@@ -287,9 +266,10 @@ public class GrugORM {
 
     public <T> T find(Class<T> clazz, String key, Object val) {
         DBMetaData dbMetaData = getDBMetaData(clazz);
+        String sql = "SELECT * FROM " + dbMetaData.getTableName() + " WHERE " + key + "=?";
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
-            PreparedStatement ps = conn.prepareStatement("SELECT * FROM " + dbMetaData.getTableName() + " WHERE " + key + "=?");
+            PreparedStatement ps = conn.prepareStatement(sql);
             int parameterIndex = 1;
             setValueForQuery(ps, parameterIndex, val);
             ResultSet resultSet = ps.executeQuery();
@@ -300,26 +280,25 @@ public class GrugORM {
                 return null;
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            logger.log(GrugLogger.Level.ERROR, "Exception in find() with SQL {} & values {}: {}", sql, val, e.getMessage());
+            rethrow(e);
+            return null;
         }
     }
 
     public <T> ResultList<T> findAll(Class<T> clazz) {
-        return findAll(clazz, "true=true", Map.of());
+        return select(clazz, "true=true", Map.of());
     }
 
-    public <T> T findAll(Class<T> clazz, Object pk) {
-        DBMetaData dbMetaData = getDBMetaData(clazz);
-        return find(clazz, dbMetaData.getIdColumnName(), pk);
+    public <T> ResultList<T> findAllBy(Class<T> clazz, String column, Object val) {
+        return select(clazz, column + "=:val ", Map.of("val", val));
     }
 
-    public <T> ResultList<T> findAll(Class<T> clazz, String column, Object val) {
-        String name = clazz.getSimpleName();
-        String tableName = snakeCase(name);
-        return select(clazz, "SELECT * FROM " + tableName + " WHERE " + column +  "=:val ", Map.of("val", val));
-    }
-
-    public <T> ResultList<T> select(Class<T> clazz, String sql, Map<String, Object> args) {
+    public <T> ResultList<T> select(Class<T> clazz, String whereClause, Map<String, Object> args) {
+        DBMetaData metaData = getDBMetaData(clazz);
+        String tableName = metaData.getTableName();
+        String sqlStart = "SELECT * FROM " + tableName + " WHERE ";
+        String sql = sqlStart + whereClause;
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             ArrayList<Object> vals = new ArrayList<>();
@@ -333,13 +312,15 @@ public class GrugORM {
             ResultSet resultSet = ps.executeQuery();
             ResultList<T> result = new ResultList<>();
             while (resultSet.next()) {
-                DBMetaData dbMetaData = getDBMetaData(clazz);
+                DBMetaData dbMetaData = metaData;
                 T object = dbMetaData.newObjectFromResult(resultSet);
                 result.add(object);
             }
             return result;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            logger.log(GrugLogger.Level.ERROR, "Exception in select() with SQL {} & args {}: {}", sql, args, e.getMessage());
+            rethrow(e);
+            return null;
         }
     }
 
@@ -362,7 +343,7 @@ public class GrugORM {
         return id;
     }
 
-    public long[] insertAll(Collection<Object> items){// TODO - look into the setID as i was having some issues and weirdness with it
+    public long[] insertAll(Collection<Object> items) { // TODO - look into the setID as i was having some issues and weirdness with it
         long[] ids = new long[items.size()];
         int count = 0;
         for (Object o : (Collection<?>) items) {
@@ -420,7 +401,9 @@ public class GrugORM {
                 return -1;
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error executing SQL: " + insertString, e);
+            logger.log(GrugLogger.Level.ERROR, "Exception in insert() with SQL {} & args {}: {}", insertString, values.values(), e.getMessage());
+            rethrow(e);
+            return 0;
         }
     }
 
@@ -473,7 +456,9 @@ public class GrugORM {
             setValueForQuery(preparedStatement, col, keyVal);
             return preparedStatement.executeUpdate() == 1;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & args {}: {}", updateSQL, values.values(), e.getMessage());
+            rethrow(e);
+            return false;
         }
     }
 
@@ -509,7 +494,9 @@ public class GrugORM {
             setValueForQuery(preparedStatement, 1, keyVal);
             return preparedStatement.executeUpdate() == 1;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
+            rethrow(e);
+            return false;
         }
     }
 
@@ -521,10 +508,13 @@ public class GrugORM {
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             logger.log(GrugLogger.Level.INFO, "EXECUTING RAW SQL: {}\n", sql);
+            //noinspection SqlSourceToSinkFlow
             PreparedStatement preparedStatement = conn.prepareStatement(sql);
             return preparedStatement.execute();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            logger.log(GrugLogger.Level.ERROR, "Exception in exec() with SQL {}: {}", sql, e.getMessage());
+            rethrow(e);
+            return false;
         }
     }
 
@@ -648,7 +638,8 @@ public class GrugORM {
         }
 
         List<T> run() {
-            return (List<T>) findAll(clazz, whereClause.toString(), valMap);
+            //noinspection unchecked
+            return (List<T>) select(clazz, whereClause.toString(), valMap);
         }
 
         public GrugQuery<T> with(Map<String, Object> vals) {
@@ -823,14 +814,10 @@ public class GrugORM {
         public Map<String, Object> asDBMap(Object object) {
             Map<String, Object> values = new TreeMap<>();
             for (Field field : fields.values()) {
-                try {
-                    String fieldName = field.getName();
-                    String columnName = fieldNameToColumnNames.get(fieldName);
-                    Object value = field.get(object);
-                    values.put(columnName, value);
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
-                }
+                String fieldName = field.getName();
+                String columnName = fieldNameToColumnNames.get(fieldName);
+                Object value = safely(() -> field.get(object));
+                values.put(columnName, value);
             }
             return values;
         }
@@ -859,7 +846,6 @@ public class GrugORM {
 
             }
             return object;
-
         }
 
         // TODO - make pluggable
@@ -868,29 +854,17 @@ public class GrugORM {
         }
 
         public void setId(Object object, long id) {
-            try {
-                idField.set(object, id);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
+            safely(() -> idField.set(object, id));
         }
 
         public Object getId(Object object) {
-            try {
-                return idField.get(object);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
+            return safely(() -> idField.get(object));
         }
 
         public Object getValueForDBCol(Object owner, String backPointerColumn) {
             String fieldName = columnNameToFieldNames.get(backPointerColumn);
             Field field = fields.get(fieldName);
-            try {
-                return field.get(owner);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
+            return safely(() -> field.get(owner));
         }
     }
 
@@ -1331,4 +1305,50 @@ public class GrugORM {
         }
     }
 
+    //================================================================================================
+    // Stuff to clean up java's checked exception garbage
+    //================================================================================================
+
+    private static void safely(RunnableWithException callable) {
+        try {
+            callable.run();
+        } catch (Exception e) {
+            rethrow(e);
+        }
+    }
+
+    private static <T> T safely(Callable<T> callable) {
+        try {
+            return callable.call();
+        } catch (Exception e) {
+            rethrow(e);
+            return null;
+        }
+    }
+
+    private static void rethrow(Exception e) {
+        FORCE_THROWER.throwException(e);
+    }
+
+    public interface ForceThrower {
+        void throwException(Throwable throwable);
+    }
+
+    public interface RunnableWithException {
+        void run() throws Exception;
+    }
+
+    private static ForceThrower generateForceThrower() {
+        var tmpClass = new ClassLoader(GrugORM.class.getClassLoader()) {
+            public Class defineClass() {
+                byte[] bytes = Base64.getDecoder().decode("yv66vgAAADQAEAEAGGdydWcvZGIvRm9yY2VUaHJvd2VySW1wbAcAAQEAEGphdmEvbGFuZy9PYmplY3QHAAMBABxncnVnL2RiL0dydWdPUk0kRm9yY2VUaHJvd2VyBwAFAQAVRm9yY2VUaHJvd2VySW1wbC5qYXZhAQAGPGluaXQ+AQADKClWDAAIAAkKAAQACgEADnRocm93RXhjZXB0aW9uAQAYKExqYXZhL2xhbmcvVGhyb3dhYmxlOylWAQAEQ29kZQEAClNvdXJjZUZpbGUAIQACAAQAAQAGAAAAAgABAAgACQABAA4AAAARAAEAAQAAAAUqtwALsQAAAAAAAQAMAA0AAQAOAAAADgABAAIAAAACK78AAAAAAAEADwAAAAIABw==");
+                return defineClass("grug.db.ForceThrowerImpl", bytes, 0, bytes.length);
+            }
+        }.defineClass();
+        try {
+            return (ForceThrower) tmpClass.newInstance();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

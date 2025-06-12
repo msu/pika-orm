@@ -10,5 +10,7 @@
 * Bulk insert, rework to use single `INSERT` statement
 * Bulk delete
 * Bulk update
-* ForeignKey-based Lists
+* ~~ForeignKey-based Lists~~
 * QueryBuilder API
+* Replace ResultList w/something that doesn't implement List
+  * Add useful methods on it
