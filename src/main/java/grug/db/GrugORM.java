@@ -88,6 +88,21 @@ public class GrugORM {
         DEFAULT_ORM = orm;
     }
 
+    //====================================================================
+    // 1-N and N-N functionality
+    //====================================================================
+
+    public <T> List<T> loadN(Object owner, Class<T> nClass, String backPointerColumn) {
+        DBMetaData metaData = getDBMetaData(owner.getClass());
+        Object ownerPkValue = metaData.getId(owner);
+        return findAll(nClass, backPointerColumn, ownerPkValue);
+    }
+
+    public <T> T load1(Object owner, Class<T> nClass, String backPointerColumn) {
+        DBMetaData metaData = getDBMetaData(owner.getClass());
+        Object ownerPkValue = metaData.getValueForDBCol(owner, backPointerColumn);
+        return find(nClass, ownerPkValue);
+    }
 
     //====================================================================
     // Connection management
@@ -293,10 +308,15 @@ public class GrugORM {
         return findAll(clazz, "true=true", Map.of());
     }
 
-    public <T> ResultList<T> findAll(Class<T> clazz, String whereClause, Map<String, Object> values) {
+    public <T> T findAll(Class<T> clazz, Object pk) {
+        DBMetaData dbMetaData = getDBMetaData(clazz);
+        return find(clazz, dbMetaData.getIdColumnName(), pk);
+    }
+
+    public <T> ResultList<T> findAll(Class<T> clazz, String column, Object val) {
         String name = clazz.getSimpleName();
         String tableName = snakeCase(name);
-        return select(clazz, "SELECT * FROM " + tableName + " WHERE " + whereClause, values);
+        return select(clazz, "SELECT * FROM " + tableName + " WHERE " + column +  "=:val ", Map.of("val", val));
     }
 
     public <T> ResultList<T> select(Class<T> clazz, String sql, Map<String, Object> args) {
@@ -320,21 +340,6 @@ public class GrugORM {
             return result;
         } catch (Exception e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    public void save(Object object) {
-        Class<?> clazz = object.getClass();
-        DBMetaData metaData = getDBMetaData(clazz);
-        String tableName = metaData.getTableName();
-        String keyCol = metaData.getIdColumnName();
-        Map<String, Object> valuesToUpdate = metaData.asDBMap(object);
-        Object keyVal = valuesToUpdate.remove(keyCol); // remove the key
-        if (keyVal == null) {
-            long id = insert(tableName, valuesToUpdate);
-            metaData.setId(object, id);
-        } else {
-            update(tableName, keyCol, keyVal, valuesToUpdate);
         }
     }
 
@@ -373,27 +378,31 @@ public class GrugORM {
         }
         StringBuilder sb = new StringBuilder("INSERT INTO ");
         sb.append(tableName);
-        sb.append(" (");
-        boolean first = true;
-        for (String name : values.keySet()) {
-            if (first) {
-                first = false;
-            } else {
-                sb.append(", ");
+        if (values.isEmpty()) {
+            sb.append(" DEFAULT VALUES");
+        } else {
+            sb.append(" (");
+            boolean first = true;
+            for (String name : values.keySet()) {
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(", ");
+                }
+                sb.append(name);
             }
-            sb.append(name);
-        }
-        sb.append(") VALUES (");
-        first = true;
-        for (String string : values.keySet()) {
-            if (first) {
-                first = false;
-            } else {
-                sb.append(", ");
+            sb.append(") VALUES (");
+            first = true;
+            for (String string : values.keySet()) {
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(", ");
+                }
+                sb.append("?");
             }
-            sb.append("?");
+            sb.append(")");
         }
-        sb.append(")");
         String insertString = sb.toString();
         logger.log(GrugLogger.Level.INFO, "INSERT SQL: {}\n  Args:{}", insertString, values.values());
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
@@ -411,7 +420,7 @@ public class GrugORM {
                 return -1;
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error executing SQL: " + insertString, e);
         }
     }
 
@@ -759,7 +768,7 @@ public class GrugORM {
 
         Class classForTable;
         private final String tableName;
-        ArrayList<Field> fields;
+        Map<String, Field> fields;
         Map<String, String> fieldNameToColumnNames;
         Map<String, String> columnNameToFieldNames;
         private final String idColumnName;
@@ -771,7 +780,7 @@ public class GrugORM {
             String name = aClass.getSimpleName();
             this.tableName = snakeCase(name);
 
-            fields = new ArrayList<>();
+            fields = new LinkedHashMap<>();
             fieldNameToColumnNames = new HashMap<>();
             columnNameToFieldNames = new HashMap<>();
 
@@ -779,7 +788,7 @@ public class GrugORM {
             for (Field field : getAllFields(aClass)) {
                 if (!shouldIgnore(field)) {
                     field.setAccessible(true);
-                    fields.add(field);
+                    fields.put(field.getName(), field);
                     String fieldName = field.getName();
                     String columnName = snakeCase(fieldName);
                     fieldNameToColumnNames.put(fieldName, columnName);
@@ -813,7 +822,7 @@ public class GrugORM {
 
         public Map<String, Object> asDBMap(Object object) {
             Map<String, Object> values = new TreeMap<>();
-            for (Field field : fields) {
+            for (Field field : fields.values()) {
                 try {
                     String fieldName = field.getName();
                     String columnName = fieldNameToColumnNames.get(fieldName);
@@ -830,7 +839,7 @@ public class GrugORM {
         public <T> T newObjectFromResult(ResultSet resultSet) throws Exception {
             @SuppressWarnings({"unchecked", "deprecation"})
             T object = (T) classForTable.newInstance();
-            for (Field field : fields) {
+            for (Field field : fields.values()) {
                 // ignore static fields always
                 if (shouldIgnore(field)) {
                     continue;
@@ -861,6 +870,24 @@ public class GrugORM {
         public void setId(Object object, long id) {
             try {
                 idField.set(object, id);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public Object getId(Object object) {
+            try {
+                return idField.get(object);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public Object getValueForDBCol(Object owner, String backPointerColumn) {
+            String fieldName = columnNameToFieldNames.get(backPointerColumn);
+            Field field = fields.get(fieldName);
+            try {
+                return field.get(owner);
             } catch (IllegalAccessException e) {
                 throw new RuntimeException(e);
             }

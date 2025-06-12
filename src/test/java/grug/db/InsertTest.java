@@ -29,13 +29,6 @@ public class InsertTest extends TestBase {
     }
 
     @Test
-    void testSaveInsertsWhenNecessary() {
-        SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
-        orm.save(sampleModel);
-        assertEquals(1, sampleModel.getId());
-    }
-
-    @Test
     void testInsertAsRecord() {
         SampleRecord sampleModel = new SampleRecord("foo", 10, true, new Date(2021, 1, 1));
         long id = sampleModel.insert();
