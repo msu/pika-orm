@@ -4,8 +4,10 @@ import grug.db.GrugORM.Interfaces.GrugLogger;
 import grug.db.GrugORM.Interfaces.GrugRecordLifecycle;
 
 import java.io.Console;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.RecordComponent;
 import java.sql.*;
 import java.text.MessageFormat;
 import java.time.Instant;
@@ -103,6 +105,10 @@ public class GrugORM {
         DBMetaData metaData = getDBMetaData(owner.getClass());
         Object ownerPkValue = metaData.getValueForDBCol(owner, backPointerColumn);
         return find(nClass, ownerPkValue);
+    }
+
+    public <T> ResultList<T> select(String query, Class<T> resultClass) {
+        return select(query, Map.of(), resultClass);
     }
 
     //====================================================================
@@ -287,18 +293,27 @@ public class GrugORM {
     }
 
     public <T> ResultList<T> findAll(Class<T> clazz) {
-        return select(clazz, "true=true", Map.of());
+        return selectWhere(clazz, "true=true", Map.of());
     }
 
     public <T> ResultList<T> findAllBy(Class<T> clazz, String column, Object val) {
-        return select(clazz, column + "=:val ", Map.of("val", val));
+        return selectWhere(clazz, column + "=:val ", Map.of("val", val));
     }
 
-    public <T> ResultList<T> select(Class<T> clazz, String whereClause, Map<String, Object> args) {
+    public <T> ResultList<T> selectWhere(Class<T> clazz, String whereClause, Map<String, Object> args) {
         DBMetaData metaData = getDBMetaData(clazz);
         String tableName = metaData.getTableName();
-        String sqlStart = "SELECT * FROM " + tableName + " WHERE ";
-        String sql = sqlStart + whereClause;
+        String selectClause = "SELECT * FROM " + tableName + " WHERE ";
+        String sql = selectClause + whereClause;
+        return select(sql, args, clazz);
+    }
+
+    public ResultList<ResultMap> select(String sql, Map<String, Object> args) {
+        return select(sql, args, ResultMap.class);
+    }
+
+    public <T> ResultList<T> select(String sql, Map<String, Object> args, Class resultClass) {
+        DBMetaData dbMetaData = getDBMetaData(resultClass);
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             ArrayList<Object> vals = new ArrayList<>();
@@ -312,7 +327,6 @@ public class GrugORM {
             ResultSet resultSet = ps.executeQuery();
             ResultList<T> result = new ResultList<>();
             while (resultSet.next()) {
-                DBMetaData dbMetaData = metaData;
                 T object = dbMetaData.newObjectFromResult(resultSet);
                 result.add(object);
             }
@@ -339,7 +353,9 @@ public class GrugORM {
         if (object instanceof GrugRecordLifecycle lifecycle) {
             lifecycle.afterInsert();
         }
-        metaData.setId(object, id);
+        if (!metaData.isReadOnly()) {
+            metaData.setId(object, id);
+        }
         return id;
     }
 
@@ -639,7 +655,7 @@ public class GrugORM {
 
         List<T> run() {
             //noinspection unchecked
-            return (List<T>) select(clazz, whereClause.toString(), valMap);
+            return (List<T>) selectWhere(clazz, whereClause.toString(), valMap);
         }
 
         public GrugQuery<T> with(Map<String, Object> vals) {
@@ -755,41 +771,50 @@ public class GrugORM {
 
     @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
     private class DBMetaData {
+
         public static final String DEFAULT_ID_COL_NAME = "id";
 
         Class classForTable;
-        private final String tableName;
+        private RecordComponent[] recordComponents;
+        private String tableName;
         Map<String, Field> fields;
         Map<String, String> fieldNameToColumnNames;
         Map<String, String> columnNameToFieldNames;
-        private final String idColumnName;
+        private String idColumnName;
         private Field idField;
 
         public DBMetaData(Class aClass) {
-            classForTable = aClass;
+            this.classForTable = aClass;
+            if(aClass == ResultMap.class) {
+                // do nothing
+            } else {
+                String name = aClass.getSimpleName();
+                this.tableName = snakeCase(name);
 
-            String name = aClass.getSimpleName();
-            this.tableName = snakeCase(name);
+                fields = new LinkedHashMap<>();
+                fieldNameToColumnNames = new HashMap<>();
+                columnNameToFieldNames = new HashMap<>();
 
-            fields = new LinkedHashMap<>();
-            fieldNameToColumnNames = new HashMap<>();
-            columnNameToFieldNames = new HashMap<>();
-
-            idColumnName = DEFAULT_ID_COL_NAME;
-            for (Field field : getAllFields(aClass)) {
-                if (!shouldIgnore(field)) {
-                    field.setAccessible(true);
-                    fields.put(field.getName(), field);
-                    String fieldName = field.getName();
-                    String columnName = snakeCase(fieldName);
-                    fieldNameToColumnNames.put(fieldName, columnName);
-                    columnNameToFieldNames.put(columnName, fieldName);
-                    if(columnName.equals(idColumnName)) {
-                        idField = field;
+                idColumnName = DEFAULT_ID_COL_NAME;
+                for (Field field : getAllFields(aClass)) {
+                    if (!shouldIgnore(field)) {
+                        field.setAccessible(true);
+                        fields.put(field.getName(), field);
+                        String fieldName = field.getName();
+                        String columnName = snakeCase(fieldName);
+                        fieldNameToColumnNames.put(fieldName, columnName);
+                        columnNameToFieldNames.put(columnName, fieldName);
+                        if(columnName.equals(idColumnName)) {
+                            idField = field;
+                        }
                     }
                 }
             }
-
+            if (classForTable.isRecord()) {
+                recordComponents = classForTable.getRecordComponents();
+            } else {
+                recordComponents = null;
+            }
         }
 
         private static List<Field> getAllFields(Class aClass) {
@@ -822,30 +847,56 @@ public class GrugORM {
             return values;
         }
 
-
+        @SuppressWarnings({"unchecked", "deprecation"})
         public <T> T newObjectFromResult(ResultSet resultSet) throws Exception {
-            @SuppressWarnings({"unchecked", "deprecation"})
-            T object = (T) classForTable.newInstance();
-            for (Field field : fields.values()) {
-                // ignore static fields always
-                if (shouldIgnore(field)) {
-                    continue;
+            if(classForTable == ResultMap.class) {
+                ResultMap resultMap = new ResultMap();
+                ResultSetMetaData metaData = resultSet.getMetaData();
+                int i  = metaData.getColumnCount();
+                for (int j = 1; j <= i; j++) {
+                    String columnName = metaData.getColumnName(j);
+                    Object value = resultSet.getObject(columnName);
+                    resultMap.put(columnName, value);
                 }
-                String fieldName = snakeCase(field.getName());
-                Object val = getValueFromQuery(fieldName, field.getType(), resultSet);
+                return (T) resultMap;
+            } else {
+                T object;
+                // if it's a record use the generated constructor
+                if(recordComponents != null) {
+                    Object[] args = new Object[recordComponents.length];
+                    for (int i = 0; i < recordComponents.length; i++) {
+                        RecordComponent recordComponent = recordComponents[i];
+                        String fieldName = snakeCase(recordComponent.getName());
+                        Object val = getValueFromQuery(fieldName, recordComponent.getType(), resultSet);
+                        args[i] = val;
+                    }
+                    Constructor[] constructors = classForTable.getDeclaredConstructors();
+                    Constructor recordConstructor = constructors[0];
+                    object = (T) recordConstructor.newInstance(args);
+                } else {
+                    // otherwise use fields
+                    object = (T) classForTable.newInstance();
+                    for (Field field : fields.values()) {
+                        // ignore static fields always
+                        if (shouldIgnore(field)) {
+                            continue;
+                        }
+                        String fieldName = snakeCase(field.getName());
+                        Object val = getValueFromQuery(fieldName, field.getType(), resultSet);
 
-                if (object instanceof Interfaces.BeforeSet beforeSet) {
-                    val = beforeSet.beforeSet(field, val);
+                        if (object instanceof Interfaces.BeforeSet beforeSet) {
+                            val = beforeSet.beforeSet(field, val);
+                        }
+
+                        field.set(object, val);
+
+                        if (object instanceof Interfaces.AfterSet afterSet) {
+                            afterSet.afterSet(field, val);
+                        }
+                    }
                 }
-
-                field.set(object, val);
-
-                if (object instanceof Interfaces.AfterSet afterSet) {
-                    afterSet.afterSet(field, val);
-                }
-
+                return object;
             }
-            return object;
         }
 
         // TODO - make pluggable
@@ -861,10 +912,14 @@ public class GrugORM {
             return safely(() -> idField.get(object));
         }
 
-        public Object getValueForDBCol(Object owner, String backPointerColumn) {
-            String fieldName = columnNameToFieldNames.get(backPointerColumn);
+        public Object getValueForDBCol(Object owner, String columnName) {
+            String fieldName = columnNameToFieldNames.get(columnName);
             Field field = fields.get(fieldName);
             return safely(() -> field.get(owner));
+        }
+
+        public boolean isReadOnly() {
+            return !classForTable.isRecord();
         }
     }
 
@@ -1224,6 +1279,12 @@ public class GrugORM {
     // GrugORM Result List
     //========================================================================================
 
+    public static class ResultMap extends LinkedHashMap<String, Object> {
+        @SuppressWarnings("unchecked")
+        public <T> T get(String key, Class<T> type) {
+            return (T) this.get(key);
+        }
+    }
     public static class ResultList<T> extends ArrayList<T> {
 
         public ResultList() {}
@@ -1346,6 +1407,7 @@ public class GrugORM {
             }
         }.defineClass();
         try {
+            //noinspection deprecation
             return (ForceThrower) tmpClass.newInstance();
         } catch (Exception e) {
             throw new RuntimeException(e);

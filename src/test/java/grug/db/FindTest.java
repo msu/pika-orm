@@ -46,17 +46,17 @@ public class FindTest extends TestBase{
         }
 
         List<SampleModel> results =
-                orm.select(SampleModel.class,
+                orm.selectWhere(SampleModel.class,
                         "int_val=:val",
                         Map.of("val", 10));
 
         assertEquals(10, results.size());
 
-        results = orm.select(SampleModel.class, "date_val > :val", Map.of("val", new Date(2050, 1, 1)));
+        results = orm.selectWhere(SampleModel.class, "date_val > :val", Map.of("val", new Date(2050, 1, 1)));
 
         assertEquals(0, results.size());
 
-        results = orm.select(SampleModel.class, "str_val like :val", Map.of("val", "%b%"));
+        results = orm.selectWhere(SampleModel.class, "str_val like :val", Map.of("val", "%b%"));
         assertEquals(10, results.size());
 
         results = orm.findAll(SampleModel.class);
@@ -64,25 +64,64 @@ public class FindTest extends TestBase{
     }
 
     @Test
-    void testFindAllCollectionFilter() {
+    void testSelectWhere() {
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         SampleModel m2  = new SampleModel("bar", 10, true, new Date());
         SampleModel m3 = new SampleModel("baz", 10, true, new Date());
 
-        // TODO - bulk insert?
         SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
         orm.insertAll(List.of(sampleModels));
-//        m1.setId(orm.insert(m1));
-//        m2.setId(orm.insert(m2));
-//        m3.setId(orm.insert(m3));
-
-
-
-        var results = orm.select(SampleModel.class,//we are looking to create the query something like this, select * in sample model where str_val in (?) and (?) (for foo and bar)
+        var results = orm.selectWhere(SampleModel.class,//we are looking to create the query something like this, select * in sample model where str_val in (?) and (?) (for foo and bar)
                 "str_val in :strs",
                 Map.of("strs", List.of("foo", "bar")));//we can safely assume that when there is a map with collection inside of it we need to iterate over the list and create arguements and insertions for all parameters
                 //TODO - should this test account for multiple of these collections? say there are 2 maps with different collections, we would possibly want to create question marks for all?
         assertEquals(2, results.size());
+    }
+
+    @Test
+    void testGenericSelect() {
+        SampleModel m1 = new SampleModel("foo", 10, true, new Date());
+        SampleModel m2  = new SampleModel("bar", 10, true, new Date());
+        SampleModel m3 = new SampleModel("baz", 10, true, new Date());
+
+        SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
+        orm.insertAll(List.of(sampleModels));
+        var results = orm.select("SELECT * FROM sample_model WHERE int_val=:x ORDER BY id", Map.of("x", 10));
+
+        System.out.println(results);
+
+        assertEquals(3, results.size());
+        GrugORM.ResultMap first = results.getFirst();
+
+
+        assertEquals("foo", first.get("str_val"));
+        assertEquals(10, first.get("int_val"));
+        assertEquals(1, first.get("bool_val"));
+    }
+
+    record GroupByResult(String strVal, Long sum) {}
+
+    @Test
+    void testGenericSelectWitRecord() {
+        SampleModel m1 = new SampleModel("foo", 10, true, new Date());
+        SampleModel m2  = new SampleModel("bar", 10, true, new Date());
+        SampleModel m3 = new SampleModel("foo", 10, true, new Date());
+
+        SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
+        orm.insertAll(List.of(sampleModels));
+        var results = orm.select("SELECT str_val, sum(int_val) as sum FROM sample_model GROUP BY str_val ORDER BY str_val", GroupByResult.class);
+
+        System.out.println(results);
+
+        assertEquals(2, results.size());
+
+        GroupByResult first = results.get(0);
+        assertEquals("bar", first.strVal());
+        assertEquals(10, first.sum());
+
+        GroupByResult second = results.get(1);
+        assertEquals("foo", second.strVal());
+        assertEquals(20, second.sum());
     }
 
 }
