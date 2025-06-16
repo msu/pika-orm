@@ -75,7 +75,7 @@ public class GrugORM {
     // default orm management
     //====================================================================
 
-    public static GrugORM getDefaultOrThrow() {
+    public static GrugORM get() {
         GrugORM defaultORM = getDefault();
         if (defaultORM == null) {
             throw new IllegalStateException("No default GrugORM found");
@@ -634,7 +634,7 @@ public class GrugORM {
 
         interface GrugRecord extends BeforeSet, AfterSet {
             default long insert() {
-                GrugORM orm = getDefaultOrThrow();
+                GrugORM orm = get();
                 return orm.insert(this);
             }
         }

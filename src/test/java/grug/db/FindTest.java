@@ -1,5 +1,6 @@
 package grug.db;
 
+import grug.db.GrugORM.ResultList;
 import grug.db.models.SampleModel;
 import grug.db.models.SampleRecord;
 import org.junit.jupiter.api.BeforeEach;
@@ -99,7 +100,15 @@ public class FindTest extends TestBase{
         assertEquals(1, first.get("bool_val"));
     }
 
-    record GroupByResult(String strVal, Long sum) {}
+    record SampleModelGroupByQuery(String strVal, Long sum) {
+        public static ResultList<SampleModelGroupByQuery> exec() {
+            return GrugORM.get().select("""
+                            SELECT str_val, sum(int_val) as sum
+                            FROM sample_model
+                            GROUP BY str_val
+                            ORDER BY str_val""", SampleModelGroupByQuery.class);
+        }
+    }
 
     @Test
     void testGenericSelectWitRecord() {
@@ -109,17 +118,18 @@ public class FindTest extends TestBase{
 
         SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
         orm.insertAll(sampleModels);
-        var results = orm.select("SELECT str_val, sum(int_val) as sum FROM sample_model GROUP BY str_val ORDER BY str_val", GroupByResult.class);
+
+        var results = SampleModelGroupByQuery.exec();
 
         System.out.println(results);
 
         assertEquals(2, results.size());
 
-        GroupByResult first = results.get(0);
+        SampleModelGroupByQuery first = results.get(0);
         assertEquals("bar", first.strVal());
         assertEquals(10, first.sum());
 
-        GroupByResult second = results.get(1);
+        SampleModelGroupByQuery second = results.get(1);
         assertEquals("foo", second.strVal());
         assertEquals(20, second.sum());
     }
