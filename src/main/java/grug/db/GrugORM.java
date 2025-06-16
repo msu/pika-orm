@@ -359,6 +359,10 @@ public class GrugORM {
         return id;
     }
 
+    public long[] insertAll(Object[] items) {
+        return insertAll(List.of(items));
+    }
+
     public long[] insertAll(Collection<Object> items) { // TODO - look into the setID as i was having some issues and weirdness with it
         long[] ids = new long[items.size()];
         int count = 0;

@@ -70,7 +70,7 @@ public class FindTest extends TestBase{
         SampleModel m3 = new SampleModel("baz", 10, true, new Date());
 
         SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
-        orm.insertAll(List.of(sampleModels));
+        orm.insertAll(sampleModels);
         var results = orm.selectWhere(SampleModel.class,//we are looking to create the query something like this, select * in sample model where str_val in (?) and (?) (for foo and bar)
                 "str_val in :strs",
                 Map.of("strs", List.of("foo", "bar")));//we can safely assume that when there is a map with collection inside of it we need to iterate over the list and create arguements and insertions for all parameters
@@ -85,7 +85,7 @@ public class FindTest extends TestBase{
         SampleModel m3 = new SampleModel("baz", 10, true, new Date());
 
         SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
-        orm.insertAll(List.of(sampleModels));
+        orm.insertAll(sampleModels);
         var results = orm.select("SELECT * FROM sample_model WHERE int_val=:x ORDER BY id", Map.of("x", 10));
 
         System.out.println(results);
@@ -108,7 +108,7 @@ public class FindTest extends TestBase{
         SampleModel m3 = new SampleModel("foo", 10, true, new Date());
 
         SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
-        orm.insertAll(List.of(sampleModels));
+        orm.insertAll(sampleModels);
         var results = orm.select("SELECT str_val, sum(int_val) as sum FROM sample_model GROUP BY str_val ORDER BY str_val", GroupByResult.class);
 
         System.out.println(results);
