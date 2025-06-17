@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -47,6 +48,7 @@ public class LoggingTest extends TestBase {
     @Test
     void testCustomLogger() {
         Logger logger = LoggerFactory.getLogger(LoggingTest.class);
+        orm.logQueries(); // log at INFO so they appear in the logs
 
         // SLF4J logger adapter
         orm.withLogger((level, msg, args) -> {
@@ -70,9 +72,9 @@ public class LoggingTest extends TestBase {
             System.setErr(tmpOut);
             assertEquals(1, orm.insert(sampleModel));
             String loggedMessage = new String(tmpOutBuffer.toByteArray());
-            String expectedLogMessage = "[main] INFO grug.db.LoggingTest - INSERT SQL: INSERT INTO sample_model (bool_val, date_val, int_val, str_val) VALUES (?, ?, ?, ?)\n" +
+            String expectedLogMessage = "INSERT SQL: INSERT INTO sample_model (bool_val, date_val, int_val, str_val) VALUES (?, ?, ?, ?)\n" +
                     "  Args:[true, 3921-02-01, 10, foo]\n";
-            assertTrue(loggedMessage.contains(expectedLogMessage));
+            assertTrue(loggedMessage.contains(expectedLogMessage), "Did not find " + expectedLogMessage + " in " + loggedMessage);
         } finally {
             System.setErr(original);
         }

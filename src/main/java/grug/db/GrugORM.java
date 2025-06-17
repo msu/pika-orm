@@ -36,6 +36,7 @@ public class GrugORM {
     private GrugLogger logger = new DefaultLogger();
 
     private final ConcurrentHashMap<Class, DBMetaData> metadataCache = new ConcurrentHashMap<Class, DBMetaData>();
+    private boolean logQueries = false;
 
     //====================================================================
     // constructors & builders
@@ -66,6 +67,11 @@ public class GrugORM {
         return this;
     }
 
+    public GrugORM logQueries() {
+        this.logQueries = true;
+        return this;
+    }
+
     public GrugORM makeDefaultORM() {
         setDefaultORM(this);
         return this;
@@ -83,7 +89,7 @@ public class GrugORM {
         return defaultORM;
     }
 
-`    private static GrugORM getDefault() {
+    private static GrugORM getDefault() {
         return DEFAULT_ORM;
     }
 
@@ -105,10 +111,6 @@ public class GrugORM {
         DBMetaData metaData = getDBMetaData(owner.getClass());
         Object ownerPkValue = metaData.getValueForDBCol(owner, backPointerColumn);
         return find(nClass, ownerPkValue);
-    }
-
-    public <T> ResultList<T> select(String query, Class<T> resultClass) {
-        return select(query, Map.of(), resultClass);
     }
 
     //====================================================================
@@ -273,12 +275,13 @@ public class GrugORM {
     public <T> T find(Class<T> clazz, String key, Object val) {
         DBMetaData dbMetaData = getDBMetaData(clazz);
         String sql = "SELECT * FROM " + dbMetaData.getTableName() + " WHERE " + key + "=?";
+        logger.log(getQueryLogLevel(), "Find SQL: {}\n  Arg:{}", sql, val);
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement ps = conn.prepareStatement(sql);
             int parameterIndex = 1;
             setValueForQuery(ps, parameterIndex, val);
-            ResultSet resultSet = ps.executeQuery();
+            ResultSet resultSet = time(ps::executeQuery);
             if (resultSet.next()) {
                 T obj = dbMetaData.newObjectFromResult(resultSet);
                 return obj;
@@ -308,7 +311,11 @@ public class GrugORM {
         return select(sql, args, clazz);
     }
 
-    public ResultList<ResultMap> select(String sql, Map<String, Object> args) {
+    public <T> ResultList<T> select(String query, Class<T> resultClass) {
+        return select(query, Map.of(), resultClass);
+    }
+
+    public ResultList<ResultMap> selectRaw(String sql, Map<String, Object> args) {
         return select(sql, args, ResultMap.class);
     }
 
@@ -318,13 +325,13 @@ public class GrugORM {
             Connection conn = ci.conn;
             ArrayList<Object> vals = new ArrayList<>();
             String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
-            logger.log(GrugLogger.Level.INFO, "Select SQL: {}\n  Args:{}", updatedSql, vals);
+            logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
             PreparedStatement ps = conn.prepareStatement(updatedSql);
             for (int i = 0; i < vals.size(); i++) {
                 Object val = vals.get(i);
                 setValueForQuery(ps, i + 1, val);
             }
-            ResultSet resultSet = ps.executeQuery();
+            ResultSet resultSet = time(ps::executeQuery);
             ResultList<T> result = new ResultList<>();
             while (resultSet.next()) {
                 T object = dbMetaData.newObjectFromResult(resultSet);
@@ -366,7 +373,7 @@ public class GrugORM {
     public long[] insertAll(Collection<Object> items) { // TODO - look into the setID as i was having some issues and weirdness with it
         long[] ids = new long[items.size()];
         int count = 0;
-        for (Object o : (Collection<?>) items) {
+        for (Object o : items) {
             ids[count] = insert(o);
             count++;
         }
@@ -394,7 +401,7 @@ public class GrugORM {
             }
             sb.append(") VALUES (");
             first = true;
-            for (String string : values.keySet()) {
+            for (String _ : values.keySet()) {
                 if (first) {
                     first = false;
                 } else {
@@ -405,7 +412,7 @@ public class GrugORM {
             sb.append(")");
         }
         String insertString = sb.toString();
-        logger.log(GrugLogger.Level.INFO, "INSERT SQL: {}\n  Args:{}", insertString, values.values());
+        logger.log(getQueryLogLevel(), "INSERT SQL: {}\n  Args:{}", insertString, values.values());
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement preparedStatement = conn.prepareStatement(insertString);
@@ -413,7 +420,7 @@ public class GrugORM {
             for (Object o : values.values()) {
                 setValueForQuery(preparedStatement, col++, o);
             }
-            int updated = preparedStatement.executeUpdate();
+            int updated = time(preparedStatement::executeUpdate);
             ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
             if (generatedKeys.next()) {
                 return generatedKeys.getLong(1);
@@ -465,7 +472,7 @@ public class GrugORM {
         sb.append(" WHERE ");
         sb.append(keyCol).append("=?");
         String updateSQL = sb.toString();
-        logger.log(GrugLogger.Level.INFO, "UPDATE SQL: {}\n  Args:{}", updateSQL, values.values());
+        logger.log(getQueryLogLevel(), "UPDATE SQL: {}\n  Args:{}", updateSQL, values.values());
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement preparedStatement = conn.prepareStatement(updateSQL);
@@ -474,7 +481,8 @@ public class GrugORM {
                 setValueForQuery(preparedStatement, col++, o);
             }
             setValueForQuery(preparedStatement, col, keyVal);
-            return preparedStatement.executeUpdate() == 1;
+            int i = time(preparedStatement::executeUpdate);
+            return i == 1;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & args {}: {}", updateSQL, values.values(), e.getMessage());
             rethrow(e);
@@ -507,12 +515,13 @@ public class GrugORM {
         sb.append(" WHERE ");
         sb.append(keyCol).append("=?");
         String deleteSQL = sb.toString();
-        logger.log(GrugLogger.Level.INFO, "DELETE SQL: {}\n  Args:{}", deleteSQL, List.of(keyVal));
+        logger.log(getQueryLogLevel(), "DELETE SQL: {}\n  Args:{}", deleteSQL, List.of(keyVal));
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
             PreparedStatement preparedStatement = conn.prepareStatement(sb.toString());
             setValueForQuery(preparedStatement, 1, keyVal);
-            return preparedStatement.executeUpdate() == 1;
+            int i = time(preparedStatement::executeUpdate);
+            return i == 1;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
             rethrow(e);
@@ -527,10 +536,11 @@ public class GrugORM {
         }
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
-            logger.log(GrugLogger.Level.INFO, "EXECUTING RAW SQL: {}\n", sql);
+            logger.log(getQueryLogLevel(), "EXECUTING RAW SQL: {}\n", sql);
             //noinspection SqlSourceToSinkFlow
             PreparedStatement preparedStatement = conn.prepareStatement(sql);
-            return preparedStatement.execute();
+            boolean execute = time(preparedStatement::execute);
+            return execute;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in exec() with SQL {}: {}", sql, e.getMessage());
             rethrow(e);
@@ -539,6 +549,28 @@ public class GrugORM {
     }
 
     // utilities
+    private <T> T time(Callable<T> query) {
+        long start = System.currentTimeMillis();
+        try {
+            try {
+                return query.call();
+            } catch (Exception e) {
+                rethrow(e);
+                return null;
+            }
+        } finally {
+            long end = System.currentTimeMillis();
+            logger.log(getQueryLogLevel(), "Query took {}ms", end-start);
+        }
+    }
+
+    private GrugLogger.Level getQueryLogLevel() {
+        if (logQueries) {
+            return GrugLogger.Level.INFO;
+        } else {
+            return GrugLogger.Level.DEBUG;
+        }
+    }
 
     private String updateSqlVars(String sql, Map<String, Object> args, List<Object> argList) {
         Pattern compile = Pattern.compile(SQL_VARS_PATTERN);
@@ -923,7 +955,7 @@ public class GrugORM {
         }
 
         public boolean isReadOnly() {
-            return !classForTable.isRecord();
+            return classForTable.isRecord();
         }
     }
 

@@ -87,7 +87,7 @@ public class FindTest extends TestBase{
 
         SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
         orm.insertAll(sampleModels);
-        var results = orm.select("SELECT * FROM sample_model WHERE int_val=:x ORDER BY id", Map.of("x", 10));
+        var results = orm.selectRaw("SELECT * FROM sample_model WHERE int_val=:x ORDER BY id", Map.of("x", 10));
 
         System.out.println(results);
 
