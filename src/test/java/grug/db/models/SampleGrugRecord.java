@@ -23,14 +23,20 @@ public class SampleGrugRecord extends GrugRecord {
     private Boolean boolVal;
     private Date dateVal;
 
-    private SampleGrugRecord() {
-    }
+    private SampleGrugRecord() {}
 
     public SampleGrugRecord(String strVal, Integer intVal, Boolean boolVal, Date dateVal) {
         this.strVal = strVal;
         this.intVal = intVal;
         this.boolVal = boolVal;
         this.dateVal = dateVal;
+    }
+
+    @Override
+    protected void validation() {
+        if (intVal < 0) {
+            addError("intVal", "intVal must be greater than or equal to zero!");
+        }
     }
 
     public static GrugORM.GrugQuery<SampleGrugRecord> where(String str) {

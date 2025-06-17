@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 public class GrugORM {
 
     public static final String SQL_VARS_PATTERN = "(:[\\w][\\d\\w]*)";
+    public static final int INSERT_FAILED = -1;
     private static GrugORM DEFAULT_ORM = null;
     private static final ThreadLocal<ConnectionInfo> CURRENT_CONNECTION = new ThreadLocal<>();
     private static final ForceThrower FORCE_THROWER = generateForceThrower();
@@ -354,7 +355,7 @@ public class GrugORM {
     public long insert(Object object) {
         if(object instanceof GrugRecordLifecycle lifecycle) {
             if (!lifecycle.validate()) {
-                return -1;
+                return INSERT_FAILED;
             }
         }
         Class<?> clazz = object.getClass();
@@ -364,7 +365,7 @@ public class GrugORM {
         values.remove(keyCol);
         if (object instanceof GrugRecordLifecycle lifecycle) {
             if (!lifecycle.beforeInsert()) {
-                return -1; // TODO flag value?
+                return INSERT_FAILED;
             }
         }
         long id = insert(metaData.getTableName(), values);
@@ -436,7 +437,7 @@ public class GrugORM {
             if (generatedKeys.next()) {
                 return generatedKeys.getLong(1);
             } else {
-                return -1;
+                return INSERT_FAILED;
             }
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in insert() with SQL {} & args {}: {}", insertString, values.values(), e.getMessage());
@@ -683,6 +684,47 @@ public class GrugORM {
 
     public static class GrugRecord implements GrugRecordLifecycle {
         private transient boolean persisted;
+        private transient Map<String, List<String>> errors = new LinkedHashMap<>();
+
+        public boolean hasErrors(){
+            return errors != null && !errors.isEmpty();
+        }
+
+        public void clearErrors() {
+            errors.clear();
+        }
+
+        public void addError(String error) {
+            var errorList = getErrorList(null);
+            errorList.add(error);
+        }
+
+        public void addError(String field, String error) {
+            var errorList = getErrorList(field);
+            errorList.add(error);
+        }
+
+        public List<String> getClassErrors() {
+            return getErrorList(null);
+        }
+
+        public List<String> getFieldErrors(String field) {
+            return getErrorList(field);
+        }
+
+        private List<String> getErrorList(String key) {
+            return errors.computeIfAbsent(key, s -> new ArrayList<>());
+        }
+
+        public final boolean validate() {
+            clearErrors();
+            validation();
+            return !hasErrors();
+        }
+
+        protected void validation() {
+            // override in subclasses
+        }
 
         @Override
         public void afterSelect() {
