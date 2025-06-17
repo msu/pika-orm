@@ -1,10 +1,10 @@
 package grug.db.migrations;
 
-import grug.db.GrugORM.Interfaces.BeforeSet;
+import grug.db.GrugORM.Interfaces.GrugRecordLifecycle;
 
 import java.util.Date;
 
-public class MigrationDemoModel implements BeforeSet {
+public class MigrationDemoModel implements GrugRecordLifecycle {
 
     private Long id;
     private String strVal;

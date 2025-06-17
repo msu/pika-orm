@@ -1,13 +1,12 @@
 package grug.db.models;
 
 import grug.db.GrugORM;
-import grug.db.GrugORM.Interfaces.BeforeSet;
-import grug.db.GrugORM.Interfaces.GrugRecord;
+import grug.db.GrugORM.Interfaces.GrugRecordLifecycle;
 
 import java.lang.reflect.Field;
 import java.util.Date;
 
-public class SampleModel implements BeforeSet {
+public class SampleModel implements GrugRecordLifecycle {
 
     public static String DDL = """
             CREATE TABLE IF NOT EXISTS sample_model (

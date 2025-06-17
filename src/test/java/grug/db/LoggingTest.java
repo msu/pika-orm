@@ -1,12 +1,11 @@
 package grug.db;
 
 import grug.db.models.SampleModel;
-import grug.db.models.SampleRecord;
+import grug.db.models.SampleGrugRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.event.Level;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -24,7 +23,7 @@ public class LoggingTest extends TestBase {
     public void setUp() throws IOException {
         orm = initDBFileAndORM();
         orm.exec(SampleModel.DDL);
-        orm.exec(SampleRecord.DDL);
+        orm.exec(SampleGrugRecord.DDL);
     }
 
     @Test

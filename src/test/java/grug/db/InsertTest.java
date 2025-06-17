@@ -1,7 +1,7 @@
 package grug.db;
 
 import grug.db.models.SampleModel;
-import grug.db.models.SampleRecord;
+import grug.db.models.SampleGrugRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -18,20 +18,13 @@ public class InsertTest extends TestBase {
     public void setUp() throws IOException {
         orm = initDBFileAndORM();
         orm.exec(SampleModel.DDL);
-        orm.exec(SampleRecord.DDL);
+        orm.exec(SampleGrugRecord.DDL);
     }
 
     @Test
     void testInsert() {
         SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
         long id = orm.insert(sampleModel);
-        assertEquals(1, id);
-    }
-
-    @Test
-    void testInsertAsRecord() {
-        SampleRecord sampleModel = new SampleRecord("foo", 10, true, new Date(2021, 1, 1));
-        long id = sampleModel.insert();
         assertEquals(1, id);
     }
 

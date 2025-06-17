@@ -1,7 +1,7 @@
 package grug.db;
 
 import grug.db.models.SampleModel;
-import grug.db.models.SampleRecord;
+import grug.db.models.SampleGrugRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -19,7 +19,7 @@ public class QueryBuilderTest extends TestBase {
     public void setUp() throws IOException {
         orm = initDBFileAndORM();
         orm.exec(SampleModel.DDL);
-        orm.exec(SampleRecord.DDL);
+        orm.exec(SampleGrugRecord.DDL);
     }
 
     @Test
@@ -45,16 +45,15 @@ public class QueryBuilderTest extends TestBase {
     void testBasicQueryBuilderWithStaticMethod() {
 
         for (int i = 0; i < 10 ; i++) {
-            SampleRecord sampleModel = new SampleRecord("bar", 10, true, new Date(2021, 1, 1));
+            SampleGrugRecord sampleModel = new SampleGrugRecord("bar", 10, true, new Date(2021, 1, 1));
             long id = orm.insert(sampleModel);
-            sampleModel.setId(id);
         }
 
-        var query = SampleRecord
+        var query = SampleGrugRecord
                 .where("date_val < :val")
                 .with("val", new Date(2050, 1, 1));
 
-        List<SampleRecord> results = query.run();
+        List<SampleGrugRecord> results = query.run();
 
         assertEquals(10, results.size());
     }

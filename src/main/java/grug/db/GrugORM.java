@@ -101,15 +101,15 @@ public class GrugORM {
     // 1-N and N-N functionality
     //====================================================================
 
-    public <T> List<T> loadN(Object owner, Class<T> nClass, String backPointerColumn) {
+    public <T> ResultList<T> loadN(Object owner, Class<T> nClass, String fkCol) {
         DBMetaData metaData = getDBMetaData(owner.getClass());
         Object ownerPkValue = metaData.getId(owner);
-        return findAllBy(nClass, backPointerColumn, ownerPkValue);
+        return findAllBy(nClass, fkCol, ownerPkValue);
     }
 
-    public <T> T load1(Object owner, Class<T> nClass, String backPointerColumn) {
+    public <T> T load1(Object owner, Class<T> nClass, String flCol) {
         DBMetaData metaData = getDBMetaData(owner.getClass());
-        Object ownerPkValue = metaData.getValueForDBCol(owner, backPointerColumn);
+        Object ownerPkValue = metaData.getValueForDBCol(owner, flCol);
         return find(nClass, ownerPkValue);
     }
 
@@ -284,6 +284,9 @@ public class GrugORM {
             ResultSet resultSet = time(ps::executeQuery);
             if (resultSet.next()) {
                 T obj = dbMetaData.newObjectFromResult(resultSet);
+                if (obj instanceof GrugRecordLifecycle lifecycle) {
+                    lifecycle.afterSelect();
+                }
                 return obj;
             } else {
                 return null;
@@ -335,6 +338,9 @@ public class GrugORM {
             ResultList<T> result = new ResultList<>();
             while (resultSet.next()) {
                 T object = dbMetaData.newObjectFromResult(resultSet);
+                if (object instanceof GrugRecordLifecycle lifecycle) {
+                    lifecycle.afterSelect();
+                }
                 result.add(object);
             }
             return result;
@@ -346,6 +352,11 @@ public class GrugORM {
     }
 
     public long insert(Object object) {
+        if(object instanceof GrugRecordLifecycle lifecycle) {
+            if (!lifecycle.validate()) {
+                return -1;
+            }
+        }
         Class<?> clazz = object.getClass();
         DBMetaData metaData = getDBMetaData(clazz);
         String keyCol = metaData.getIdColumnName();
@@ -435,6 +446,11 @@ public class GrugORM {
     }
 
     public boolean update(Object object) {
+        if(object instanceof GrugRecordLifecycle lifecycle) {
+            if (!lifecycle.validate()) {
+                return false;
+            }
+        }
         Class<?> clazz = object.getClass();
         DBMetaData dbMetaData = getDBMetaData(clazz);
         String tableName = dbMetaData.getTableName();
@@ -638,6 +654,11 @@ public class GrugORM {
         }
 
         interface GrugRecordLifecycle {
+
+            default boolean validate() {
+                return true;
+            }
+
             default boolean beforeInsert() {
                 return true;
             }
@@ -649,26 +670,59 @@ public class GrugORM {
             }
 
             default void afterInsert() {}
+            default void afterSelect() {}
             default void afterUpdate() {}
             default void afterDelete() {}
-        }
 
-        interface BeforeSet {
+            default void afterSet(Field field, Object value) {}
             default Object beforeSet(Field field, Object value) {
                 return value;
             }
         }
+    }
 
-        interface AfterSet {
-            default void afterSet(Field field, Object value) {
+    public static class GrugRecord implements GrugRecordLifecycle {
+        private transient boolean persisted;
+
+        @Override
+        public void afterSelect() {
+            this.persisted = true;
+        }
+
+        public long insert() {
+            if(persisted) {
+                throw new IllegalStateException("This record is already persisted!");
+            }
+            long id = get().insert(this);
+            this.persisted = true;
+            return id;
+        }
+
+        public boolean update() {
+            if(!persisted) {
+                throw new IllegalStateException("This record has not been persisted!");
+            }
+            return get().update(this);
+        }
+
+        public boolean save() {
+            if(persisted) {
+                return update();
+            } else {
+                return insert() > 0;
             }
         }
 
-        interface GrugRecord extends BeforeSet, AfterSet {
-            default long insert() {
-                GrugORM orm = get();
-                return orm.insert(this);
-            }
+        public boolean delete() {
+            return get().delete(this);
+        }
+
+        protected  <T> ResultList<T> loadN(Class<T> of, String fkCol) {
+            return get().loadN(this, of, fkCol);
+        }
+
+        protected  <T> T load1(Class<T> of, String fkCol) {
+            return get().load1(this, of, fkCol);
         }
     }
 
@@ -825,6 +879,7 @@ public class GrugORM {
         Map<String, String> columnNameToFieldNames;
         private String idColumnName;
         private Field idField;
+        private Constructor constructor;
 
         protected DBMetaData() {}
 
@@ -866,8 +921,21 @@ public class GrugORM {
             }
             if (classForTable.isRecord()) {
                 recordComponents = classForTable.getRecordComponents();
+                Constructor[] constructors = classForTable.getDeclaredConstructors();
+                constructor = constructors[0];
             } else {
                 recordComponents = null;
+                Constructor[] constructors = classForTable.getDeclaredConstructors();
+                for (Constructor c : constructors) {
+                    if(c.getParameterTypes().length == 0) {
+                        c.setAccessible(true);
+                        this.constructor = c;
+                        break;
+                    }
+                }
+                if(constructor == null) {
+                    throw new IllegalStateException("Class " + classForTable.getName() + " does not have an empty constructor, please add one.  It can be private.");
+                }
             }
         }
 
@@ -924,12 +992,10 @@ public class GrugORM {
                         Object val = orm.getValueFromQuery(columName, recordComponent.getType(), resultSet);
                         args[i] = val;
                     }
-                    Constructor[] constructors = classForTable.getDeclaredConstructors();
-                    Constructor recordConstructor = constructors[0];
-                    object = (T) recordConstructor.newInstance(args);
+                    object = (T) constructor.newInstance(args);
                 } else {
                     // otherwise use fields
-                    object = (T) classForTable.newInstance();
+                    object = (T) constructor.newInstance();
                     for (Field field : fields.values()) {
                         // ignore static fields always
                         if (shouldIgnore(field)) {
@@ -938,13 +1004,13 @@ public class GrugORM {
                         String fieldName = snakeCase(field.getName());
                         Object val = orm.getValueFromQuery(fieldName, field.getType(), resultSet);
 
-                        if (object instanceof Interfaces.BeforeSet beforeSet) {
+                        if (object instanceof Interfaces.GrugRecordLifecycle beforeSet) {
                             val = beforeSet.beforeSet(field, val);
                         }
 
                         field.set(object, val);
 
-                        if (object instanceof Interfaces.AfterSet afterSet) {
+                        if (object instanceof Interfaces.GrugRecordLifecycle afterSet) {
                             afterSet.afterSet(field, val);
                         }
                     }
@@ -955,7 +1021,7 @@ public class GrugORM {
 
         // TODO - make pluggable
         protected boolean shouldIgnore(Field field) {
-            return Modifier.isStatic(field.getModifiers());
+            return Modifier.isStatic(field.getModifiers()) || Modifier.isTransient(field.getModifiers());
         }
 
         public void setId(Object object, long id) {

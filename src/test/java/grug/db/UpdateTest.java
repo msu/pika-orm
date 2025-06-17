@@ -1,7 +1,7 @@
 package grug.db;
 
 import grug.db.models.SampleModel;
-import grug.db.models.SampleRecord;
+import grug.db.models.SampleGrugRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +18,7 @@ public class UpdateTest extends TestBase {
     public void setUp() throws IOException {
         orm = initDBFileAndORM();
         orm.exec(SampleModel.DDL);
-        orm.exec(SampleRecord.DDL);
+        orm.exec(SampleGrugRecord.DDL);
     }
 
     @Test
