@@ -902,8 +902,8 @@ public class GrugORM {
                     Object[] args = new Object[recordComponents.length];
                     for (int i = 0; i < recordComponents.length; i++) {
                         RecordComponent recordComponent = recordComponents[i];
-                        String fieldName = snakeCase(recordComponent.getName());
-                        Object val = getValueFromQuery(fieldName, recordComponent.getType(), resultSet);
+                        String columName = snakeCase(recordComponent.getName());
+                        Object val = getValueFromQuery(columName, recordComponent.getType(), resultSet);
                         args[i] = val;
                     }
                     Constructor[] constructors = classForTable.getDeclaredConstructors();
@@ -936,7 +936,7 @@ public class GrugORM {
         }
 
         // TODO - make pluggable
-        private static boolean shouldIgnore(Field field) {
+        protected boolean shouldIgnore(Field field) {
             return Modifier.isStatic(field.getModifiers());
         }
 
