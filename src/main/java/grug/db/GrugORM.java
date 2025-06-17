@@ -83,7 +83,7 @@ public class GrugORM {
         return defaultORM;
     }
 
-    public static GrugORM getDefault() {
+`    private static GrugORM getDefault() {
         return DEFAULT_ORM;
     }
 

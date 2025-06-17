@@ -29,7 +29,7 @@ public class SampleRecord extends SampleModel implements GrugRecord {
     }
 
     public static GrugORM.GrugQuery<SampleRecord> where(String str) {
-        return GrugORM.getDefault().query(SampleRecord.class).where(str);
+        return GrugORM.get().query(SampleRecord.class).where(str);
     }
 
 }
