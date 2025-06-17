@@ -802,15 +802,22 @@ public class GrugORM {
     }
 
     private DBMetaData getDBMetaData(Class<?> clazz) {
-        return metadataCache.computeIfAbsent(clazz, DBMetaData::new);
+        return metadataCache.computeIfAbsent(clazz, aClass -> new DBMetaData(aClass, this));
+    }
+
+    public void withMapping(Class classToMap, DBMetaData mapping) {
+        mapping.setClass(classToMap);
+        mapping.setOrm(this);
+        metadataCache.put(classToMap, mapping);
     }
 
     @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
-    private class DBMetaData {
+    public static class DBMetaData {
 
         public static final String DEFAULT_ID_COL_NAME = "id";
 
         Class classForTable;
+        GrugORM orm;
         private RecordComponent[] recordComponents;
         private String tableName;
         Map<String, Field> fields;
@@ -819,7 +826,18 @@ public class GrugORM {
         private String idColumnName;
         private Field idField;
 
-        public DBMetaData(Class aClass) {
+        protected DBMetaData() {}
+
+        protected DBMetaData(Class aClass, GrugORM orm) {
+            setClass(aClass);
+            setOrm(orm);
+        }
+
+        private void setOrm(GrugORM orm) {
+            this.orm = orm;
+        }
+
+        protected void setClass(Class aClass) {
             this.classForTable = aClass;
             if(aClass == ResultMap.class) {
                 // do nothing
@@ -903,7 +921,7 @@ public class GrugORM {
                     for (int i = 0; i < recordComponents.length; i++) {
                         RecordComponent recordComponent = recordComponents[i];
                         String columName = snakeCase(recordComponent.getName());
-                        Object val = getValueFromQuery(columName, recordComponent.getType(), resultSet);
+                        Object val = orm.getValueFromQuery(columName, recordComponent.getType(), resultSet);
                         args[i] = val;
                     }
                     Constructor[] constructors = classForTable.getDeclaredConstructors();
@@ -918,7 +936,7 @@ public class GrugORM {
                             continue;
                         }
                         String fieldName = snakeCase(field.getName());
-                        Object val = getValueFromQuery(fieldName, field.getType(), resultSet);
+                        Object val = orm.getValueFromQuery(fieldName, field.getType(), resultSet);
 
                         if (object instanceof Interfaces.BeforeSet beforeSet) {
                             val = beforeSet.beforeSet(field, val);
