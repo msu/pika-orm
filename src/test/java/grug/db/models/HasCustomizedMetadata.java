@@ -9,6 +9,7 @@ public class HasCustomizedMetadata {
                 json TEXT
             );
             """;;
+    String ignoreMe;
     long myId;
     Map json;
 

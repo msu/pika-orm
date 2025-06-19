@@ -1,9 +1,9 @@
 ## GrugORM TODOs
 
-* Make metadata layer completely pluggable - Will
+* ~~Make metadata layer completely pluggable - Will~~
 * Figure out joins in general
-* Add life-cycle callbacks on model classes - Carson
-* Add active-record like validation/error storage mechanism (interface w/ defaults)
+* ~~Add life-cycle callbacks on model classes - Carson~~
+* ~~Add active-record like validation/error storage mechanism (interface w/ defaults)~~
 * ~~Transaction API - Carson~~
 * ~~Make migrations transactional~~
   * ~~Migrations tests~~
@@ -15,6 +15,4 @@
 * ~~ForeignKey-based Lists~~
 * QueryBuilder API
   * joins?
-* Replace ResultList w/something that doesn't implement List
-  * Add useful methods on it
 * Documentation!
