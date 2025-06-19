@@ -910,7 +910,7 @@ public class GrugORM {
     @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
     public static class DBMetaData {
 
-        public static final String DEFAULT_ID_COL_NAME = "id";
+        public static final String DEFAULT_ID_COL_NAME = "id";//we want to make this changable
 
         Class classForTable;
         GrugORM orm;
@@ -923,7 +923,7 @@ public class GrugORM {
         private Field idField;
         private Constructor constructor;
 
-        protected DBMetaData() {}
+    protected DBMetaData() {}
 
         protected DBMetaData(Class aClass, GrugORM orm) {
             setClass(aClass);
@@ -937,27 +937,23 @@ public class GrugORM {
         protected void setClass(Class aClass) {
             this.classForTable = aClass;
             if(aClass == ResultMap.class) {
-                // do nothing
+                // do nothing --Maybe this is where we add teh custom stuff
             } else {
                 String name = aClass.getSimpleName();
-                this.tableName = snakeCase(name);
+                this.tableName = determineTableName(name);
 
                 fields = new LinkedHashMap<>();
                 fieldNameToColumnNames = new HashMap<>();
                 columnNameToFieldNames = new HashMap<>();
 
-                idColumnName = DEFAULT_ID_COL_NAME;
+                idColumnName = determineIdColumnName();//this is the driver behind the mutability of the columns
                 for (Field field : getAllFields(aClass)) {
                     if (!shouldIgnore(field)) {
                         field.setAccessible(true);
                         fields.put(field.getName(), field);
                         String fieldName = field.getName();
-                        String columnName = snakeCase(fieldName);
-                        fieldNameToColumnNames.put(fieldName, columnName);
-                        columnNameToFieldNames.put(columnName, fieldName);
-                        if(columnName.equals(idColumnName)) {
-                            idField = field;
-                        }
+                        String columnName = determineColumnName(fieldName);
+                        objectDBMatch(field, fieldName, columnName);
                     }
                 }
             }
@@ -981,6 +977,53 @@ public class GrugORM {
             }
         }
 
+        public void objectDBMatch(Field field, String fieldName, String columnName) {
+            fieldNameToColumnNames.put(fieldName, columnName);//we want to be able to change just the field name so that in the java class it can map the different db column name
+            columnNameToFieldNames.put(columnName, fieldName);
+            if(columnName.equals(idColumnName)) {
+                idField = field;
+            }
+        }
+
+        public void remapField(String fieldName, String columnName) {//for override purposes spesifically and even more spesifically for field-to-column mapping stuffs
+            // Remove old column mapping if it exists
+            String oldColumnName = fieldNameToColumnNames.get(fieldName);
+            if (oldColumnName != null) {
+                columnNameToFieldNames.remove(oldColumnName);
+            }
+
+            // Add new mapping
+            fieldNameToColumnNames.put(fieldName, columnName);
+            columnNameToFieldNames.put(columnName, fieldName);
+
+            // Update ID field reference if this is the ID column
+            if (columnName.equals(idColumnName)) {
+                idField = fields.get(fieldName);
+            }
+
+        }
+
+        //real meat of the stuff, tried to do these two methods in one basically which was stumping me
+        public Object transformForDatabase( Field field, Object value){
+            return value;//defauled just to return the normal value stuff, made to be overwritten with custom logic like in our test meant for object -> database
+        }
+
+        public Object transformFromDatabase( Field field, Object value){
+            return value;//defauled just to return the normal value stuff, made to be overwritten with custom logic like in our test meant for the database -> object
+        }
+
+        public String determineColumnName(String fieldName) {//the default values of these are going to be snakecase, but can easily be overridden
+            return snakeCase(fieldName);
+        }
+
+        public String determineTableName(String name) {
+            return snakeCase(name);
+        }
+
+        public String determineIdColumnName() {
+            return DEFAULT_ID_COL_NAME;//so this method is what can be overridden if needed, to change the column ID internally for the metadata
+        }
+
         private static List<Field> getAllFields(Class aClass) {
             List<Field> fieldsToReturn = new ArrayList<>();
             while (aClass != null) {
@@ -999,6 +1042,8 @@ public class GrugORM {
         public String getIdColumnName() {
             return idColumnName;
         }
+        
+        
 
         public Map<String, Object> asDBMap(Object object) {
             Map<String, Object> values = new TreeMap<>();
@@ -1006,6 +1051,8 @@ public class GrugORM {
                 String fieldName = field.getName();
                 String columnName = fieldNameToColumnNames.get(fieldName);
                 Object value = safely(() -> field.get(object));
+
+                value = transformForDatabase(field, value); //does nothing if default layout
                 values.put(columnName, value);
             }
             return values;
@@ -1030,8 +1077,14 @@ public class GrugORM {
                     Object[] args = new Object[recordComponents.length];
                     for (int i = 0; i < recordComponents.length; i++) {
                         RecordComponent recordComponent = recordComponents[i];
-                        String columName = snakeCase(recordComponent.getName());
+                        String columName = fieldNameToColumnNames.getOrDefault(recordComponent.getName(), snakeCase(recordComponent.getName()));//I think this needs to be changed
                         Object val = orm.getValueFromQuery(columName, recordComponent.getType(), resultSet);
+
+                        Field field = fields.get(recordComponent.getName());
+                        if (field != null){
+                            val = transformFromDatabase(field, val);
+                        }
+
                         args[i] = val;
                     }
                     object = (T) constructor.newInstance(args);
@@ -1044,7 +1097,10 @@ public class GrugORM {
                             continue;
                         }
                         String fieldName = snakeCase(field.getName());
+                        String columnName = fieldNameToColumnNames.get(fieldName);//ehhh something with this we need this i dont know where quiet yet
                         Object val = orm.getValueFromQuery(fieldName, field.getType(), resultSet);
+
+                        val = transformFromDatabase(field, val);
 
                         if (object instanceof Interfaces.GrugRecordLifecycle beforeSet) {
                             val = beforeSet.beforeSet(field, val);
@@ -1074,10 +1130,12 @@ public class GrugORM {
             return safely(() -> idField.get(object));
         }
 
-        public Object getValueForDBCol(Object owner, String columnName) {
+        public Object getValueForDBCol(Object owner, String columnName) {//were we do the translation from object to db
             String fieldName = columnNameToFieldNames.get(columnName);
             Field field = fields.get(fieldName);
-            return safely(() -> field.get(owner));
+            Object value = safely(() -> field.get(owner));//can assume this is anything but a plain object!
+            return transformForDatabase(field, value);//returns totally normally if we default once again
+
         }
 
         public boolean isReadOnly() {
