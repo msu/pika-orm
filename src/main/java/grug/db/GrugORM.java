@@ -222,7 +222,7 @@ public class GrugORM {
     }
 
     private Connection createConnection() {
-        return safely(() -> connectionSource.call());
+        return safely(connectionSource);
     }
 
     private ConnectionInfo getOrCreateConnectionInfo() {
@@ -259,7 +259,7 @@ public class GrugORM {
             commitTransaction();
         } catch (Exception e) {
             rollBackTransaction();
-            rethrow(e);
+            throw rethrow(e);
         }
     }
 
@@ -317,8 +317,7 @@ public class GrugORM {
             }
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in find() with SQL {} & values {}: {}", sql, val, e.getMessage());
-            rethrow(e);
-            return null;
+            throw rethrow(e);
         }
     }
 
@@ -370,8 +369,7 @@ public class GrugORM {
             return result;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in select() with SQL {} & args {}: {}", sql, args, e.getMessage());
-            rethrow(e);
-            return null;
+            throw rethrow(e);
         }
     }
 
@@ -464,8 +462,7 @@ public class GrugORM {
             }
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in insert() with SQL {} & args {}: {}", insertString, values.values(), e.getMessage());
-            rethrow(e);
-            return 0;
+            throw rethrow(e);
         }
     }
 
@@ -525,8 +522,7 @@ public class GrugORM {
             return i == 1;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & args {}: {}", updateSQL, values.values(), e.getMessage());
-            rethrow(e);
-            return false;
+            throw rethrow(e);
         }
     }
 
@@ -564,8 +560,7 @@ public class GrugORM {
             return i == 1;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
-            rethrow(e);
-            return false;
+            throw rethrow(e);
         }
     }
 
@@ -583,8 +578,7 @@ public class GrugORM {
             return execute;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in exec() with SQL {}: {}", sql, e.getMessage());
-            rethrow(e);
-            return false;
+            throw rethrow(e);
         }
     }
 
@@ -595,8 +589,7 @@ public class GrugORM {
             try {
                 return query.call();
             } catch (Exception e) {
-                rethrow(e);
-                return null;
+                throw rethrow(e);
             }
         } finally {
             long end = System.currentTimeMillis();
@@ -671,7 +664,7 @@ public class GrugORM {
 
         interface GrugLogger {
             enum Level {
-                ERROR, WARN, INFO, DEBUG, TRACE;
+                ERROR, WARN, INFO, DEBUG, TRACE
             }
 
             void log(Level level, String msg, Object... args);
@@ -711,7 +704,7 @@ public class GrugORM {
 
     public static class GrugRecord implements GrugRecordLifecycle {
         private transient boolean persisted;
-        private transient Map<String, List<String>> errors = new LinkedHashMap<>();
+        private final transient Map<String, List<String>> errors = new LinkedHashMap<>();
 
         public boolean hasErrors() {
             return errors != null && !errors.isEmpty();
@@ -740,7 +733,7 @@ public class GrugORM {
         }
 
         private List<String> getErrorList(String key) {
-            return errors.computeIfAbsent(key, s -> new ArrayList<>());
+            return errors.computeIfAbsent(key, _ -> new ArrayList<>());
         }
 
         public final boolean validate() {
@@ -852,7 +845,7 @@ public class GrugORM {
                     matcher.appendTail(fixedString);
                     logMsg = MessageFormat.format(fixedString.toString(), args);
                 }
-                if (level.ordinal() <= Level.ERROR.ordinal()) {
+                if (level.ordinal() == Level.ERROR.ordinal()) {
                     System.err.println(logMsg);
                 } else {
                     System.out.println(logMsg);
@@ -912,16 +905,14 @@ public class GrugORM {
                 fieldVal = Enum.valueOf(targetType, strValue);
             } else if (targetType == Date.class) {
                 Timestamp timestamp = resultSet.getTimestamp(columnName);
-                if (timestamp == null) {
-                    fieldVal = null;
-                } else {
+                if (timestamp != null) {
                     fieldVal = new Date(timestamp.getTime());
                 }
             } else {
                 fieldVal = resultSet.getObject(columnName, targetType);
             }
         } catch (SQLException e) {
-            rethrow(e);
+            throw rethrow(e);
         }
         return fieldVal;
     }
@@ -1064,7 +1055,7 @@ public class GrugORM {
             return values;
         }
 
-        @SuppressWarnings({"unchecked", "deprecation"})
+        @SuppressWarnings({"unchecked"})
         public <T> T newObjectFromResult(ResultSet resultSet) throws Exception {
             if (classForTable == ResultMap.class) {
                 ResultMap resultMap = new ResultMap();
@@ -1144,6 +1135,7 @@ public class GrugORM {
 
         public FieldMapping(GrugORM orm, Field mappedField) {
             mappedField.setAccessible(true);
+            this.orm = orm;
             this.mappedField = mappedField;
             this.columnName = orm.defaultFieldToColumnMapping.apply(mappedField);
             this.dbStorageType = mappedField.getType();
@@ -1267,11 +1259,9 @@ public class GrugORM {
         /**
          * @return the initial pre-migrations schema for the database
          */
-        public String initialSchema() {
+        protected String initialSchema() {
             return "";
         }
-
-        ;
 
         public abstract void migrations();
 
@@ -1675,7 +1665,7 @@ public class GrugORM {
         try {
             callable.run();
         } catch (Exception e) {
-            rethrow(e);
+            throw rethrow(e);
         }
     }
 
@@ -1683,13 +1673,13 @@ public class GrugORM {
         try {
             return callable.call();
         } catch (Exception e) {
-            rethrow(e);
-            return null;
+            throw rethrow(e);
         }
     }
 
-    private static void rethrow(Exception e) {
+    private static RuntimeException rethrow(Exception e) {
         FORCE_THROWER.throwException(e);
+        return new RuntimeException(e); // never hit
     }
 
     public interface ForceThrower {
