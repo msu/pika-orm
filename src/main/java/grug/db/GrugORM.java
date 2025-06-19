@@ -41,11 +41,12 @@ public class GrugORM {
     private GrugLogger logger = new DefaultLogger();
     private boolean logQueries = false;
 
-    // Mapping information
+    // Mapping stuff
     private final ConcurrentHashMap<Class, Mapping> mappings = new ConcurrentHashMap<Class, Mapping>();
     private Function<Class, String> defaultClassToTableMapping = aClass -> snakeCase(aClass.getSimpleName());
     private Function<Field, String> defaultFieldToColumnMapping = field -> snakeCase(field.getName());
-    private String defaultIdFieldName = "id";
+    private Function<Class, String> defaultIdFieldName = aClass -> "id";
+    private Function<Class, String> defaultFkColumnName = aClass -> snakeCase(aClass.getSimpleName()) + "_id";
 
     //====================================================================
     // constructors & builders
@@ -86,8 +87,13 @@ public class GrugORM {
         return this;
     }
 
-    public GrugORM withDefaultIdField(String val) {
+    public GrugORM withDefaultIdField(Function<Class, String> val) {
         defaultIdFieldName = val;
+        return this;
+    }
+
+    public GrugORM withDefaultFkColumn(Function<Class, String> val) {
+        defaultFkColumnName = val;
         return this;
     }
 
@@ -125,10 +131,22 @@ public class GrugORM {
     // 1-N and N-1 functionality
     //====================================================================
 
+    public <T> ResultList<T> loadN(Object parent, Class<T> classOfN) {
+        Mapping mapping = getMapping(parent.getClass());
+        String fkName = mapping.getDefaultForeignKeyColumnName();
+        return loadN(parent, classOfN, fkName);
+    }
+
     public <T> ResultList<T> loadN(Object parent, Class<T> classOfN, String foreignKeyColumnOnN) {
         Mapping mapping = getMapping(parent.getClass());
         Object ownerPkValue = mapping.getId(parent);
         return findAllBy(classOfN, foreignKeyColumnOnN, ownerPkValue);
+    }
+
+    public <T> T load1(Object child, Class<T> classOfParent) {
+        Mapping mapping = getMapping(classOfParent);
+        String fkName = mapping.getDefaultForeignKeyColumnName();
+        return load1(child, classOfParent, fkName);
     }
 
     public <T> T load1(Object child, Class<T> classOfParent, String foreignKeyColumn) {
@@ -1002,7 +1020,8 @@ public class GrugORM {
                 }
             }
             if(idMapping == null) {
-                idMapping = fieldNameToMapping.get(orm.defaultIdFieldName);
+                String idFieldName = orm.defaultIdFieldName.apply(classForTable);
+                idMapping = fieldNameToMapping.get(idFieldName);
             }
             return idMapping;
         }
@@ -1121,6 +1140,10 @@ public class GrugORM {
         public Object getValueForColumn(Object child, String foreignKeyColumn) {
             FieldMapping mapping = columnToMapping.get(foreignKeyColumn);
             return mapping.getFieldValue(child);
+        }
+
+        public String getDefaultForeignKeyColumnName() {
+            return orm.defaultFkColumnName.apply(classForTable);
         }
     }
 
