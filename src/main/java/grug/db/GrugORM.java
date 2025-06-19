@@ -20,25 +20,32 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 @SuppressWarnings({"rawtypes", "UnusedReturnValue", "UnnecessaryLocalVariable"})
 public class GrugORM {
 
-    public static final String SQL_VARS_PATTERN = "(:[\\w][\\d\\w]*)";
     public static final int INSERT_FAILED = -1;
+
+    public static final String SQL_VARS_PATTERN = "(:[\\w][\\d\\w]*)";
+
     private static GrugORM DEFAULT_ORM = null;
+
     private static final ThreadLocal<ConnectionInfo> CURRENT_CONNECTION = new ThreadLocal<>();
+
     private static final ForceThrower FORCE_THROWER = generateForceThrower();
 
-    private Callable<Connection> connectionSource = null;
+    private final Callable<Connection> connectionSource;
 
-    // default to a stdout logger @ INFO
+    // Logger stuff
     private GrugLogger.Level internalLoggerLevel = GrugLogger.Level.INFO;
     private GrugLogger logger = new DefaultLogger();
-
-    private final ConcurrentHashMap<Class, Mapping> metadataCache = new ConcurrentHashMap<Class, Mapping>();
     private boolean logQueries = false;
+
+    // Mapping information
+    private final ConcurrentHashMap<Class, Mapping> mappings = new ConcurrentHashMap<Class, Mapping>();
+    private Function<Class, String> defaultClassToTableMapping = aClass -> snakeCase(aClass.getSimpleName());
+    private Function<Field, String> defaultFieldToColumnMapping = field -> snakeCase(field.getName());
+    private String defaultIdFieldName = "id";
 
     //====================================================================
     // constructors & builders
@@ -66,6 +73,21 @@ public class GrugORM {
 
     public GrugORM withMigrations(Migrations migrations) {
         migrations.setORM(this);
+        return this;
+    }
+
+    public GrugORM withDefaultTableMapping(Function<Class, String> val) {
+        defaultClassToTableMapping = val;
+        return this;
+    }
+
+    public GrugORM withDefaultColumnMapping(Function<Field, String> val) {
+        defaultFieldToColumnMapping = val;
+        return this;
+    }
+
+    public GrugORM withDefaultIdField(String val) {
+        defaultIdFieldName = val;
         return this;
     }
 
@@ -624,7 +646,7 @@ public class GrugORM {
         return finalSql.toString();
     }
 
-    public static String snakeCase(String string) {
+    private static String snakeCase(String string) {
         StringBuilder result = new StringBuilder();
         char[] charArray = string.toCharArray();
         for (int i = 0; i < charArray.length; i++) {
@@ -905,21 +927,24 @@ public class GrugORM {
     }
 
     private Mapping getMapping(Class<?> clazz) {
-        return metadataCache.computeIfAbsent(clazz, aClass -> {
+        return mappings.computeIfAbsent(clazz, aClass -> {
             Mapping mapping = new Mapping();
-            mapping.setClass(clazz);
+            mapping.setOrm(this);
+            mapping.setClass(aClass);
             return mapping;
         });
     }
 
     public void withMapping(Class classToMap, Mapping mapping) {
+        mapping.setOrm(this);
         mapping.setClass(classToMap);
-        metadataCache.put(classToMap, mapping);
+        mappings.put(classToMap, mapping);
     }
 
     @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
     public static class Mapping {
-        public static final String DEFAULT_ID_COL_NAME = "id";
+
+        GrugORM orm;
         private Class classForTable;
         private RecordComponent[] recordComponents;
         private String tableName;
@@ -930,6 +955,9 @@ public class GrugORM {
 
         protected Mapping() {}
 
+        public void setOrm(GrugORM orm) {
+            this.orm = orm;
+        }
 
         protected void setClass(Class aClass) {
             this.classForTable = aClass;
@@ -983,7 +1011,7 @@ public class GrugORM {
                 }
             }
             if(idMapping == null) {
-                idMapping = fieldNameToMapping.get(DEFAULT_ID_COL_NAME);
+                idMapping = fieldNameToMapping.get(orm.defaultIdFieldName);
             }
             return idMapping;
         }
@@ -993,14 +1021,14 @@ public class GrugORM {
         }
 
         protected final FieldMapping map(Field field) {
-            return defaultMapping(field);
+            return new FieldMapping(orm, field);
         }
 
         protected final FieldMapping defaultMapping(Field field) {
             if (shouldIgnore(field)) {
-                return null;
+                return ignore(field);
             } else {
-                return new FieldMapping(field);
+                return map(field);
             }
         }
 
@@ -1009,7 +1037,7 @@ public class GrugORM {
         }
 
         public String mapToTable() {
-            return snakeCase(classForTable.getSimpleName());
+            return orm.defaultClassToTableMapping.apply(classForTable);
         }
 
         private static List<Field> getAllFields(Class aClass) {
@@ -1106,6 +1134,7 @@ public class GrugORM {
     }
 
     public static class FieldMapping {
+        GrugORM orm;
         Field mappedField;
         String columnName;
         boolean idColumn;
@@ -1113,10 +1142,10 @@ public class GrugORM {
         private Function<Object, Object> fromDatabaseValue;
         private Class dbStorageType;
 
-        public FieldMapping(Field mappedField) {
+        public FieldMapping(GrugORM orm, Field mappedField) {
             mappedField.setAccessible(true);
             this.mappedField = mappedField;
-            this.columnName = snakeCase(mappedField.getName());
+            this.columnName = orm.defaultFieldToColumnMapping.apply(mappedField);
             this.dbStorageType = mappedField.getType();
         }
         public String getFieldName() {
