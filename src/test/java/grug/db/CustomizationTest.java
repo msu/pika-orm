@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 public class CustomizationTest extends TestBase{
 
     GrugORM orm = null;
@@ -43,10 +45,12 @@ public class CustomizationTest extends TestBase{
                 });
 
         HasCustomizedMetadata custom = new HasCustomizedMetadata();
-        custom.setMap(Map.of("foo", 1, "bar", 2));
+        custom.setMap(Map.of("foo", 1.0, "bar", 2.0));
 
         orm.insert(custom);
-        orm.find(HasCustomizedMetadata.class, custom.getId());
+        var fromDb = orm.find(HasCustomizedMetadata.class, custom.getId());
+        assertEquals(fromDb.getId(), 1L);
+        assertEquals(fromDb.getMap(), custom.getMap());
     }
 
 }
