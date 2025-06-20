@@ -43,16 +43,18 @@ public class GrugORM {
 
     // Mapping stuff
     private final ConcurrentHashMap<Class, Mapping> mappings = new ConcurrentHashMap<Class, Mapping>();
+
+    // Default mapping logic
     private Function<Class, String> defaultClassToTableMapping = aClass -> snakeCase(aClass.getSimpleName());
     private Function<Field, String> defaultFieldToColumnMapping = field -> snakeCase(field.getName());
     private Function<Class, String> defaultIdFieldName = aClass -> "id";
     private Function<Class, String> defaultFkColumnName = aClass -> snakeCase(aClass.getSimpleName()) + "_id";
     private Function<Class, String> defaultVersionFieldName = aClass -> "version";
-    private Function<Class, Function<Object, Object>> defaultVersionIncrementer = aClass -> (previous) -> {
-        if(previous == null) {
+    private Function<Class, Function<Object, Object>> defaultVersionIncrementer = aClass -> (previousValue) -> {
+        if(previousValue == null) {
             return 1;
         } else {
-            return ((Long) previous) + 1;
+            return ((Long) previousValue) + 1;
         }
     };
 
@@ -102,6 +104,21 @@ public class GrugORM {
 
     public GrugORM withDefaultFkColumn(Function<Class, String> val) {
         defaultFkColumnName = val;
+        return this;
+    }
+
+    public GrugORM withDefaultVersionColumnName(Function<Class, String> val) {
+        defaultVersionFieldName = val;
+        return this;
+    }
+
+    public GrugORM withDefaultVersionIncrementer(Function<Class, Function<Object, Object>> val) {
+        defaultVersionIncrementer = val;
+        return this;
+    }
+
+    public GrugORM withNoDefaultVersionColumn() {
+        defaultVersionFieldName = _ -> null;
         return this;
     }
 
