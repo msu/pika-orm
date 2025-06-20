@@ -15,5 +15,5 @@
 * ~~ForeignKey-based Lists~~
 * QueryBuilder API
   * joins?
-* Optimistic Concurrency Support
+* ~~Optimistic Concurrency Support~~
 * Documentation!
