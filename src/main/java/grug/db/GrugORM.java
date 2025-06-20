@@ -47,6 +47,14 @@ public class GrugORM {
     private Function<Field, String> defaultFieldToColumnMapping = field -> snakeCase(field.getName());
     private Function<Class, String> defaultIdFieldName = aClass -> "id";
     private Function<Class, String> defaultFkColumnName = aClass -> snakeCase(aClass.getSimpleName()) + "_id";
+    private Function<Class, String> defaultVersionFieldName = aClass -> "version";
+    private Function<Class, Function<Object, Object>> defaultVersionIncrementer = aClass -> (previous) -> {
+        if(previous == null) {
+            return 1;
+        } else {
+            return ((Long) previous) + 1;
+        }
+    };
 
     //====================================================================
     // constructors & builders
@@ -398,21 +406,28 @@ public class GrugORM {
             }
         }
         Class<?> clazz = object.getClass();
-        Mapping metaData = getMapping(clazz);
-        String keyCol = metaData.getIdColumn();
-        Map<String, Object> values = metaData.toDatabaseMap(object);
+        Mapping mapping = getMapping(clazz);
+        String keyCol = mapping.getIdColumn();
+        Map<String, Object> values = mapping.toDatabaseMap(object);
         values.remove(keyCol);
         if (object instanceof GrugRecordLifecycle lifecycle) {
             if (!lifecycle.beforeInsert()) {
                 return INSERT_FAILED;
             }
         }
-        long id = insert(metaData.getTableName(), values);
+        Object newVersionValue = null;
+        if (mapping.hasVersionColumn()) {
+            newVersionValue = mapping.incrementVersion(values);
+        }
+        long id = insert(mapping.getTableName(), values);
+        if (mapping.hasVersionColumn() && id != INSERT_FAILED) {
+            mapping.updateVersionValue(object, newVersionValue);
+        }
         if (object instanceof GrugRecordLifecycle lifecycle) {
             lifecycle.afterInsert();
         }
-        if (!metaData.isReadOnly()) {
-            metaData.setId(object, id);
+        if (!mapping.isReadOnly()) {
+            mapping.setId(object, id);
         }
         return id;
     }
@@ -501,14 +516,25 @@ public class GrugORM {
                 return false;
             }
         }
-        boolean update = update(tableName, keyCol, keyVal, valuesToUpdate);
+        String versionColumn = null;
+        Object currentVersionValue = null;
+        Object nextVersionValue = null;
+        if (mapping.hasVersionColumn()) {
+            versionColumn = mapping.getVersionColumn();
+            currentVersionValue = mapping.getCurrentVersion(valuesToUpdate);
+            nextVersionValue = mapping.incrementVersion(valuesToUpdate);
+        }
+        boolean update = update(tableName, keyCol, keyVal, versionColumn, currentVersionValue, valuesToUpdate);
+        if(mapping.hasVersionColumn() && update) {
+            mapping.updateVersionValue(object, nextVersionValue);
+        }
         if (object instanceof GrugRecordLifecycle lifecycle) {
             lifecycle.afterUpdate();
         }
         return update;
     }
 
-    private boolean update(String tableName, String keyCol, Object keyVal, Map<String, Object> values) {
+    private boolean update(String tableName, String keyCol, Object keyVal, String versionCol, Object verionVal, Map<String, Object> values) {
         if (!(values instanceof TreeMap<String, Object>)) {
             values = new TreeMap<>(values);
         }
@@ -526,6 +552,10 @@ public class GrugORM {
         }
         sb.append(" WHERE ");
         sb.append(keyCol).append("=?");
+        if (versionCol != null) {
+            sb.append(" AND ").append(versionCol).append("=?");
+        }
+
         String updateSQL = sb.toString();
         logger.log(getQueryLogLevel(), "UPDATE SQL: {}\n  Args:{}", updateSQL, values.values());
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
@@ -536,6 +566,10 @@ public class GrugORM {
                 setValueForQuery(preparedStatement, col++, o);
             }
             setValueForQuery(preparedStatement, col, keyVal);
+            if (versionCol != null) {
+                col++;
+                setValueForQuery(preparedStatement, col, verionVal);
+            }
             int i = time(preparedStatement::executeUpdate);
             return i == 1;
         } catch (Exception e) {
@@ -580,6 +614,13 @@ public class GrugORM {
             logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
             throw rethrow(e);
         }
+    }
+
+    public void reload(Object object) {
+        Class<?> clazz = object.getClass();
+        Mapping mapping = getMapping(clazz);
+        Object fromDb = find(clazz, mapping.getIdColumn(), mapping.getId(object));
+        mapping.copyValues(object, fromDb);
     }
 
     public boolean exec(String sql) {
@@ -804,6 +845,10 @@ public class GrugORM {
         protected <T> T load1(Class<T> of, String fkCol) {
             return get().load1(this, of, fkCol);
         }
+
+        public void reload() {
+            get().reload(this);
+        }
     }
 
     public class GrugQuery<T> {
@@ -961,6 +1006,7 @@ public class GrugORM {
         private Map<String, FieldMapping> columnToMapping;
         private FieldMapping idMapping;
         private Constructor constructor;
+        private FieldMapping versionMapping;
 
         protected Mapping() {}
 
@@ -1005,6 +1051,26 @@ public class GrugORM {
             }
 
             idMapping = resolveIdMapping();
+            versionMapping = resolveVersionMapping();
+        }
+
+        private FieldMapping resolveVersionMapping() {
+            FieldMapping versionMapping = null;
+            for (FieldMapping mapping : fieldNameToMapping.values()) {
+                if (mapping.isVersionProperty()) {
+                    if(versionMapping == null) {
+                        versionMapping = mapping;
+                    } else {
+                        throw new IllegalStateException("Cannot have more than one field as the version column: " + versionMapping.getFieldName() +
+                                " and " + mapping.getFieldName() + " are both ids!");
+                    }
+                }
+            }
+            if(versionMapping == null) {
+                String versionFieldName = orm.defaultVersionFieldName.apply(classForTable);
+                versionMapping = fieldNameToMapping.get(versionFieldName);
+            }
+            return versionMapping;
         }
 
         private FieldMapping resolveIdMapping() {
@@ -1145,6 +1211,32 @@ public class GrugORM {
         public String getDefaultForeignKeyColumnName() {
             return orm.defaultFkColumnName.apply(classForTable);
         }
+
+        public Object incrementVersion(Map<String, Object> valuesToUpdate) {
+            return versionMapping.incrementVersion(valuesToUpdate);
+        }
+
+        public boolean hasVersionColumn() {
+            return versionMapping != null;
+        }
+
+        public Object getCurrentVersion(Map<String, Object> values) {
+            return versionMapping.getValueFromDBMap(values);
+        }
+
+        public String getVersionColumn() {
+            return versionMapping.getColumnName();
+        }
+
+        public void updateVersionValue(Object object, Object nextVersionValue) {
+            versionMapping.updateVersionValue(object, nextVersionValue);
+        }
+
+        public void copyValues(Object to, Object from) {
+            for (FieldMapping mapping : fieldNameToMapping.values()) {
+                mapping.setFieldValue(to, mapping.getFieldValue(from));
+            }
+        }
     }
 
     public static class FieldMapping {
@@ -1152,15 +1244,18 @@ public class GrugORM {
         Field mappedField;
         String columnName;
         boolean idColumn;
-        private Function<Object, Object> toDatabaseValue;
-        private Function<Object, Object> fromDatabaseValue;
-        private Class dbStorageType;
+        boolean versionColumn;
+        Function<Object, Object> toDatabaseValue;
+        Function<Object, Object> fromDatabaseValue;
+        Class dbStorageType;
+        Function<Object, Object> versionInrementer;
 
         public FieldMapping(GrugORM orm, Field mappedField) {
             mappedField.setAccessible(true);
             this.orm = orm;
             this.mappedField = mappedField;
             this.columnName = orm.defaultFieldToColumnMapping.apply(mappedField);
+            this.versionInrementer = orm.defaultVersionIncrementer.apply(mappedField.getDeclaringClass());
             this.dbStorageType = mappedField.getType();
         }
         public String getFieldName() {
@@ -1209,6 +1304,16 @@ public class GrugORM {
             return this;
         }
 
+        public FieldMapping asVersionColumn() {
+            this.versionColumn = true;
+            return this;
+        }
+
+        public FieldMapping withVersionIcrementer(Function<Object, Object> versionIncrementer) {
+            this.versionInrementer = versionIncrementer;
+            return this;
+        }
+
         public FieldMapping toColumn(String columnName) {
             this.columnName = columnName;
             return this;
@@ -1231,6 +1336,25 @@ public class GrugORM {
 
         public boolean isId() {
             return idColumn;
+        }
+
+        public boolean isVersionProperty() {
+            return versionColumn;
+        }
+
+        public Object incrementVersion(Map<String, Object> values) {
+            Object value = getValueFromDBMap(values);
+            Object updatedValue = versionInrementer.apply(value);
+            values.put(columnName, updatedValue);
+            return updatedValue;
+        }
+
+        public Object getValueFromDBMap(Map<String, Object> values) {
+            return values.get(columnName);
+        }
+
+        public void updateVersionValue(Object object, Object nextVersionValue) {
+            safely(() -> mappedField.set(object, nextVersionValue));
         }
     }
 
