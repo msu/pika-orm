@@ -1,10 +1,9 @@
 package grug.db;
 
-import grug.db.GrugORM.Migrations.Migration;
+import grug.db.GrugORM.Migrations.GrugMigration;
 import grug.db.GrugORM.Migrations.MigrationStatus;
 import grug.db.migrations.*;
 import grug.db.migrations.MigrationFileForConsoleTesting;
-import grug.db.models.TransactionDemo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -47,7 +46,7 @@ public class MigrationsTest extends TestBase {
         orm.withMigrations(migrations);
         migrations.applyAll();
 
-        var migrationsInDb = orm.findAll(Migration.class);
+        var migrationsInDb = orm.findAll(GrugMigration.class);
 
         assertEquals(1, migrationsInDb.size());
         assertEquals(MigrationStatus.APPLIED, migrationsInDb.getFirst().getStatus());

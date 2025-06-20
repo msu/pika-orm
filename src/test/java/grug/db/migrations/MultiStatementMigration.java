@@ -9,7 +9,7 @@ public class MultiStatementMigration extends GrugORM.Migrations {
         add(this::addMigrationDemoTable);
     }
 
-    public Migration addMigrationDemoTable() {
+    public GrugMigration addMigrationDemoTable() {
         return makeMigration("migration1")
                 .up("""
                         CREATE TABLE IF NOT EXISTS migration_demo_model (

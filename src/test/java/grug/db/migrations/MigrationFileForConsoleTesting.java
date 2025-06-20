@@ -12,7 +12,7 @@ public class MigrationFileForConsoleTesting extends GrugORM.Migrations {
         add(this::addBarTable);
     }
 
-    public Migration addBarTable() {
+    public GrugMigration addBarTable() {
         return makeMigration("add bar table")
                 .up("""
                         CREATE TABLE IF NOT EXISTS bar (
@@ -25,7 +25,7 @@ public class MigrationFileForConsoleTesting extends GrugORM.Migrations {
                         """);
     }
 
-    public Migration addFooTable() {
+    public GrugMigration addFooTable() {
         return makeMigration("add foo table")
                 .up("""
                         CREATE TABLE IF NOT EXISTS foo (
@@ -38,7 +38,7 @@ public class MigrationFileForConsoleTesting extends GrugORM.Migrations {
                         """);
     }
 
-    public Migration addMigrationDemoTable() {
+    public GrugMigration addMigrationDemoTable() {
         return makeMigration("migration1")
                 .up("""
                         CREATE TABLE IF NOT EXISTS migration_demo_model (

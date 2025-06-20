@@ -1391,7 +1391,7 @@ public class GrugORM {
                   exit/quit - exit this tool
                   help/?    - show this help message
                 """;
-        private LinkedHashMap<String, Migration> migrations;
+        private LinkedHashMap<String, GrugMigration> migrations;
         private GrugORM orm;
 
         public void setORM(GrugORM orm) {
@@ -1408,11 +1408,11 @@ public class GrugORM {
             throw new IllegalStateException("ORM has not been set and there is no default ORM, don't know what database to migrate!");
         }
 
-        protected void add(Supplier<Migration> migrationCallable) {
+        protected void add(Supplier<GrugMigration> migrationCallable) {
             add(migrationCallable.get());
         }
 
-        protected void add(Migration migration) {
+        protected void add(GrugMigration migration) {
             String migrationName = migration.getName();
             if (migrations.containsKey(migrationName)) {
                 throw new IllegalArgumentException("Migration " + migrationName + " already exists!");
@@ -1429,14 +1429,14 @@ public class GrugORM {
 
         public abstract void migrations();
 
-        public static Migration makeMigration(String name) {
-            Migration migration = new Migration(name);
+        public static GrugMigration makeMigration(String name) {
+            GrugMigration migration = new GrugMigration(name);
             return migration;
         }
 
         public void console() {
             GrugORM orm = getORM();
-            orm.exec(Migration.DDL);
+            orm.exec(GrugMigration.DDL);
             Console console = System.console();
             label:
             while (true) {
@@ -1467,14 +1467,14 @@ public class GrugORM {
 
         private String show() {
             GrugORM orm = getORM();
-            orm.exec(Migration.DDL);
+            orm.exec(GrugMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
 
             StringBuilder sb = new StringBuilder("All Migrations:\n");
             String formatString = "%-30.30s | %-15.15s | %-30.30s | %-30.30s | %-30.30s | %-30.30s\n";
             sb.append(String.format(formatString, "name", "status", "applied", "description", "up", "down"));
             sb.append("-------------------------------------------------------------------------------------------------------------------------------------------------------\n");
-            for (Migration value : mergedMigrations.values()) {
+            for (GrugMigration value : mergedMigrations.values()) {
                 sb.append(String.format(formatString,
                         value.getName(), value.getStatus(), value.appliedAtForDisplay(), value.description, value.upForDisplay(), value.downForDisplay()));
             }
@@ -1483,11 +1483,11 @@ public class GrugORM {
 
         public void up() {
             GrugORM orm = getORM();
-            orm.exec(Migration.DDL);
+            orm.exec(GrugMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
 
             var values = new ResultList<>(mergedMigrations.values());
-            var firstUnappliedMigration = values.firstWhere(Migration::isPending);
+            var firstUnappliedMigration = values.firstWhere(GrugMigration::isPending);
             if (firstUnappliedMigration != null) {
                 firstUnappliedMigration.runUp(orm);
             } else {
@@ -1497,11 +1497,11 @@ public class GrugORM {
 
         public void down() {
             GrugORM orm = getORM();
-            orm.exec(Migration.DDL);
+            orm.exec(GrugMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
 
             var values = new ResultList<>(mergedMigrations.values());
-            var lastAppliedMigration = values.lastWhere(Migration::isApplied);
+            var lastAppliedMigration = values.lastWhere(GrugMigration::isApplied);
             if (lastAppliedMigration != null) {
                 lastAppliedMigration.runDown(orm);
             } else {
@@ -1514,24 +1514,24 @@ public class GrugORM {
          */
         public void applyAll() {
             GrugORM orm = getORM();
-            orm.exec(Migration.DDL);
+            orm.exec(GrugMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
-            for (Migration migration : mergedMigrations.values()) {
+            for (GrugMigration migration : mergedMigrations.values()) {
                 if (!migration.isApplied()) {
                     migration.runUp(orm);
                 }
             }
         }
 
-        private LinkedHashMap<String, Migration> loadMigrations(GrugORM orm) {
+        private LinkedHashMap<String, GrugMigration> loadMigrations(GrugORM orm) {
 
             migrations = new LinkedHashMap<>();
             migrations();
             // compute migrations with persisted migrations merged in
-            ResultList<Migration> persistedMigrations = orm.findAll(Migration.class);
+            ResultList<GrugMigration> persistedMigrations = orm.findAll(GrugMigration.class);
             var mergedMigrations = new LinkedHashMap<>(migrations);
-            for (Migration persistedMigration : persistedMigrations.copy()) {
-                Migration existingMigration = mergedMigrations.get(persistedMigration.getName());
+            for (GrugMigration persistedMigration : persistedMigrations.copy()) {
+                GrugMigration existingMigration = mergedMigrations.get(persistedMigration.getName());
                 if (existingMigration != null) {
                     if (!existingMigration.equals(persistedMigration)) {
                         orm.getLogger().log(GrugLogger.Level.WARN, MessageFormat.format("""
@@ -1565,10 +1565,10 @@ public class GrugORM {
             return mergedMigrations;
         }
 
-        public static final class Migration {
+        public static final class GrugMigration {
 
             public static final String DDL = """
-                    CREATE TABLE IF NOT EXISTS migration (
+                    CREATE TABLE IF NOT EXISTS grug_migration (
                         id INTEGER PRIMARY KEY,
                         applied_at INTEGER,
                         name VARCHAR,
@@ -1587,24 +1587,24 @@ public class GrugORM {
             private String down;
             private MigrationStatus status = MigrationStatus.PENDING;
 
-            private Migration() {
+            private GrugMigration() {
             }
 
-            public Migration(String name) {
+            public GrugMigration(String name) {
                 this.name = name;
             }
 
-            public Migration description(String description) {
+            public GrugMigration description(String description) {
                 this.description = description;
                 return this;
             }
 
-            public Migration up(String up) {
+            public GrugMigration up(String up) {
                 this.up = up;
                 return this;
             }
 
-            public Migration down(String down) {
+            public GrugMigration down(String down) {
                 this.down = down;
                 return this;
             }
@@ -1659,7 +1659,7 @@ public class GrugORM {
             public boolean equals(Object o) {
                 if (this == o) return true;
                 if (o == null || getClass() != o.getClass()) return false;
-                Migration migration = (Migration) o;
+                GrugMigration migration = (GrugMigration) o;
                 return Objects.equals(name, migration.name) && Objects.equals(up, migration.up) && Objects.equals(down, migration.down);
             }
 
@@ -1674,22 +1674,11 @@ public class GrugORM {
 
             @Override
             public String toString() {
-                return "Migration{" +
-                        "id=" + id +
-                        ", appliedAt=" + appliedAt +
-                        ", name='" + name + '\'' +
-                        ", description='" + description + '\'' +
-                        ", up='" + up + '\'' +
-                        ", down='" + down + '\'' +
-                        ", status=" + status +
-                        '}';
+                return "Migration{id=%d, appliedAt=%d, name='%s', description='%s', up='%s', down='%s', status=%s}".formatted(id, appliedAt, name, description, up, down, status);
             }
 
             public Object getDebugString() {
-                return "{" +
-                        "down='" + down + '\'' +
-                        ", up='" + up + '\'' +
-                        '}';
+                return "{down='%s', up='%s'}".formatted(down, up);
             }
 
             public Object upForDisplay() {
