@@ -132,6 +132,10 @@ public class GrugORM {
         return this;
     }
 
+    private GrugLogger getLogger() {
+        return logger;
+    }
+
     //====================================================================
     // default orm management
     //====================================================================
@@ -1711,10 +1715,6 @@ public class GrugORM {
             APPLIED,
             SKIPPED
         }
-    }
-
-    private GrugLogger getLogger() {
-        return logger;
     }
 
     //========================================================================================
