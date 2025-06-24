@@ -33,7 +33,8 @@ public class ChinookTest {
         GrugORM grugORM = makeORM();
         var query = grugORM.query(Album.class)
                 .join(Artist.class, Album.class)
-                .where("artist.name = 'AC/DC'");
+                .where("artists.name = 'AC/DC'")
+                .pageSize(2);
         ResultList<Album> acDcAlbums = query.run();
         assertEquals(2, acDcAlbums.size());
     }

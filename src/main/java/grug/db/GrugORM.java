@@ -901,10 +901,10 @@ public class GrugORM {
         private final Class<?> resultClass;
         private final StringBuilder whereClause = new StringBuilder();
         private final Map<String, Object> valMap = new TreeMap<>();
-        private List<String> joins;
-        private List<String> orderBys;
-        private int pageSize;
-        private int page;
+        private List<String> joins = new ArrayList<>();
+        private List<String> orderBys = new ArrayList<>();
+        private int pageSize = -1;
+        private int page = -1;//negative inital values
 
         public GrugQuery(Class<?> clazz) {
             this.resultClass = clazz;
@@ -926,6 +926,17 @@ public class GrugORM {
             String sql = "SELECT * FROM " + resultMapping.getTableName() + "\n" +
                     String.join("\n", joins) +
                     " WHERE " + whereClause;
+            if (!orderBys.isEmpty()){
+                sql += " ORDER BY " + String.join(", ", orderBys);
+            }
+            if (pageSize != -1) {//i don't think there would ever be a situation where you would call page and not pagesize, so this needs to be defined in documentations
+                sql += " LIMIT " + pageSize;
+                if (page != -1){
+                    sql += " OFFSET " + (page * pageSize);
+                }
+            }
+
+
             return select(sql, valMap, resultClass);
         }
 
@@ -944,23 +955,25 @@ public class GrugORM {
             return this;
         }
 
-        public GrugQuery<T> join(Class owner, Class owned) {
+        //TODO - add some sort of parameterization for joins
+        public GrugQuery<T> join(Class owner, Class owned) {//maybe do some sort of parameter for outer or more spesific joins
             Mapping ownerMapping = getMapping(owner);
             Mapping ownedMapping = getMapping(owned);
-            String ownerTable = ownerMapping.getTableName();
-            String ownedTable = ownedMapping.getTableName();
-            String ownerIdColumn = ownerMapping.getIdColumn();
+            String ownerTable = ownerMapping.getTableName();//artist
+            String ownedTable = ownedMapping.getTableName();//album
+            String ownerIdColumn = ownerMapping.getIdColumn();//artistId
             String fkColumn = ownerMapping.getDefaultForeignKeyColumnName();
-            // TODO - generate the right join statement
-            return join("JOIN");
+            String joinBuilder = "JOIN " + ownerTable + " ON " + ownerTable + "." + ownerIdColumn + " = " + ownedTable + "." + fkColumn;
+            // join artists on artists.ArtistId = albums.ArtistId is the desired test string
+            return join(joinBuilder);
         }
 
-        public GrugQuery<T> join(String joinSql) {
+        public GrugQuery<T> join(String joinSql) {//this sql will accumulate the join strings and ship them as strait sql where raw sql will go
             this.joins.add(joinSql);
             return this;
         }
 
-        public GrugQuery<T> orderBy(String... columns) {
+        public GrugQuery<T> orderBy(String... columns) {//People can manually add ASC|DESC to the list of strings to be parsed
             Collections.addAll(this.orderBys, columns);
             return this;
         }
