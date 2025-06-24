@@ -217,7 +217,7 @@ public class GrugORM {
             return get().findAll(classToFind);
         }
         public ResultList<T> where(String whereClause, Map<String, Object> args) {
-            return get().selectWhere(classToFind, whereClause, args);
+            return get().findWhere(classToFind, whereClause, args);
         }
         public ResultList<T> bySQL(String sql, Map<String, Object> args) {
             return get().select(sql, args, classToFind);
@@ -386,9 +386,9 @@ public class GrugORM {
         return find(clazz, mapping.getIdColumn(), pk);
     }
 
-    public <T> T find(Class<T> clazz, String key, Object val) {
+    public <T> T find(Class<T> clazz, String column, Object val) {
         Mapping mapping = getMapping(clazz);
-        String sql = "SELECT * FROM " + mapping.getTableName() + " WHERE " + key + "=?";
+        String sql = "SELECT * FROM " + mapping.getTableName() + " WHERE " + column + "=?";
         logger.log(getQueryLogLevel(), "Find SQL: {}\n  Arg:{}", sql, val);
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
@@ -412,14 +412,14 @@ public class GrugORM {
     }
 
     public <T> ResultList<T> findAll(Class<T> clazz) {
-        return selectWhere(clazz, "true=true", Map.of());
+        return findWhere(clazz, "true=true", Map.of());
     }
 
     public <T> ResultList<T> findAllBy(Class<T> clazz, String column, Object val) {
-        return selectWhere(clazz, column + "=:val ", Map.of("val", val));
+        return findWhere(clazz, column + "=:val ", Map.of("val", val));
     }
 
-    public <T> ResultList<T> selectWhere(Class<T> clazz, String whereClause, Map<String, Object> args) {
+    public <T> ResultList<T> findWhere(Class<T> clazz, String whereClause, Map<String, Object> args) {
         Mapping metaData = getMapping(clazz);
         String tableName = metaData.getTableName();
         String selectClause = "SELECT * FROM " + tableName + " WHERE ";

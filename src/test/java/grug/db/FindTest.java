@@ -47,17 +47,17 @@ public class FindTest extends TestBase{
         }
 
         List<SampleModel> results =
-                orm.selectWhere(SampleModel.class,
+                orm.findWhere(SampleModel.class,
                         "int_val=:val",
                         Map.of("val", 10));
 
         assertEquals(10, results.size());
 
-        results = orm.selectWhere(SampleModel.class, "date_val > :val", Map.of("val", new Date(2050, 1, 1)));
+        results = orm.findWhere(SampleModel.class, "date_val > :val", Map.of("val", new Date(2050, 1, 1)));
 
         assertEquals(0, results.size());
 
-        results = orm.selectWhere(SampleModel.class, "str_val like :val", Map.of("val", "%b%"));
+        results = orm.findWhere(SampleModel.class, "str_val like :val", Map.of("val", "%b%"));
         assertEquals(10, results.size());
 
         results = orm.findAll(SampleModel.class);
@@ -72,7 +72,7 @@ public class FindTest extends TestBase{
 
         SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
         orm.insertAll(sampleModels);
-        var results = orm.selectWhere(SampleModel.class,//we are looking to create the query something like this, select * in sample model where str_val in (?) and (?) (for foo and bar)
+        var results = orm.findWhere(SampleModel.class,//we are looking to create the query something like this, select * in sample model where str_val in (?) and (?) (for foo and bar)
                 "str_val in :strs",
                 Map.of("strs", List.of("foo", "bar")));//we can safely assume that when there is a map with collection inside of it we need to iterate over the list and create arguements and insertions for all parameters
                 //TODO - should this test account for multiple of these collections? say there are 2 maps with different collections, we would possibly want to create question marks for all?
