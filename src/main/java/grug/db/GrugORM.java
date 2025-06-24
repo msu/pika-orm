@@ -896,14 +896,12 @@ public class GrugORM {
         }
     }
 
-    record Join(String table1, String table2, String col1, String col2) {
-    }
 
     public class GrugQuery<T> {
         private final Class<?> resultClass;
         private final StringBuilder whereClause = new StringBuilder();
         private final Map<String, Object> valMap = new TreeMap<>();
-        private List<Join> joins;
+        private List<String> joins;
         private List<String> orderBys;
         private int pageSize;
         private int page;
@@ -925,7 +923,9 @@ public class GrugORM {
             //noinspection unchecked
             Mapping resultMapping = getMapping(resultClass);
             // TODO - update SQL based on additional fields above (joins, etc.)
-            String sql = "SELECT * FROM " + resultMapping.getTableName() + " WHERE " + whereClause;
+            String sql = "SELECT * FROM " + resultMapping.getTableName() + "\n" +
+                    String.join("\n", joins) +
+                    " WHERE " + whereClause;
             return select(sql, valMap, resultClass);
         }
 
@@ -947,12 +947,16 @@ public class GrugORM {
         public GrugQuery<T> join(Class owner, Class owned) {
             Mapping ownerMapping = getMapping(owner);
             Mapping ownedMapping = getMapping(owned);
-            return join(ownerMapping.getTableName(), ownedMapping.getTableName(),
-                    ownerMapping.getIdColumn(), ownerMapping.getDefaultForeignKeyColumnName());
+            String ownerTable = ownerMapping.getTableName();
+            String ownedTable = ownedMapping.getTableName();
+            String ownerIdColumn = ownerMapping.getIdColumn();
+            String fkColumn = ownerMapping.getDefaultForeignKeyColumnName();
+            // TODO - generate the right join statement
+            return join("JOIN");
         }
 
-        public GrugQuery<T> join(String table1, String table2, String col1, String col2) {
-            this.joins.add(new Join(table1, table2, col1, col2));
+        public GrugQuery<T> join(String joinSql) {
+            this.joins.add(joinSql);
             return this;
         }
 
