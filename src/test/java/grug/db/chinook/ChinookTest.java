@@ -1,9 +1,7 @@
 package grug.db.chinook;
 
 import grug.db.GrugORM;
-import grug.db.chinook.model.Album;
-import grug.db.chinook.model.Artist;
-import grug.db.chinook.model.Track;
+import grug.db.chinook.pojos.*;
 import org.junit.jupiter.api.Test;
 
 import static grug.db.GrugORM.*;

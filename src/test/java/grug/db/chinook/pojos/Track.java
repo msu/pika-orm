@@ -1,4 +1,4 @@
-package grug.db.chinook.model;
+package grug.db.chinook.pojos;
 
 public class Track {
 

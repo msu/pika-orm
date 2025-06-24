@@ -1,0 +1,57 @@
+package grug.db.chinook;
+
+import grug.db.GrugORM;
+import grug.db.chinook.beans.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static grug.db.GrugORM.Interfaces.GrugLogger.Level.DEBUG;
+import static grug.db.GrugORM.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class ChinookBeanTest {
+
+    @BeforeEach
+    void setupOrm() {
+        makeORM();
+    }
+
+    @Test
+    void bootstrapTest() {
+        var artists = ArtistBean.find().all();
+        assertEquals(275, artists.size());
+    }
+
+    @Test
+    void testJoin() {
+        var acDc = ArtistBean.find().byId(1);
+        assertEquals("AC/DC", acDc.getName());
+        var acDcAlbums = acDc.getAlbums();
+        assertEquals(2, acDcAlbums.size());
+    }
+
+    @Test
+    void testQueryJoin() {
+        var query = AlbumBean.find().byQuery()
+                .join(ArtistBean.class, AlbumBean.class)
+                .where("artists.name = 'AC/DC'")
+                .pageSize(2);
+        ResultList<AlbumBean> acDcAlbums = query.run();
+        assertEquals(2, acDcAlbums.size());
+    }
+
+    public GrugORM makeORM() {
+        return new GrugORM("jdbc:sqlite:db/chinook.db")
+                .withLogLevel(DEBUG)
+                .withDefaultFkColumn(aClass -> removeBeanSuffix(aClass.getSimpleName()) + "Id")
+                .withDefaultIdField(aClass -> decapitalize(removeBeanSuffix(aClass.getSimpleName())) + "Id")
+                .withDefaultColumnMapping(field -> capitalize(field.getName()))
+                .withDefaultTableMapping(aClass -> snakeCase(removeBeanSuffix(aClass.getSimpleName())) + "s")
+                .makeDefaultORM();
+    }
+
+    public static String removeBeanSuffix(String name) {
+        return name.replace("Bean", "");
+    }
+
+}

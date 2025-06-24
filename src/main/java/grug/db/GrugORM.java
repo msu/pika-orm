@@ -198,6 +198,35 @@ public class GrugORM {
         return find(classOfParent, parentPkValue);
     }
 
+    public <T> GrugFinder<T> finder(Class<T> classToFind) {
+        return new GrugFinder<>(classToFind);
+    }
+
+    public class GrugFinder<T>  {
+        Class<T> classToFind;
+        public GrugFinder(Class<T> classToFind) {
+            this.classToFind = classToFind;
+        }
+        public T byId(Object id) {
+            return get().find(classToFind, id);
+        }
+        public T byKey(String col, Object value) {
+            return get().find(classToFind, col, value);
+        }
+        public ResultList<T> all() {
+            return get().findAll(classToFind);
+        }
+        public ResultList<T> where(String whereClause, Map<String, Object> args) {
+            return get().selectWhere(classToFind, whereClause, args);
+        }
+        public ResultList<T> bySQL(String sql, Map<String, Object> args) {
+            return get().select(sql, args, classToFind);
+        }
+        public GrugQuery<T> byQuery() {
+            return get().query(classToFind);
+        }
+    }
+
     //====================================================================
     // Connection management
     //====================================================================
@@ -822,7 +851,7 @@ public class GrugORM {
         private transient boolean persisted;
         private final transient Map<String, List<String>> errors = new LinkedHashMap<>();
 
-        private GrugORM orm() {
+        protected static GrugORM orm() {
             return GrugORM.get();
         }
 
@@ -899,12 +928,12 @@ public class GrugORM {
             return orm().delete(this);
         }
 
-        protected <T> ResultList<T> loadN(Class<T> of, String fkCol) {
-            return orm().loadN(this, of, fkCol);
+        protected <T> ResultList<T> loadN(Class<T> of) {
+            return orm().loadN(this, of);
         }
 
-        protected <T> T load1(Class<T> of, String fkCol) {
-            return orm().load1(this, of, fkCol);
+        protected <T> T load1(Class<T> of) {
+            return orm().load1(this, of);
         }
 
         public void reload() {
