@@ -1,9 +1,8 @@
 package grug.db.models;
 
-import grug.db.GrugORM;
-import grug.db.GrugORM.GrugRecord;
+import grug.db.GrugORM.GrugBean;
 
-public class OptimisticModel extends GrugRecord {
+public class OptimisticModel extends GrugBean {
 
     public static final String DDL = """
             CREATE TABLE IF NOT EXISTS optimistic_model (

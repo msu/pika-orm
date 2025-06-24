@@ -847,7 +847,7 @@ public class GrugORM {
         }
     }
 
-    public static class GrugRecord implements GrugRecordLifecycle {
+    public static class GrugBean implements GrugRecordLifecycle {
         private transient boolean persisted;
         private final transient Map<String, List<String>> errors = new LinkedHashMap<>();
 
