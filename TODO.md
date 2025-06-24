@@ -1,7 +1,7 @@
 ## GrugORM TODOs
 
 * ~~Make metadata layer completely pluggable - Will~~
-* Figure out joins in general
+* ~~Figure out joins in general~~
 * ~~Add life-cycle callbacks on model classes - Carson~~
 * ~~Add active-record like validation/error storage mechanism (interface w/ defaults)~~
 * ~~Transaction API - Carson~~
@@ -14,7 +14,7 @@
 * Bulk update
 * ~~ForeignKey-based Lists~~
 * Pluggable Limit/Offset
-* QueryBuilder API
-  * joins?
+* ~~QueryBuilder API~~
+  * ~~joins?~~
 * ~~Optimistic Concurrency Support~~
 * Documentation!

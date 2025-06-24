@@ -57,7 +57,10 @@ public class GrugORM {
             return ((Long) previousValue) + 1;
         }
     };
+
+    // paging configuration
     private int defaultPageSize = 20;
+    private String offsetClause = "OFFSET {0} LIMIT {1}";
 
     //====================================================================
     // constructors & builders
@@ -125,6 +128,11 @@ public class GrugORM {
 
     public GrugORM withDefaultPageSize(int pageSize) {
         this.defaultPageSize = pageSize;
+        return this;
+    }
+
+    public GrugORM withOffsetClause(String offsetClause) {
+        this.offsetClause = offsetClause;
         return this;
     }
 
@@ -761,7 +769,12 @@ public class GrugORM {
     }
 
     public <T> GrugQuery<T> query(Class<T> clazz) {
-        return new GrugQuery<>(clazz);
+        Mapping mapping = getMapping(clazz);
+        return query(mapping.getTableName()).select(clazz);
+    }
+
+    public GrugQuery<?> query(String baseTable) {
+        return new GrugQuery<>(baseTable);
     }
 
     public interface Interfaces {
@@ -770,7 +783,6 @@ public class GrugORM {
             enum Level {
                 ERROR, WARN, INFO, DEBUG, TRACE
             }
-
             void log(Level level, String msg, Object... args);
         }
 
@@ -809,6 +821,10 @@ public class GrugORM {
     public static class GrugRecord implements GrugRecordLifecycle {
         private transient boolean persisted;
         private final transient Map<String, List<String>> errors = new LinkedHashMap<>();
+
+        private GrugORM orm() {
+            return GrugORM.get();
+        }
 
         public boolean hasErrors() {
             return errors != null && !errors.isEmpty();
@@ -859,7 +875,7 @@ public class GrugORM {
             if (persisted) {
                 throw new IllegalStateException("This record is already persisted!");
             }
-            long id = get().insert(this);
+            long id = orm().insert(this);
             this.persisted = true;
             return id;
         }
@@ -868,7 +884,7 @@ public class GrugORM {
             if (!persisted) {
                 throw new IllegalStateException("This record has not been persisted!");
             }
-            return get().update(this);
+            return orm().update(this);
         }
 
         public boolean save() {
@@ -880,35 +896,34 @@ public class GrugORM {
         }
 
         public boolean delete() {
-            return get().delete(this);
+            return orm().delete(this);
         }
 
         protected <T> ResultList<T> loadN(Class<T> of, String fkCol) {
-            return get().loadN(this, of, fkCol);
+            return orm().loadN(this, of, fkCol);
         }
 
         protected <T> T load1(Class<T> of, String fkCol) {
-            return get().load1(this, of, fkCol);
+            return orm().load1(this, of, fkCol);
         }
 
         public void reload() {
-            get().reload(this);
+            orm().reload(this);
         }
     }
 
-
     public class GrugQuery<T> {
-        private final Class<?> resultClass;
+        private final String baseTable;
+        private Class<?> resultClass;
         private final StringBuilder whereClause = new StringBuilder();
         private final Map<String, Object> valMap = new TreeMap<>();
-        private List<String> joins = new ArrayList<>();
-        private List<String> orderBys = new ArrayList<>();
-        private int pageSize = -1;
-        private int page = -1;//negative inital values
+        private final List<String> joins = new ArrayList<>();
+        private final List<String> orderBys = new ArrayList<>();
+        private int pageSize = defaultPageSize;
+        private int page = -1;
 
-        public GrugQuery(Class<?> clazz) {
-            this.resultClass = clazz;
-            this.pageSize = defaultPageSize;
+        public GrugQuery(String tableName) {
+            this.baseTable = tableName;
         }
 
         public GrugQuery<T> where(String condition) {
@@ -919,25 +934,27 @@ public class GrugORM {
             return this;
         }
 
-        public ResultList<T> run() {
+        public <Q> GrugQuery<Q> select(Class<Q> clazz) {
+            this.resultClass = clazz;
             //noinspection unchecked
-            Mapping resultMapping = getMapping(resultClass);
+            return (GrugQuery<Q>) this;
+        }
+
+        public ResultList<T> run() {
             // TODO - update SQL based on additional fields above (joins, etc.)
-            String sql = "SELECT * FROM " + resultMapping.getTableName() + "\n" +
+            String sql = "SELECT * FROM " + baseTable + "\n" +
                     String.join("\n", joins) +
                     " WHERE " + whereClause;
             if (!orderBys.isEmpty()){
                 sql += " ORDER BY " + String.join(", ", orderBys);
             }
-            if (pageSize != -1) {//i don't think there would ever be a situation where you would call page and not pagesize, so this needs to be defined in documentations
-                sql += " LIMIT " + pageSize;
-                if (page != -1){
-                    sql += " OFFSET " + (page * pageSize);
-                }
+            if (page != -1) {
+                int offset = (page - 1) * pageSize;
+                int limit = pageSize;
+                sql += MessageFormat.format(offsetClause, offset, limit);
             }
 
-
-            return select(sql, valMap, resultClass);
+            return GrugORM.this.select(sql, valMap, resultClass);
         }
 
         public GrugQuery<T> with(Map<String, Object> vals) {
