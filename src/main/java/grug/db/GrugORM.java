@@ -950,6 +950,7 @@ public class GrugORM {
         private final List<String> orderBys = new ArrayList<>();
         private int pageSize = -1;
         private int page = -1;
+        // TODO add limit()/offset() too?
 
         public GrugQuery(String tableName) {
             this.baseTable = tableName;
@@ -969,7 +970,7 @@ public class GrugORM {
             return (GrugQuery<Q>) this;
         }
 
-        public ResultList<T> run() {
+        public ResultList<T> execute() {
             // TODO - update SQL based on additional fields above (joins, etc.)
             String sql = generateSQL();
             return GrugORM.this.select(sql, valMap, resultClass);

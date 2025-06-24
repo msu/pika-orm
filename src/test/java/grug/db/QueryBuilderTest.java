@@ -35,7 +35,7 @@ public class QueryBuilderTest extends TestBase {
                 .where("date_val < :val")
                 .with("val", new Date(2050, 1, 1));
 
-        List<SampleModel> results = query.run();
+        List<SampleModel> results = query.execute();
 
         assertEquals(10, results.size());
 
@@ -53,7 +53,7 @@ public class QueryBuilderTest extends TestBase {
                 .where("date_val < :val")
                 .with("val", new Date(2050, 1, 1));
 
-        List<SampleGrugRecord> results = query.run();
+        List<SampleGrugRecord> results = query.execute();
 
         assertEquals(10, results.size());
     }
@@ -72,7 +72,7 @@ public class QueryBuilderTest extends TestBase {
                 .where("date_val > :val2")
                 .with("val2", new Date(20, 1, 1));
 
-        List<SampleModel> results = query.run();//this problem is 100% isolated within the run query as everything is building correctly
+        List<SampleModel> results = query.execute();//this problem is 100% isolated within the run query as everything is building correctly
 
         assertEquals(10, results.size());
 

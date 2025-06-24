@@ -38,7 +38,7 @@ public class ChinookBeanTest {
                 .join(ArtistBean.class, AlbumBean.class)
                 .where("artists.name IN :artists")
                 .with("artists", List.of("AC/DC", "Santana"));
-        ResultList<AlbumBean> acDcAlbums = query.run();
+        ResultList<AlbumBean> acDcAlbums = query.execute();
         assertEquals(5, acDcAlbums.size());
     }
 
@@ -46,7 +46,7 @@ public class ChinookBeanTest {
     void testPaging() {
         var query = AlbumBean.find().byQuery()
                 .pageSize(20);
-        ResultList<AlbumBean> firstTwentyAlbums = query.run();
+        ResultList<AlbumBean> firstTwentyAlbums = query.execute();
         assertEquals(20, firstTwentyAlbums.size());
     }
 
