@@ -57,6 +57,7 @@ public class GrugORM {
             return ((Long) previousValue) + 1;
         }
     };
+    private int defaultPageSize = 20;
 
     //====================================================================
     // constructors & builders
@@ -119,6 +120,11 @@ public class GrugORM {
 
     public GrugORM withNoDefaultVersionColumn() {
         defaultVersionFieldName = _ -> null;
+        return this;
+    }
+
+    public GrugORM withDefaultPageSize(int pageSize) {
+        this.defaultPageSize = pageSize;
         return this;
     }
 
@@ -719,7 +725,25 @@ public class GrugORM {
         return finalSql.toString();
     }
 
-    private static String snakeCase(String string) {
+    public static String decapitalize(String name) {
+        if (name == null || name.isEmpty()) {
+            return name;
+        }
+        char[] chars = name.toCharArray();
+        chars[0] = Character.toLowerCase(chars[0]);
+        return new String(chars);
+    }
+
+    public static String capitalize(String name) {
+        if (name == null || name.isEmpty()) {
+            return name;
+        }
+        char[] chars = name.toCharArray();
+        chars[0] = Character.toUpperCase(chars[0]);
+        return new String(chars);
+    }
+
+    public static String snakeCase(String string) {
         StringBuilder result = new StringBuilder();
         char[] charArray = string.toCharArray();
         for (int i = 0; i < charArray.length; i++) {
@@ -872,13 +896,21 @@ public class GrugORM {
         }
     }
 
+    record Join(String table1, String table2, String col1, String col2) {
+    }
+
     public class GrugQuery<T> {
-        private final Class<?> clazz;
+        private final Class<?> resultClass;
         private final StringBuilder whereClause = new StringBuilder();
         private final Map<String, Object> valMap = new TreeMap<>();
+        private List<Join> joins;
+        private List<String> orderBys;
+        private int pageSize;
+        private int page;
 
         public GrugQuery(Class<?> clazz) {
-            this.clazz = clazz;
+            this.resultClass = clazz;
+            this.pageSize = defaultPageSize;
         }
 
         public GrugQuery<T> where(String condition) {
@@ -889,9 +921,12 @@ public class GrugORM {
             return this;
         }
 
-        List<T> run() {
+        public ResultList<T> run() {
             //noinspection unchecked
-            return (List<T>) selectWhere(clazz, whereClause.toString(), valMap);
+            Mapping resultMapping = getMapping(resultClass);
+            // TODO - update SQL based on additional fields above (joins, etc.)
+            String sql = "SELECT * FROM " + resultMapping.getTableName() + " WHERE " + whereClause;
+            return select(sql, valMap, resultClass);
         }
 
         public GrugQuery<T> with(Map<String, Object> vals) {
@@ -906,6 +941,33 @@ public class GrugORM {
                 throw new IllegalStateException("Value " + name + " already exists in query!");
             }
             valMap.put(name, value);
+            return this;
+        }
+
+        public GrugQuery<T> join(Class owner, Class owned) {
+            Mapping ownerMapping = getMapping(owner);
+            Mapping ownedMapping = getMapping(owned);
+            return join(ownerMapping.getTableName(), ownedMapping.getTableName(),
+                    ownerMapping.getIdColumn(), ownerMapping.getDefaultForeignKeyColumnName());
+        }
+
+        public GrugQuery<T> join(String table1, String table2, String col1, String col2) {
+            this.joins.add(new Join(table1, table2, col1, col2));
+            return this;
+        }
+
+        public GrugQuery<T> orderBy(String... columns) {
+            Collections.addAll(this.orderBys, columns);
+            return this;
+        }
+
+        public GrugQuery<T> pageSize(int pageSize) {
+            this.pageSize = pageSize;
+            return this;
+        }
+
+        public GrugQuery<T> page(int page) {
+            this.page = page;
             return this;
         }
     }
