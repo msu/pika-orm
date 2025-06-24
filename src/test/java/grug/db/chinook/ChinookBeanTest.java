@@ -5,6 +5,8 @@ import grug.db.chinook.beans.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static grug.db.GrugORM.Interfaces.GrugLogger.Level.DEBUG;
 import static grug.db.GrugORM.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,10 +36,10 @@ public class ChinookBeanTest {
     void testQueryJoin() {
         var query = AlbumBean.find().byQuery()
                 .join(ArtistBean.class, AlbumBean.class)
-                .where("artists.name = 'AC/DC'")
-                .pageSize(2);
+                .where("artists.name IN :artists")
+                .with("artists", List.of("AC/DC", "Santana"));
         ResultList<AlbumBean> acDcAlbums = query.run();
-        assertEquals(2, acDcAlbums.size());
+        assertEquals(5, acDcAlbums.size());
     }
 
     public GrugORM makeORM() {

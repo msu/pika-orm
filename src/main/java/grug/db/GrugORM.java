@@ -948,7 +948,7 @@ public class GrugORM {
         private final Map<String, Object> valMap = new TreeMap<>();
         private final List<String> joins = new ArrayList<>();
         private final List<String> orderBys = new ArrayList<>();
-        private int pageSize = defaultPageSize;
+        private int pageSize = -1;
         private int page = -1;
 
         public GrugQuery(String tableName) {
@@ -971,19 +971,32 @@ public class GrugORM {
 
         public ResultList<T> run() {
             // TODO - update SQL based on additional fields above (joins, etc.)
+            String sql = generateSQL();
+            return GrugORM.this.select(sql, valMap, resultClass);
+        }
+
+        private String generateSQL() {
             String sql = "SELECT * FROM " + baseTable + "\n" +
                     String.join("\n", joins) +
-                    " WHERE " + whereClause;
+                    "\nWHERE " + whereClause;
             if (!orderBys.isEmpty()){
                 sql += " ORDER BY " + String.join(", ", orderBys);
             }
             if (page != -1) {
-                int offset = (page - 1) * pageSize;
+                int limit;
+                if (pageSize == -1) {
+                    limit = defaultPageSize;
+                } else {
+                    limit = pageSize;
+                }
+                int offset = (page - 1) * limit;
+                sql += MessageFormat.format(offsetClause, offset, limit);
+            } else if (pageSize != -1) {
+                int offset = 0;
                 int limit = pageSize;
                 sql += MessageFormat.format(offsetClause, offset, limit);
             }
-
-            return GrugORM.this.select(sql, valMap, resultClass);
+            return sql;
         }
 
         public GrugQuery<T> with(Map<String, Object> vals) {
@@ -1032,6 +1045,10 @@ public class GrugORM {
         public GrugQuery<T> page(int page) {
             this.page = page;
             return this;
+        }
+
+        public String toString() {
+            return generateSQL() + "\nVals:" + this.valMap;
         }
     }
 
