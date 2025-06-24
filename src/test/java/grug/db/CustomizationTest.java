@@ -13,7 +13,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class CustomizationTest extends TestBase{
+public class CustomizationTest extends TestBase {
 
     GrugORM orm = null;
 

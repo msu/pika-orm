@@ -755,7 +755,7 @@ public class GrugORM {
                 }
                 matcher.appendReplacement(finalSql, replacementSb.toString());
             } else {
-                throw new IllegalArgumentException("No value found for variable " + match + " in " + args);
+                throw new IllegalStateException("No value found for variable :" + match + " in " + args);
             }
         }
         matcher.appendTail(finalSql);
@@ -971,7 +971,6 @@ public class GrugORM {
         }
 
         public ResultList<T> execute() {
-            // TODO - update SQL based on additional fields above (joins, etc.)
             String sql = generateSQL();
             return GrugORM.this.select(sql, valMap, resultClass);
         }
