@@ -42,6 +42,14 @@ public class ChinookBeanTest {
         assertEquals(5, acDcAlbums.size());
     }
 
+    @Test
+    void testPaging() {
+        var query = AlbumBean.find().byQuery()
+                .pageSize(20);
+        ResultList<AlbumBean> firstTwentyAlbums = query.run();
+        assertEquals(20, firstTwentyAlbums.size());
+    }
+
     public GrugORM makeORM() {
         return new GrugORM("jdbc:sqlite:db/chinook.db")
                 .withLogLevel(DEBUG)

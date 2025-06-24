@@ -60,7 +60,7 @@ public class GrugORM {
 
     // paging configuration
     private int defaultPageSize = 20;
-    private String offsetClause = "OFFSET {0} LIMIT {1}";
+    private String offsetClause = "LIMIT {0} OFFSET {1}";
 
     //====================================================================
     // constructors & builders
@@ -976,11 +976,15 @@ public class GrugORM {
         }
 
         private String generateSQL() {
-            String sql = "SELECT * FROM " + baseTable + "\n" +
-                    String.join("\n", joins) +
-                    "\nWHERE " + whereClause;
+            String sql = "SELECT * FROM " + baseTable;
+            if(!joins.isEmpty()) {
+                sql += "\n" + String.join("\n", joins);
+            }
+            if(!whereClause.isEmpty()) {
+                sql += "\nWHERE " + whereClause;
+            }
             if (!orderBys.isEmpty()){
-                sql += " ORDER BY " + String.join(", ", orderBys);
+                sql += "\nORDER BY " + String.join(", ", orderBys);
             }
             if (page != -1) {
                 int limit;
@@ -990,11 +994,11 @@ public class GrugORM {
                     limit = pageSize;
                 }
                 int offset = (page - 1) * limit;
-                sql += MessageFormat.format(offsetClause, offset, limit);
+                sql += "\n" + MessageFormat.format(offsetClause, limit, offset);
             } else if (pageSize != -1) {
                 int offset = 0;
                 int limit = pageSize;
-                sql += MessageFormat.format(offsetClause, offset, limit);
+                sql += "\n" + MessageFormat.format(offsetClause, limit, offset);
             }
             return sql;
         }
