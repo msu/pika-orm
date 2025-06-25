@@ -948,6 +948,7 @@ public class GrugORM {
         private final Map<String, Object> valMap = new TreeMap<>();
         private final List<String> joins = new ArrayList<>();
         private final List<String> orderBys = new ArrayList<>();
+        private boolean orderByDesc = false;
         private int pageSize = -1;
         private int page = -1;
         // TODO add limit()/offset() too?
@@ -985,6 +986,9 @@ public class GrugORM {
             }
             if (!orderBys.isEmpty()){
                 sql += "\nORDER BY " + String.join(", ", orderBys);
+                if(orderByDesc){
+                    sql += " DESC";
+                }
             }
             if (page != -1) {
                 int limit;
@@ -1036,11 +1040,19 @@ public class GrugORM {
             return this;
         }
 
-        public GrugQuery<T> orderBy(String... columns) {//People can manually add ASC|DESC to the list of strings to be parsed
+        public GrugQuery<T> orderBy(String[] columns, Boolean desc) {//this orderby is for if you would like to control if the orderby is desc (Default ascending)
             Collections.addAll(this.orderBys, columns);
+            if(desc){
+                this.orderByDesc = true;
+            }
             return this;
         }
 
+
+        public GrugQuery<T> orderBy(String... columns) {//this orderby is just if you dont care about ASC|DESC and just want to put a bunch of columns
+            Collections.addAll(this.orderBys, columns);
+            return this;
+        }
         public GrugQuery<T> pageSize(int pageSize) {
             this.pageSize = pageSize;
             return this;

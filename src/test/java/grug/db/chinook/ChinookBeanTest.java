@@ -50,6 +50,41 @@ public class ChinookBeanTest {
         assertEquals(20, firstTwentyAlbums.size());
     }
 
+
+    @Test
+    void testMultiPaging() {
+        var query = AlbumBean.find().byQuery()
+                .pageSize(20)
+                .page(2);
+        ResultList<AlbumBean> multiPageQuery = query.execute();
+        assertEquals("Prenda Minha",multiPageQuery.first().getTitle());
+    }
+
+
+    @Test
+    void testOrderBy() {
+        var query = AlbumBean.find().byQuery()
+                .join(ArtistBean.class, AlbumBean.class)
+                .where("artists.name IN :artists")
+                .with("artists", List.of("AC/DC", "Santana"))
+                .orderBy("AlbumId");//default ASC
+        ResultList<AlbumBean> acDcAlbums = query.execute();
+        assertEquals("For Those About To Rock We Salute You", acDcAlbums.first().getTitle());
+    }
+
+    @Test
+    void testOrderByDesc() {
+        String[] order = {"AlbumId"};//can put as many entries it works the same way, just with the Boolean value for Desc :)
+        var query = AlbumBean.find().byQuery()
+                .join(ArtistBean.class, AlbumBean.class)
+                .where("artists.name IN :artists")
+                .with("artists", List.of("AC/DC", "Santana"))
+                .orderBy(order, true);//default ASC we use a string array here if we want to change to desc order may be a better way! It is weird if you just have the one entry, but this is a general solution if someone wahts descending order and multiple entries!
+        ResultList<AlbumBean> acDcAlbums = query.execute();
+        assertEquals("Santana Live", acDcAlbums.first().getTitle());
+    }
+
+
     public GrugORM makeORM() {
         return new GrugORM("jdbc:sqlite:db/chinook.db")
                 .withLogLevel(DEBUG)
