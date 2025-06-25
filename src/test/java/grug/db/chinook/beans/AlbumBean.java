@@ -1,9 +1,9 @@
 package grug.db.chinook.beans;
 
 import grug.db.GrugORM;
-import grug.db.GrugORM.GrugBean;
+import grug.db.GrugORM.EnterpriseGrugBean;
 
-public class AlbumBean extends GrugBean {
+public class AlbumBean extends EnterpriseGrugBean {
     Long artistId;
     Long albumId;
     String title;

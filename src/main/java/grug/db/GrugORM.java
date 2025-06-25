@@ -60,7 +60,7 @@ public class GrugORM {
 
     // paging configuration
     private int defaultPageSize = 20;
-    private String offsetClause = "LIMIT {0} OFFSET {1}";
+    private String limitOffsetClause = "LIMIT {0} OFFSET {1}";
 
     //====================================================================
     // constructors & builders
@@ -132,7 +132,7 @@ public class GrugORM {
     }
 
     public GrugORM withOffsetClause(String offsetClause) {
-        this.offsetClause = offsetClause;
+        this.limitOffsetClause = offsetClause;
         return this;
     }
 
@@ -847,7 +847,7 @@ public class GrugORM {
         }
     }
 
-    public static class GrugBean implements GrugRecordLifecycle {
+    public static class EnterpriseGrugBean implements GrugRecordLifecycle {
         private transient boolean persisted;
         private final transient Map<String, List<String>> errors = new LinkedHashMap<>();
 
@@ -994,11 +994,11 @@ public class GrugORM {
                     limit = pageSize;
                 }
                 int offset = (page - 1) * limit;
-                sql += "\n" + MessageFormat.format(offsetClause, limit, offset);
+                sql += "\n" + MessageFormat.format(limitOffsetClause, limit, offset);
             } else if (pageSize != -1) {
                 int offset = 0;
                 int limit = pageSize;
-                sql += "\n" + MessageFormat.format(offsetClause, limit, offset);
+                sql += "\n" + MessageFormat.format(limitOffsetClause, limit, offset);
             }
             return sql;
         }
@@ -1864,7 +1864,7 @@ public class GrugORM {
     }
 
     //========================================================================================
-    // GrugORM Result List
+    // GrugORM Results Objects
     //========================================================================================
 
     public static class ResultMap extends LinkedHashMap<String, Object> {

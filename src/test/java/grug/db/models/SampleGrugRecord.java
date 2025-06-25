@@ -1,11 +1,11 @@
 package grug.db.models;
 
 import grug.db.GrugORM;
-import grug.db.GrugORM.GrugBean;
+import grug.db.GrugORM.EnterpriseGrugBean;
 
 import java.util.Date;
 
-public class SampleGrugRecord extends GrugBean {
+public class SampleGrugRecord extends EnterpriseGrugBean {
 
     public static final String DDL = """
             CREATE TABLE IF NOT EXISTS sample_grug_record (

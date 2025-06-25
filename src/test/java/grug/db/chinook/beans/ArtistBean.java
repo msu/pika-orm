@@ -2,7 +2,7 @@ package grug.db.chinook.beans;
 
 import grug.db.GrugORM.*;
 
-public class ArtistBean extends GrugBean {
+public class ArtistBean extends EnterpriseGrugBean {
 
     Long artistId;
     String name;
