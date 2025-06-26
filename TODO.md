@@ -13,7 +13,7 @@
 * Bulk delete
 * Bulk update
 * ~~ForeignKey-based Lists~~
-* Pluggable Limit/Offset
+* ~~Pluggable Limit/Offset~~
 * ~~QueryBuilder API~~
   * ~~joins?~~
 * ~~Optimistic Concurrency Support~~

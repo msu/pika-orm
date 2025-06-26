@@ -64,11 +64,11 @@ CREATE TABLE my_model(
 * `<table_name>_id` -> foreign key column/field name
 * `version` -> optimistic concurrency column/field name
 
+### Logging
+
 ## CRUD with POJOS
 
 ## CRUD with GrugBeans
-
-### Logging
 
 ## Transactions In GrugORM
 
