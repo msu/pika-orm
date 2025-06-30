@@ -36,6 +36,15 @@ public class ChinookTest {
         assertEquals(2, acDcAlbums.size());
     }
 
+    @Test
+    void testQuerySelfJoin() {
+        GrugORM grugORM = makeORM();
+        var query = grugORM.query(Employee.class)
+                .join("employees AS boss ON employees.ReportsTo = boss.EmployeeID")
+                .where("boss.Email = :email").with("email", "andrew@chinookcorp.com");
+        ResultList<Employee> andrewsEmployees = query.execute();
+        assertEquals(2, andrewsEmployees.size());
+    }
 
     public GrugORM makeORM() {
         return new GrugORM("jdbc:sqlite:db/chinook.db")

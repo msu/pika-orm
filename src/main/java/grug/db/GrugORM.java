@@ -20,6 +20,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @SuppressWarnings({"rawtypes", "UnusedReturnValue", "UnnecessaryLocalVariable"})
 public class GrugORM {
@@ -458,7 +459,10 @@ public class GrugORM {
             }
             return result;
         } catch (Exception e) {
-            logger.log(GrugLogger.Level.ERROR, "Exception in select() with SQL {} & args {}: {}", sql, args, e.getMessage());
+            logger.log(GrugLogger.Level.ERROR, """
+                    Exception in select() with SQL
+                    {}\s
+                    with args {}: {}""", indent(2, sql), args, e.getMessage());
             throw rethrow(e);
         }
     }
@@ -771,6 +775,11 @@ public class GrugORM {
         return new String(chars);
     }
 
+    public static String indent(int spaces, String str) {
+        return Arrays.stream(str.split("\n"))
+                .map(s -> " ".repeat(spaces) + s )
+                .collect(Collectors.joining("\n"));
+    }
     public static String capitalize(String name) {
         if (name == null || name.isEmpty()) {
             return name;
@@ -942,19 +951,23 @@ public class GrugORM {
     }
 
     public class GrugQuery<T> {
+
         private final String baseTable;
         private Class<?> resultClass;
+        private Set<String> tableNames = new HashSet<>();
         private final StringBuilder whereClause = new StringBuilder();
         private final Map<String, Object> valMap = new TreeMap<>();
         private final List<String> joins = new ArrayList<>();
         private final List<String> orderBys = new ArrayList<>();
         private boolean orderByDesc = false;
+
         private int pageSize = -1;
         private int page = -1;
-        // TODO add limit()/offset() too?
+
 
         public GrugQuery(String tableName) {
             this.baseTable = tableName;
+            tableNames.add(tableName);
         }
 
         public GrugQuery<T> where(String condition) {
@@ -1035,7 +1048,10 @@ public class GrugORM {
             return join(joinBuilder);
         }
 
-        public GrugQuery<T> join(String joinSql) {//this sql will accumulate the join strings and ship them as strait sql where raw sql will go
+        public GrugQuery<T> join(String joinSql) {
+            if(!joinSql.contains("JOIN")) {
+                joinSql = "JOIN " + joinSql;
+            }
             this.joins.add(joinSql);
             return this;
         }
