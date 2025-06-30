@@ -941,12 +941,26 @@ public class GrugORM {
             return orm().loadN(this, of);
         }
 
+        protected <T> ResultList<T> loadN(Class<T> of, String fkColumn) {
+            return orm().loadN(this, of, fkColumn);
+        }
+
         protected <T> T load1(Class<T> of) {
             return orm().load1(this, of);
         }
 
         public void reload() {
             orm().reload(this);
+        }
+    }
+
+    public enum SortOrder {
+        ASC, DESC;
+    }
+    private record OrderBy(String col, SortOrder direction) {
+        @Override
+        public String toString() {
+            return col + " " + (direction == null ? "" : direction.name());
         }
     }
 
@@ -958,8 +972,7 @@ public class GrugORM {
         private final StringBuilder whereClause = new StringBuilder();
         private final Map<String, Object> valMap = new TreeMap<>();
         private final List<String> joins = new ArrayList<>();
-        private final List<String> orderBys = new ArrayList<>();
-        private boolean orderByDesc = false;
+        private final List<OrderBy> orderBys = new ArrayList<>();
 
         private int pageSize = -1;
         private int page = -1;
@@ -998,10 +1011,7 @@ public class GrugORM {
                 sql += "\nWHERE " + whereClause;
             }
             if (!orderBys.isEmpty()){
-                sql += "\nORDER BY " + String.join(", ", orderBys);
-                if(orderByDesc){
-                    sql += " DESC";
-                }
+                sql += "\nORDER BY "+ String.join(", ", orderBys.stream().map(OrderBy::toString).toList());
             }
             if (page != -1) {
                 int limit;
@@ -1056,17 +1066,19 @@ public class GrugORM {
             return this;
         }
 
-        public GrugQuery<T> orderBy(String[] columns, Boolean desc) {//this orderby is for if you would like to control if the orderby is desc (Default ascending)
-            Collections.addAll(this.orderBys, columns);
-            if(desc){
-                this.orderByDesc = true;
-            }
+        public GrugQuery<T> orderBy(String column, SortOrder direction) {
+            this.orderBys.add(new OrderBy(column, direction));
             return this;
         }
 
+        public GrugQuery<T> thenBy(String column, SortOrder direction) {
+            return orderBy(column, direction);
+        }
 
         public GrugQuery<T> orderBy(String... columns) {//this orderby is just if you dont care about ASC|DESC and just want to put a bunch of columns
-            Collections.addAll(this.orderBys, columns);
+            for (String column : columns) {
+                this.orderBys.add(new OrderBy(column, null));
+            }
             return this;
         }
         public GrugQuery<T> pageSize(int pageSize) {

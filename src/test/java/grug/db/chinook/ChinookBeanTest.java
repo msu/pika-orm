@@ -9,6 +9,7 @@ import java.util.List;
 
 import static grug.db.GrugORM.Interfaces.GrugLogger.Level.DEBUG;
 import static grug.db.GrugORM.*;
+import static grug.db.GrugORM.SortOrder.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ChinookBeanTest {
@@ -74,16 +75,21 @@ public class ChinookBeanTest {
 
     @Test
     void testOrderByDesc() {
-        String[] order = {"AlbumId"};//can put as many entries it works the same way, just with the Boolean value for Desc :)
         var query = AlbumBean.find().byQuery()
                 .join(ArtistBean.class, AlbumBean.class)
                 .where("artists.name IN :artists")
                 .with("artists", List.of("AC/DC", "Santana"))
-                .orderBy(order, true);//default ASC we use a string array here if we want to change to desc order may be a better way! It is weird if you just have the one entry, but this is a general solution if someone wahts descending order and multiple entries!
+                .orderBy("AlbumId", DESC);
         ResultList<AlbumBean> acDcAlbums = query.execute();
         assertEquals("Santana Live", acDcAlbums.first().getTitle());
     }
 
+    @Test
+    void testSelfJoinWithBean() {
+        EmployeeBean rootEmployee = EmployeeBean.find().byId(1);
+        ResultList<EmployeeBean> reports = rootEmployee.getReports();
+        assertEquals(2, reports.size());
+    }
 
     public GrugORM makeORM() {
         return new GrugORM("jdbc:sqlite:db/chinook.db")
