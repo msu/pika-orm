@@ -38,7 +38,7 @@ public class LoggingTest extends TestBase {
             String loggedMessage = new String(tmpOutBuffer.toByteArray());
             String expectedLogMessage = "INSERT SQL: INSERT INTO sample_model (bool_val, date_val, int_val, str_val) VALUES (?, ?, ?, ?)\n" +
                     "  Args:[true, 3921-02-01, 10, foo]\n";
-            assertTrue(loggedMessage.contains(expectedLogMessage), "Did not find " + expectedLogMessage + " in " + loggedMessage);
+            assertStringContains(loggedMessage, expectedLogMessage);
         } finally {
             System.setOut(original);
         }
@@ -64,20 +64,12 @@ public class LoggingTest extends TestBase {
         SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
 
         // for some reason simple logger uses syserror for logging by default
-        PrintStream original = System.err;
-        try {
-            ByteArrayOutputStream tmpOutBuffer = new ByteArrayOutputStream();
-            PrintStream tmpOut = new PrintStream(tmpOutBuffer);
-            System.setErr(tmpOut);
+        String loggedMessage = captureStdErr(() -> {
             assertEquals(1, orm.insert(sampleModel));
-            String loggedMessage = new String(tmpOutBuffer.toByteArray());
-            String expectedLogMessage = "INSERT SQL: INSERT INTO sample_model (bool_val, date_val, int_val, str_val) VALUES (?, ?, ?, ?)\n" +
-                    "  Args:[true, 3921-02-01, 10, foo]\n";
-            assertTrue(loggedMessage.contains(expectedLogMessage), "Did not find " + expectedLogMessage + " in " + loggedMessage);
-        } finally {
-            System.setErr(original);
-        }
+        });
+        String expectedLogMessage = "INSERT SQL: INSERT INTO sample_model (bool_val, date_val, int_val, str_val) VALUES (?, ?, ?, ?)\n" +
+                "  Args:[true, 3921-02-01, 10, foo]\n";
+        assertStringContains(loggedMessage, expectedLogMessage);
     }
-
 
 }

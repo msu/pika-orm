@@ -1,5 +1,6 @@
 package grug.db;
 
+import grug.db.models.HasBadColumnMapping;
 import grug.db.models.HasCustomizedMetadata;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ public class ErrorsTest extends TestBase {
     public void setUp() throws IOException {
         orm = initDBFileAndORM();
         orm.exec(HasCustomizedMetadata.DDL);
+        orm.exec(HasBadColumnMapping.DDL);
     }
 
     @Test
@@ -29,4 +31,19 @@ public class ErrorsTest extends TestBase {
             assertEquals("No value found for variable :foo in {}", e.getMessage());
         }
     }
+
+    @Test
+    public void testBadColumnGivesGoodErrorOnSelect() {
+        String stdErr = captureStdErr(() -> {
+            try {
+                orm.exec("INSERT INTO has_bad_column_mapping (foo) VALUES ('bar')");
+                orm.findAll(HasBadColumnMapping.class);
+                fail("Should have failed because no field bar is on the table");
+            } catch (Exception e) {
+                // exception should be swallowed to allow stderr to complete
+            }
+        });
+        assertStringContains(stdErr, "Could not map field bar on HasBadColumnMapping, available columns:[id,foo], error:no such column: 'bar'");
+    }
+
 }

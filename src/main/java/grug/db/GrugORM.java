@@ -1362,11 +1362,35 @@ public class GrugORM {
                 } else {
                     // otherwise use fields
                     object = (T) constructor.newInstance();
-                    for (FieldMapping fieldMapping : fieldNameToMapping.values()) {
-                        fieldMapping.mapFromDatabase(object, resultSet);
-                    }
+                        for (FieldMapping fieldMapping : fieldNameToMapping.values()) {
+                            try {
+                            fieldMapping.mapFromDatabase(object, resultSet);
+                            } catch (Exception e) {
+                                orm.getLogger().log(GrugLogger.Level.ERROR, "Could not map field {} on {}, available columns:{}, error:{}",
+                                        fieldMapping.getFieldName(), classForTable.getSimpleName(), getColumns(resultSet), e.getMessage());
+                                throw rethrow(e);
+                            }
+                        }
                 }
                 return object;
+            }
+        }
+
+        private String getColumns(ResultSet resultSet) {
+            try {
+                ResultSetMetaData metaData = resultSet.getMetaData();
+                int columnCount = metaData.getColumnCount();
+                String cols = "[";
+                for (int i = 1; i <= columnCount; i++) {
+                    cols += metaData.getColumnName(i);
+                    if (i < columnCount) {
+                        cols += ",";
+                    }
+                }
+                cols += "]";
+                return cols;
+            } catch (SQLException e) {
+                throw rethrow(e);
             }
         }
 
