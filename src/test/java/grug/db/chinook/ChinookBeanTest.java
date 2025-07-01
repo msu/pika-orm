@@ -38,7 +38,7 @@ public class ChinookBeanTest {
         var query = AlbumBean.find().byQuery()
                 .join(ArtistBean.class)
                 .where("artists.name IN :artists")
-                .with("artists", List.of("AC/DC", "Santana"));
+                .withVar("artists", List.of("AC/DC", "Santana"));
         ResultList<AlbumBean> acDcAlbums = query.execute();
         assertEquals(5, acDcAlbums.size());
     }
@@ -67,7 +67,7 @@ public class ChinookBeanTest {
         var query = AlbumBean.find().byQuery()
                 .join(ArtistBean.class)
                 .where("artists.name IN :artists")
-                .with("artists", List.of("AC/DC", "Santana"))
+                .withVar("artists", List.of("AC/DC", "Santana"))
                 .orderBy("AlbumId");
         ResultList<AlbumBean> acDcAlbums = query.execute();
         assertEquals("For Those About To Rock We Salute You", acDcAlbums.first().getTitle());
@@ -78,7 +78,7 @@ public class ChinookBeanTest {
         var query = AlbumBean.find().byQuery()
                 .join(ArtistBean.class)
                 .where("artists.name IN :artists")
-                .with("artists", List.of("AC/DC", "Santana"))
+                .withVar("artists", List.of("AC/DC", "Santana"))
                 .orderBy("AlbumId", DESC);
         ResultList<AlbumBean> acDcAlbums = query.execute();
         assertEquals("Santana Live", acDcAlbums.first().getTitle());

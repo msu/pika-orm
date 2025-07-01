@@ -246,10 +246,9 @@ public class GrugORM {
         public ResultList<T> bySQL(String sql, Map<String, Object> args) {
             return get().select(sql, args, classToFind);
         }
-        public GrugQuery<T> byQuery() {
-            return get().query(classToFind);
+        public GrugFinderQuery<T> byQuery() {
+            return new GrugFinderQuery<>(classToFind);
         }
-
     }
 
     //====================================================================
@@ -414,6 +413,10 @@ public class GrugORM {
     }
 
     public <T> ResultList<T> select(String sql, Map<String, Object> args, Class resultClass) {
+        return select(sql, args, resultClass, null);
+    }
+
+    public <T> ResultList<T> select(String sql, Map<String, Object> args, Class resultClass, List<String> colsToMap) {
         Mapping mapping = getMapping(resultClass);
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
@@ -428,7 +431,7 @@ public class GrugORM {
             ResultSet resultSet = time(ps::executeQuery);
             ResultList<T> result = new ResultList<>();
             while (resultSet.next()) {
-                T object = mapping.newObjectFromResult(resultSet);
+                T object = mapping.newObjectFromResult(resultSet, colsToMap);
                 if (object instanceof GrugRecordLifecycle lifecycle) {
                     lifecycle.afterSelect();
                 }
@@ -783,8 +786,12 @@ public class GrugORM {
         return result.toString();
     }
 
-    public <T> GrugQuery<T> query(Class<T> clazz) {
-        return new GrugQuery<>(clazz);
+    public <T> GrugFinderQuery<T> query(Class<T> baseClass) {
+        return new GrugFinderQuery<>(baseClass);
+    }
+
+    public <T> GrugQueryBuilder<T> queryBuilder(String baseTable) {
+        return new GrugQueryBuilder<>(baseTable);
     }
 
     public interface Interfaces {
@@ -943,38 +950,56 @@ public class GrugORM {
         }
     }
 
-    public class GrugQuery<T> {
+    public class GrugQueryBuilder<T> {
 
         private final String baseTable;
-        private Class<?> resultClass;
+        private boolean distinct;
+        private List<String> columns;
+        private String columnPrefix;
         private final StringBuilder whereClause = new StringBuilder();
         private final Map<String, Object> valMap = new TreeMap<>();
         private final List<String> joins = new ArrayList<>();
         private final List<OrderBy> orderBys = new ArrayList<>();
+        protected Class<?> resultClass;
 
         private int pageSize = -1;
         private int page = -1;
-        private Class lastJoinedClass;
 
-        public GrugQuery(Class<T> clazz) {
-            String tableName = getMapping(clazz).getTableName();
-            this.baseTable = tableName;
-            resultClass = clazz;
-            lastJoinedClass = clazz;
+        public GrugQueryBuilder(String baseTable) {
+            this.baseTable = baseTable;
         }
 
-        public GrugQuery<T> where(String condition) {
+        public GrugQueryBuilder<T> where(String condition) {
             if (!whereClause.isEmpty()) {
                 whereClause.append(" AND ");
             }
             whereClause.append(condition);
             return this;
         }
+        
+        public GrugQueryBuilder<T> select(String... columns) {
+            return select(Arrays.asList(columns));
+        }
 
-        public <Q> GrugQuery<Q> select(Class<Q> clazz) {
+        public GrugQueryBuilder<T> select(List<String> columns) {
+            this.columns = columns;
+            return this;
+        }
+
+        public GrugQueryBuilder<T> withColumnPrefix(String columnPrefix) {
+            this.columnPrefix = columnPrefix;
+            return this;
+        }
+
+        public GrugQueryBuilder<T> distinct() {
+            this.distinct = true;
+            return this;
+        }
+
+        public <Q> GrugQueryBuilder<Q> withResult(Class<Q> clazz) {
             this.resultClass = clazz;
             //noinspection unchecked
-            return (GrugQuery<Q>) this;
+            return (GrugQueryBuilder<Q>) this;
         }
 
         public ResultList<T> execute() {
@@ -983,7 +1008,7 @@ public class GrugORM {
         }
 
         private String generateSQL() {
-            String sql = "SELECT DISTINCT " + baseTable + ".* FROM " + baseTable;
+            String sql = generateSelectClause();
             if(!joins.isEmpty()) {
                 sql += "\n" + String.join("\n", joins);
             }
@@ -1010,14 +1035,29 @@ public class GrugORM {
             return sql;
         }
 
-        public GrugQuery<T> with(Map<String, Object> vals) {
+        private String generateSelectClause() {
+            StringBuilder selectClause = new StringBuilder("SELECT ");
+            if (distinct) {
+                selectClause.append("DISTINCT ");
+            }
+            String prefix = columnPrefix != null ? columnPrefix + "." : "";
+            if(columns != null) {
+                selectClause.append(columns.stream().map(s -> prefix + s).collect(Collectors.joining(", ")));
+            } else {
+                selectClause.append(prefix).append("*");
+            }
+            selectClause.append(" FROM ").append(baseTable);
+            return selectClause.toString();
+        }
+
+        public GrugQueryBuilder<T> withVars(Map<String, Object> vals) {
             for (Map.Entry<String, Object> stringObjectEntry : vals.entrySet()) {
-                with(stringObjectEntry.getKey(), stringObjectEntry.getValue());
+                withVar(stringObjectEntry.getKey(), stringObjectEntry.getValue());
             }
             return this;
         }
 
-        public GrugQuery<T> with(String name, Object value) {
+        public GrugQueryBuilder<T> withVar(String name, Object value) {
             if (valMap.containsKey(name)) {
                 throw new IllegalStateException("Value " + name + " already exists in query!");
             }
@@ -1025,21 +1065,70 @@ public class GrugORM {
             return this;
         }
 
-        public GrugQuery<T> join(Class classToJoin) {
-            lastJoinedClass = resultClass;
+        public GrugQueryBuilder<T> join(String joinSql) {
+            if(!joinSql.toUpperCase().contains("JOIN")) {
+                joinSql = "JOIN " + joinSql;
+            }
+            this.joins.add(joinSql);
+            return this;
+        }
+
+        public GrugQueryBuilder<T> orderBy(String column) {
+            return orderBy(column, null);
+        }
+
+        public GrugQueryBuilder<T> orderBy(String column, SortOrder direction) {
+            this.orderBys.add(new OrderBy(column, direction));
+            return this;
+        }
+
+        public GrugQueryBuilder<T> pageSize(int pageSize) {
+            this.pageSize = pageSize;
+            return this;
+        }
+
+        public GrugQueryBuilder<T> page(int page) {
+            this.page = page;
+            return this;
+        }
+
+        public String toString() {
+            return generateSQL() + "\nVals:" + this.valMap;
+        }
+    }
+
+    public class GrugFinderQuery<T>  {
+
+        private GrugQueryBuilder<T> query;
+        private final Class classToFind;
+        private final Mapping mappingForClassToFind;
+        private Class lastJoinedClass;
+
+        public GrugFinderQuery(Class<T> classToFind) {
+            this.classToFind = classToFind;
+            this.mappingForClassToFind = getMapping(classToFind);
+            query = new GrugQueryBuilder<>(mappingForClassToFind.getTableName())
+                    .withResult(classToFind)
+                    .withColumnPrefix(mappingForClassToFind.getTableName())
+                    .distinct();
+            this.lastJoinedClass = classToFind;
+        }
+
+        public GrugFinderQuery<T> join(Class classToJoin) {
+            lastJoinedClass = classToFind;
             return thenJoin(null, classToJoin);
         }
 
-        public GrugQuery<T> join(JoinType type, Class classToJoinTo) {
-            lastJoinedClass = resultClass;
+        public GrugFinderQuery<T> join(JoinType type, Class classToJoinTo) {
+            lastJoinedClass = classToFind;
             return thenJoin(type, classToJoinTo);
         }
 
-        public GrugQuery<T> thenJoin(Class classToJoinTo) {
+        public GrugFinderQuery<T> thenJoin(Class classToJoinTo) {
             return thenJoin(null, classToJoinTo);
         }
 
-        private GrugQuery<T> thenJoin(JoinType type, Class classToJoinTo) {
+        private GrugFinderQuery<T> thenJoin(JoinType type, Class classToJoinTo) {
             Class hasFk = resolveFkClass(lastJoinedClass, classToJoinTo);
             Class hasId = hasFk == classToJoinTo ? lastJoinedClass : classToJoinTo;
             return join(type, classToJoinTo, hasId, hasFk);
@@ -1057,7 +1146,7 @@ public class GrugORM {
             throw new IllegalStateException(MessageFormat.format("Cannot determine a foreign key relationship between {0} and {1}, please use an explicit join", class1.getSimpleName(), class2.getSimpleName()));
         }
 
-        public GrugQuery<T> join(JoinType type, Class classToJoin, Class hasId, Class hasFk) {
+        public GrugFinderQuery<T> join(JoinType type, Class classToJoin, Class hasId, Class hasFk) {
             Mapping hasIdMapping = getMapping(hasId);
             Mapping hasFkMapping = getMapping(hasFk);
             Mapping classToJoinMapping = getMapping(classToJoin);
@@ -1072,40 +1161,54 @@ public class GrugORM {
             } else {
                 joinType = "JOIN ";
             }
-            String joinBuilder = joinType + joinedTable + " ON " + idTable + "." + idColumn + " = " + fkTable + "." + fkColumn;
+            String sqlString = joinType + joinedTable + " ON " + idTable + "." + idColumn + " = " + fkTable + "." + fkColumn;
             lastJoinedClass = classToJoin;
-            return join(joinBuilder);
-        }
-
-        public GrugQuery<T> join(String joinSql) {
-            if(!joinSql.toUpperCase().contains("JOIN")) {
-                joinSql = "JOIN " + joinSql;
-            }
-            this.joins.add(joinSql);
+            query.join(sqlString);
             return this;
         }
 
-        public GrugQuery<T> orderBy(String column) {
-            return orderBy(column, null);
-        }
-
-        public GrugQuery<T> orderBy(String column, SortOrder direction) {
-            this.orderBys.add(new OrderBy(column, direction));
+        public GrugFinderQuery<T> where(String condition) {
+            query.where(condition);
             return this;
         }
 
-        public GrugQuery<T> pageSize(int pageSize) {
-            this.pageSize = pageSize;
+        public ResultList<T> execute() {
+            return query.execute();
+        }
+
+        public GrugFinderQuery<T> withVars(Map<String, Object> vals) {
+            query.withVars(vals);
             return this;
         }
 
-        public GrugQuery<T> page(int page) {
-            this.page = page;
+        public GrugFinderQuery<T> withVar(String name, Object value) {
+            query.withVar(name, value);
             return this;
         }
 
-        public String toString() {
-            return generateSQL() + "\nVals:" + this.valMap;
+        public GrugFinderQuery<T> join(String joinSql) {
+            query.join(joinSql);
+            return this;
+        }
+
+        public GrugFinderQuery<T> orderBy(String column) {
+            query.orderBy(column);
+            return this;
+        }
+
+        public GrugFinderQuery<T> orderBy(String column, SortOrder direction) {
+            query.orderBy(column, direction);
+            return this;
+        }
+
+        public GrugFinderQuery<T> pageSize(int pageSize) {
+            query.pageSize(pageSize);
+            return this;
+        }
+
+        public GrugFinderQuery<T> page(int page) {
+            query.page(page);
+            return this;
         }
     }
 
@@ -1361,15 +1464,17 @@ public class GrugORM {
         }
 
         @SuppressWarnings({"unchecked"})
-        public <T> T newObjectFromResult(ResultSet resultSet) throws Exception {
+        public <T> T newObjectFromResult(ResultSet resultSet, List<String> colsToMap) throws Exception {
             if (classForTable == ResultMap.class) {
                 ResultMap resultMap = new ResultMap();
                 ResultSetMetaData metaData = resultSet.getMetaData();
                 int i = metaData.getColumnCount();
                 for (int j = 1; j <= i; j++) {
                     String columnName = metaData.getColumnName(j);
-                    Object value = resultSet.getObject(columnName);
-                    resultMap.put(columnName, value);
+                    if(colsToMap == null || colsToMap.contains(columnName)) {
+                        Object value = resultSet.getObject(columnName);
+                        resultMap.put(columnName, value);
+                    }
                 }
                 return (T) resultMap;
             } else {
@@ -1380,7 +1485,10 @@ public class GrugORM {
                     for (int i = 0; i < recordComponents.length; i++) {
                         RecordComponent recordComponent = recordComponents[i];
                         FieldMapping mapping = fieldNameToMapping.get(recordComponent.getName());
-                        Object val = mapping.getValueFromDatabase(resultSet);
+                        Object val = null;
+                        if (colsToMap == null || colsToMap.contains(mapping.getColumnName())) {
+                            val = mapping.getValueFromDatabase(resultSet);
+                        }
                         args[i] = val;
                     }
                     object = (T) constructor.newInstance(args);
@@ -1389,7 +1497,9 @@ public class GrugORM {
                     object = (T) constructor.newInstance();
                         for (FieldMapping fieldMapping : fieldNameToMapping.values()) {
                             try {
-                            fieldMapping.mapFromDatabase(object, resultSet);
+                                if(colsToMap == null || colsToMap.contains(fieldMapping.getColumnName())) {
+                                    fieldMapping.mapFromDatabase(object, resultSet);
+                                }
                             } catch (Exception e) {
                                 orm.getLogger().log(GrugLogger.Level.ERROR, "Could not map field {} on {}, available columns:{}, error:{}",
                                         fieldMapping.getFieldName(), classForTable.getSimpleName(), getColumns(resultSet), e.getMessage());

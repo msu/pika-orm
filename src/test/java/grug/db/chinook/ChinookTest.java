@@ -52,7 +52,7 @@ public class ChinookTest {
         GrugORM grugORM = makeORM();
         var query = grugORM.query(Employee.class)
                 .join("employees AS boss ON employees.ReportsTo = boss.EmployeeID")
-                .where("boss.Email = :email").with("email", "andrew@chinookcorp.com");
+                .where("boss.Email = :email").withVar("email", "andrew@chinookcorp.com");
         ResultList<Employee> andrewsEmployees = query.execute();
         assertEquals(2, andrewsEmployees.size());
     }

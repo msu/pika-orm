@@ -33,7 +33,7 @@ public class QueryBuilderTest extends TestBase {
 
         var query = orm.query(SampleModel.class)
                 .where("date_val < :val")
-                .with("val", new Date(2050, 1, 1));
+                .withVar("val", new Date(2050, 1, 1));
 
         List<SampleModel> results = query.execute();
 
@@ -51,7 +51,7 @@ public class QueryBuilderTest extends TestBase {
 
         var query = SampleGrugRecord
                 .where("date_val < :val")
-                .with("val", new Date(2050, 1, 1));
+                .withVar("val", new Date(2050, 1, 1));
 
         List<SampleGrugRecord> results = query.execute();
 
@@ -68,9 +68,9 @@ public class QueryBuilderTest extends TestBase {
         }
         var query = orm.query(SampleModel.class)
                 .where("date_val < :val")
-                .with("val", new Date(150, 1, 1))
+                .withVar("val", new Date(150, 1, 1))
                 .where("date_val > :val2")
-                .with("val2", new Date(20, 1, 1));
+                .withVar("val2", new Date(20, 1, 1));
 
         List<SampleModel> results = query.execute();//this problem is 100% isolated within the run query as everything is building correctly
 
