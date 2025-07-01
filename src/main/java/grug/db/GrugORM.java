@@ -790,7 +790,7 @@ public class GrugORM {
         return new GrugClassQuery<>(baseClass);
     }
 
-    public <T> GrugQueryBuilder<T> queryBuilder(String baseTable) {
+    public GrugQueryBuilder<ResultMap> queryBuilder(String baseTable) {
         return new GrugQueryBuilder<>(baseTable);
     }
 
@@ -967,6 +967,7 @@ public class GrugORM {
 
         public GrugQueryBuilder(String baseTable) {
             this.baseTable = baseTable;
+            this.resultClass = ResultMap.class;
         }
 
         public GrugQueryBuilder<T> where(String condition) {
@@ -1004,7 +1005,7 @@ public class GrugORM {
 
         public ResultList<T> execute() {
             String sql = generateSQL();
-            return GrugORM.this.select(sql, valMap, resultClass);
+            return GrugORM.this.select(sql, valMap, resultClass, columns);
         }
 
         private String generateSQL() {
@@ -1495,17 +1496,17 @@ public class GrugORM {
                 } else {
                     // otherwise use fields
                     object = (T) constructor.newInstance();
-                        for (FieldMapping fieldMapping : fieldNameToMapping.values()) {
-                            try {
-                                if(colsToMap == null || colsToMap.contains(fieldMapping.getColumnName())) {
-                                    fieldMapping.mapFromDatabase(object, resultSet);
-                                }
-                            } catch (Exception e) {
-                                orm.getLogger().log(GrugLogger.Level.ERROR, "Could not map field {} on {}, available columns:{}, error:{}",
-                                        fieldMapping.getFieldName(), classForTable.getSimpleName(), getColumns(resultSet), e.getMessage());
-                                throw rethrow(e);
+                    for (FieldMapping fieldMapping : fieldNameToMapping.values()) {
+                        try {
+                            if (colsToMap == null || colsToMap.contains(fieldMapping.getColumnName())) {
+                                fieldMapping.mapFromDatabase(object, resultSet);
                             }
+                        } catch (Exception e) {
+                            orm.getLogger().log(GrugLogger.Level.ERROR, "Could not map field {} on {}, available columns:{}, error:{}",
+                                    fieldMapping.getFieldName(), classForTable.getSimpleName(), getColumns(resultSet), e.getMessage());
+                            throw rethrow(e);
                         }
+                    }
                 }
                 return object;
             }
