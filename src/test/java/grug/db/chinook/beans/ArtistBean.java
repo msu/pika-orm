@@ -24,6 +24,6 @@ public class ArtistBean extends EnterpriseGrugBean {
     }
 
     public static GrugFinder<ArtistBean> find() {
-        return orm().finder(ArtistBean.class);
+        return orm().find(ArtistBean.class);
     }
 }

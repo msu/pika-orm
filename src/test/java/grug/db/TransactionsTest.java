@@ -35,8 +35,8 @@ public class TransactionsTest extends TestBase {
         }
 
         // neither value should be in the db
-        assertNull(orm.find(TransactionDemo.class, "name", "foo"));
-        assertNull(orm.find(TransactionDemo.class, "name", "bar"));
+        assertNull(orm.find(TransactionDemo.class).byKey("name", "foo"));
+        assertNull(orm.find(TransactionDemo.class).byKey( "name", "bar"));
     }
 
     @Test
@@ -55,8 +55,8 @@ public class TransactionsTest extends TestBase {
         }
 
         // neither value should be in the db
-        assertNotNull(orm.find(TransactionDemo.class, "name", "foo"));
-        assertNotNull(orm.find(TransactionDemo.class, "name", "bar"));
+        assertNotNull(orm.find(TransactionDemo.class).byKey( "name", "foo"));
+        assertNotNull(orm.find(TransactionDemo.class).byKey( "name", "bar"));
     }
 
     @Test
@@ -77,8 +77,8 @@ public class TransactionsTest extends TestBase {
         }
 
         // neither value should be in the db
-        assertNull(orm.find(TransactionDemo.class, "name", "foo"));
-        assertNull(orm.find(TransactionDemo.class, "name", "bar"));
+        assertNull(orm.find(TransactionDemo.class).byKey( "name", "foo"));
+        assertNull(orm.find(TransactionDemo.class).byKey( "name", "bar"));
     }
 
     @Test
@@ -99,8 +99,8 @@ public class TransactionsTest extends TestBase {
         }
 
         // neither value should be in the db
-        assertNotNull(orm.find(TransactionDemo.class, "name", "foo"));
-        assertNotNull(orm.find(TransactionDemo.class, "name", "bar"));
+        assertNotNull(orm.find(TransactionDemo.class).byKey( "name", "foo"));
+        assertNotNull(orm.find(TransactionDemo.class).byKey( "name", "bar"));
     }
 
     @Test
@@ -121,8 +121,8 @@ public class TransactionsTest extends TestBase {
         }
 
         // neither value should be in the db
-        assertNull(orm.find(TransactionDemo.class, "name", "foo"));
-        assertNull(orm.find(TransactionDemo.class, "name", "bar"));
+        assertNull(orm.find(TransactionDemo.class).byKey( "name", "foo"));
+        assertNull(orm.find(TransactionDemo.class).byKey( "name", "bar"));
     }
 
 }

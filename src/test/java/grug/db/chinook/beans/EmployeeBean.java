@@ -141,10 +141,15 @@ public class EmployeeBean extends EnterpriseGrugBean {
     }
 
     public static GrugORM.GrugFinder<EmployeeBean> find() {
-        return orm().finder(EmployeeBean.class);
+        return orm().find(EmployeeBean.class);
     }
 
     public ResultList<EmployeeBean> getReports() {
         return loadN(EmployeeBean.class, "ReportsTo");
     }
+
+    public EmployeeBean getBoss() {
+        return load1(EmployeeBean.class, "ReportsTo");
+    }
+
 }

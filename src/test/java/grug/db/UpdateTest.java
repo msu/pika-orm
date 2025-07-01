@@ -29,7 +29,7 @@ public class UpdateTest extends TestBase {
         sampleModel.setStrVal("bar");
         orm.update(sampleModel);
 
-        SampleModel fromDb = orm.find(SampleModel.class, sampleModel.getId());
+        SampleModel fromDb = orm.find(SampleModel.class).byId(sampleModel.getId());
 
         assertEquals("bar", fromDb.getStrVal());
     }

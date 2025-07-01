@@ -24,7 +24,7 @@ public class ErrorsTest extends TestBase {
     @Test
     public void testMissingParamsErrorsCorrectly() {
         try {
-            orm.selectRaw(":foo", Map.of());
+            orm.select(":foo", Map.of());
             fail("Should have failed because no :foo was supplied");
         } catch (Exception e){
             assertInstanceOf(IllegalStateException.class, e);
@@ -37,7 +37,7 @@ public class ErrorsTest extends TestBase {
         String stdErr = captureStdErr(() -> {
             try {
                 orm.exec("INSERT INTO has_bad_column_mapping (foo) VALUES ('bar')");
-                orm.findAll(HasBadColumnMapping.class);
+                orm.find(HasBadColumnMapping.class).all();
                 fail("Should have failed because no field bar is on the table");
             } catch (Exception e) {
                 // exception should be swallowed to allow stderr to complete

@@ -47,7 +47,7 @@ public class OptimisticConcurrencyTest extends TestBase {
         originalModel.setStr("foo");
         originalModel.save();
 
-        OptimisticModel fromDb = orm.find(OptimisticModel.class, originalModel.getId());
+        OptimisticModel fromDb = orm.find(OptimisticModel.class).byId(originalModel.getId());
         assertEquals(1, fromDb.getId());
         assertEquals(1, fromDb.getVersion());
         assertEquals("foo", fromDb.getStr());

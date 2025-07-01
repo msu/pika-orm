@@ -48,7 +48,7 @@ public class CustomizationTest extends TestBase {
         custom.setMap(Map.of("foo", 1.0, "bar", 2.0));
 
         orm.insert(custom);
-        var fromDb = orm.find(HasCustomizedMetadata.class, custom.getId());
+        var fromDb = orm.find(HasCustomizedMetadata.class).byId(custom.getId());
         assertEquals(fromDb.getId(), 1L);
         assertEquals(fromDb.getMap(), custom.getMap());
     }

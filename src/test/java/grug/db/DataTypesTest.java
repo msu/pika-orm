@@ -28,7 +28,7 @@ public class DataTypesTest extends TestBase {
         hasEnum.setMyEnum(BAR);
         long id = orm.insert(hasEnum);
 
-        HasEnum fromDb = orm.find(HasEnum.class, id);
+        HasEnum fromDb = orm.find(HasEnum.class).byId(id);
         assertEquals(BAR, fromDb.getMyEnum());
     }
 
@@ -39,7 +39,7 @@ public class DataTypesTest extends TestBase {
         hasDate.setDate(date);
         long id = orm.insert(hasDate);
 
-        HasDate fromDb = orm.find(HasDate.class, id);
+        HasDate fromDb = orm.find(HasDate.class).byId(id);
         assertEquals(date, fromDb.getDate());
     }
 
