@@ -246,8 +246,8 @@ public class GrugORM {
         public ResultList<T> bySQL(String sql, Map<String, Object> args) {
             return get().select(sql, args, classToFind);
         }
-        public GrugFinderQuery<T> byQuery() {
-            return new GrugFinderQuery<>(classToFind);
+        public GrugClassQuery<T> byQuery() {
+            return new GrugClassQuery<>(classToFind);
         }
     }
 
@@ -485,7 +485,7 @@ public class GrugORM {
     }
 
     public long[] insertAll(Collection<Object> items) { // TODO - look into the setID as i was having some issues and weirdness with it
-        long[] ids = new long[items.size()];
+        long[] ids = new long[items.size()];// TODO - change to the actual bulk insert stuff!
         int count = 0;
         for (Object o : items) {
             ids[count] = insert(o);
@@ -786,8 +786,8 @@ public class GrugORM {
         return result.toString();
     }
 
-    public <T> GrugFinderQuery<T> query(Class<T> baseClass) {
-        return new GrugFinderQuery<>(baseClass);
+    public <T> GrugClassQuery<T> query(Class<T> baseClass) {
+        return new GrugClassQuery<>(baseClass);
     }
 
     public <T> GrugQueryBuilder<T> queryBuilder(String baseTable) {
@@ -951,7 +951,7 @@ public class GrugORM {
     }
 
     public class GrugQueryBuilder<T> {
-
+        //Has much more of a notion of writing SQL, GrugFinderClass is abstracted in practice to this lower level builder, basically only uses Strings in SQL
         private final String baseTable;
         private boolean distinct;
         private List<String> columns;
@@ -1097,14 +1097,14 @@ public class GrugORM {
         }
     }
 
-    public class GrugFinderQuery<T>  {
+    public class GrugClassQuery<T>  {//Changed from GrugFinderQuery
 
         private GrugQueryBuilder<T> query;
         private final Class classToFind;
         private final Mapping mappingForClassToFind;
         private Class lastJoinedClass;
 
-        public GrugFinderQuery(Class<T> classToFind) {
+        public GrugClassQuery(Class<T> classToFind) {
             this.classToFind = classToFind;
             this.mappingForClassToFind = getMapping(classToFind);
             query = new GrugQueryBuilder<>(mappingForClassToFind.getTableName())
@@ -1114,21 +1114,21 @@ public class GrugORM {
             this.lastJoinedClass = classToFind;
         }
 
-        public GrugFinderQuery<T> join(Class classToJoin) {
+        public GrugClassQuery<T> join(Class classToJoin) {
             lastJoinedClass = classToFind;
             return thenJoin(null, classToJoin);
         }
 
-        public GrugFinderQuery<T> join(JoinType type, Class classToJoinTo) {
+        public GrugClassQuery<T> join(JoinType type, Class classToJoinTo) {
             lastJoinedClass = classToFind;
             return thenJoin(type, classToJoinTo);
         }
 
-        public GrugFinderQuery<T> thenJoin(Class classToJoinTo) {
+        public GrugClassQuery<T> thenJoin(Class classToJoinTo) {
             return thenJoin(null, classToJoinTo);
         }
 
-        private GrugFinderQuery<T> thenJoin(JoinType type, Class classToJoinTo) {
+        private GrugClassQuery<T> thenJoin(JoinType type, Class classToJoinTo) {
             Class hasFk = resolveFkClass(lastJoinedClass, classToJoinTo);
             Class hasId = hasFk == classToJoinTo ? lastJoinedClass : classToJoinTo;
             return join(type, classToJoinTo, hasId, hasFk);
@@ -1146,7 +1146,7 @@ public class GrugORM {
             throw new IllegalStateException(MessageFormat.format("Cannot determine a foreign key relationship between {0} and {1}, please use an explicit join", class1.getSimpleName(), class2.getSimpleName()));
         }
 
-        public GrugFinderQuery<T> join(JoinType type, Class classToJoin, Class hasId, Class hasFk) {
+        public GrugClassQuery<T> join(JoinType type, Class classToJoin, Class hasId, Class hasFk) {
             Mapping hasIdMapping = getMapping(hasId);
             Mapping hasFkMapping = getMapping(hasFk);
             Mapping classToJoinMapping = getMapping(classToJoin);
@@ -1167,7 +1167,7 @@ public class GrugORM {
             return this;
         }
 
-        public GrugFinderQuery<T> where(String condition) {
+        public GrugClassQuery<T> where(String condition) {
             query.where(condition);
             return this;
         }
@@ -1176,37 +1176,37 @@ public class GrugORM {
             return query.execute();
         }
 
-        public GrugFinderQuery<T> withVars(Map<String, Object> vals) {
+        public GrugClassQuery<T> withVars(Map<String, Object> vals) {
             query.withVars(vals);
             return this;
         }
 
-        public GrugFinderQuery<T> withVar(String name, Object value) {
+        public GrugClassQuery<T> withVar(String name, Object value) {
             query.withVar(name, value);
             return this;
         }
 
-        public GrugFinderQuery<T> join(String joinSql) {
+        public GrugClassQuery<T> join(String joinSql) {
             query.join(joinSql);
             return this;
         }
 
-        public GrugFinderQuery<T> orderBy(String column) {
+        public GrugClassQuery<T> orderBy(String column) {
             query.orderBy(column);
             return this;
         }
 
-        public GrugFinderQuery<T> orderBy(String column, SortOrder direction) {
+        public GrugClassQuery<T> orderBy(String column, SortOrder direction) {
             query.orderBy(column, direction);
             return this;
         }
 
-        public GrugFinderQuery<T> pageSize(int pageSize) {
+        public GrugClassQuery<T> pageSize(int pageSize) {
             query.pageSize(pageSize);
             return this;
         }
 
-        public GrugFinderQuery<T> page(int page) {
+        public GrugClassQuery<T> page(int page) {
             query.page(page);
             return this;
         }
@@ -1606,14 +1606,14 @@ public class GrugORM {
         Function<Object, Object> toDatabaseValue;
         Function<Object, Object> fromDatabaseValue;
         Class dbStorageType;
-        Function<Object, Object> versionInrementer;
+        Function<Object, Object> versionIncrementer;
 
         public FieldMapping(GrugORM orm, Field mappedField) {
             mappedField.setAccessible(true);
             this.orm = orm;
             this.mappedField = mappedField;
             this.columnName = orm.defaultFieldToColumnMapping.apply(mappedField);
-            this.versionInrementer = orm.defaultVersionIncrementer.apply(mappedField.getDeclaringClass());
+            this.versionIncrementer = orm.defaultVersionIncrementer.apply(mappedField.getDeclaringClass());
             this.dbStorageType = mappedField.getType();
         }
         public String getFieldName() {
@@ -1667,8 +1667,8 @@ public class GrugORM {
             return this;
         }
 
-        public FieldMapping withVersionIcrementer(Function<Object, Object> versionIncrementer) {
-            this.versionInrementer = versionIncrementer;
+        public FieldMapping withVersionIncrementer(Function<Object, Object> versionIncrementer) {
+            this.versionIncrementer = versionIncrementer;
             return this;
         }
 
@@ -1702,7 +1702,7 @@ public class GrugORM {
 
         public Object incrementVersion(Map<String, Object> values) {
             Object value = getValueFromDBMap(values);
-            Object updatedValue = versionInrementer.apply(value);
+            Object updatedValue = versionIncrementer.apply(value);
             values.put(columnName, updatedValue);
             return updatedValue;
         }

@@ -11,7 +11,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class QueryBuilderTest extends TestBase {
+public class ClassQueryTest extends TestBase {
+
+    //More class based queries, abstracted a bit from raw SQL
 
     GrugORM orm = null;
 

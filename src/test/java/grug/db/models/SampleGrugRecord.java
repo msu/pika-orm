@@ -39,7 +39,7 @@ public class SampleGrugRecord extends EnterpriseGrugBean {
         }
     }
 
-    public static GrugORM.GrugFinderQuery<SampleGrugRecord> where(String str) {
+    public static GrugORM.GrugClassQuery<SampleGrugRecord> where(String str) {
         return GrugORM.get().query(SampleGrugRecord.class).where(str);
     }
 
