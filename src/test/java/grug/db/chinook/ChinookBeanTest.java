@@ -2,6 +2,7 @@ package grug.db.chinook;
 
 import grug.db.GrugORM;
 import grug.db.chinook.beans.*;
+import grug.db.chinook.pojos.Track;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -90,6 +91,18 @@ public class ChinookBeanTest {
         ResultList<EmployeeBean> reports = rootEmployee.getReports();
         assertEquals(2, reports.size());
     }
+
+    @Test
+    void testTwoWayJoin() {
+        var result = AlbumBean.find().byQuery()
+                .join(TrackBean.class)
+                .join(ArtistBean.class)
+                .where("tracks.Name LIKE 'A%' AND artists.Name LIKE 'A%'")
+                        .execute();
+
+        assertEquals(6, result.size());
+    }
+
 
     public GrugORM makeORM() {
         return new GrugORM("jdbc:sqlite:db/chinook.db")
