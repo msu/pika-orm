@@ -41,6 +41,68 @@ public class GrugQueryBuilderTest {
         assertEquals(1, results.first().size());
     }
 
+    @Test
+    void testRawQueryBuilderCanSelectColumnsWithAliasesInResultMap() {
+        var orm = makeORM();
+        var query = orm.queryBuilder("Albums")
+                .select("Title as AlbumTitle")
+                .where("Title LIKE '%A%'");
+
+        var results = query.execute();
+        assertEquals(264, results.size());
+
+
+        assertEquals("For Those About To Rock We Salute You", results.first().get("AlbumTitle"));
+        assertEquals(1, results.first().size());
+    }
+
+    @Test
+    void testRawQueryBuilderCanSelectColumnsWitTableQualificationWithAliasesInResultMap() {
+        var orm = makeORM();
+        var query = orm.queryBuilder("Albums")
+                .select("Albums.Title as AlbumTitle")
+                .where("Title LIKE '%A%'");
+
+        var results = query.execute();
+        assertEquals(264, results.size());
+
+
+        assertEquals("For Those About To Rock We Salute You", results.first().get("AlbumTitle"));
+        assertEquals(1, results.first().size());
+    }
+
+    @Test
+    void testRawQueryBuilderCanSelectColumnsWitTableQualificationAndStarInResultMap() {
+        var orm = makeORM();
+        var query = orm.queryBuilder("albums")
+                .select("albums.*", "tracks.Name")
+                .join("Tracks on albums.AlbumId = tracks.TrackId")
+                .where("Title LIKE '%A%'");
+
+        var results = query.execute();
+        assertEquals(264, results.size());
+
+        assertEquals(4, results.first().size());
+        assertEquals("For Those About To Rock We Salute You", results.first().getString("Title"));
+        assertEquals("For Those About To Rock (We Salute You)", results.first().getString("Name"));
+    }
+
+    @Test
+    void testRawQueryBuilderCanRemapAColumn() {
+        var orm = makeORM();
+        var query = orm.queryBuilder("albums")
+                .select("tracks.Name as Title") // remap tracks.Name to the album title (insane !!!)
+                .join("Tracks on albums.AlbumId = tracks.TrackId")
+                .where("albums.Title LIKE '%A%'")
+                .withResult(Album.class);
+
+        var results = query.execute();
+        assertEquals(264, results.size());
+
+        assertEquals("For Those About To Rock (We Salute You)", results.first().getTitle());
+    }
+
+    //More verbose SQL query, that lets you touch raw SQL more
 
     @Test
     void testRawQueryBuilderCanJoinWithoutResultClass() {//not resultMapping to a class, just POJO hashmap stuff

@@ -35,7 +35,7 @@ public static void main(String[] args) {
     var id = orm.insert(model);
 
     // load the model from db by id
-    var fromDb = orm.find(MyModel.class, id);
+    var fromDb = orm.find(MyModel.class).byId(id);
 
     // print out "Hello GrugORM"
     System.out.println(fromDb.str);
@@ -68,7 +68,15 @@ CREATE TABLE my_model(
 
 ## CRUD with POJOS
 
-## CRUD with GrugBeans
+## CRUD with EnterpriseGrugBeans
+
+### Validation in EnterpriseGrugBeans
+
+## Raw Queries
+
+### GrugQueryBuilder
+
+### Defining Custom Query Records
 
 ## Transactions In GrugORM
 
