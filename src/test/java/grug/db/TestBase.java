@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public abstract class TestBase {
 
-    protected static GrugORM initDBFileAndORM() {
+    protected static GrugORM initTestDb(String... ddl) {
         try {
             // remove old db if it exists
             Path path = Path.of("test", "test.db");
@@ -21,16 +21,19 @@ public abstract class TestBase {
 
             path.toFile().getParentFile().mkdirs();
 
-            return new GrugORM("jdbc:sqlite:test/test.db")
+            GrugORM grugORM = new GrugORM("jdbc:sqlite:test/test.db")
                     .withLogLevel(TRACE)
                     .makeDefaultORM();
+            for (String ddlToRun : ddl) {
+                grugORM.exec(ddlToRun);
+            }
+            return grugORM;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     public static String captureStdErr(Runnable runnable) {
-        // for some reason simple logger uses syserror for logging by default
         PrintStream original = System.err;
         try {
             ByteArrayOutputStream tmpOutBuffer = new ByteArrayOutputStream();

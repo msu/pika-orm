@@ -80,4 +80,6 @@ CREATE TABLE my_model(
 
 ## Transactions In GrugORM
 
+## Migrations
+
 ## Using GrugORM with a Web Framework

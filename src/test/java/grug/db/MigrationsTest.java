@@ -14,15 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class MigrationsTest extends TestBase {
 
-    GrugORM orm = null;
-
-    @BeforeEach
-    public void setUp() throws IOException {
-        orm = initDBFileAndORM();
-    }
-
     @Test
     void basicMigrationWorksEndToEnd() {
+        var orm = initTestDb();
         // migrate the database
         MigrationsFile1 migrations = new MigrationsFile1();
         orm.withMigrations(migrations);
@@ -41,6 +35,7 @@ public class MigrationsTest extends TestBase {
 
     @Test
     void basicMigrationWorks() {
+        var orm = initTestDb();
         // migrate the database
         MigrationsFile1 migrations = new MigrationsFile1();
         orm.withMigrations(migrations);
@@ -54,6 +49,7 @@ public class MigrationsTest extends TestBase {
 
     @Test
     void multipleStatementsWork() {
+        var orm = initTestDb();
         // migrate the database
         MultiStatementMigration migrations = new MultiStatementMigration();
         orm.withMigrations(migrations);
@@ -69,7 +65,7 @@ public class MigrationsTest extends TestBase {
      * A way to play around w/ the command line
      */
     public static void main(String[] args) throws IOException {
-        var orm = initDBFileAndORM();
+        var orm = initTestDb();
         MigrationFileForConsoleTesting migrations = new MigrationFileForConsoleTesting();
         orm.withMigrations(migrations);
         migrations.console();

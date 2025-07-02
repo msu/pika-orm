@@ -12,17 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class OnetoNTest extends TestBase {
 
-    GrugORM orm = null;
-
-    @BeforeEach
-    public void setUp() throws IOException {
-        orm = initDBFileAndORM();
-        orm.exec(FooContainer.DDL);
-        orm.exec(Foo.DDL);
-    }
-
     @Test
     void testBasicOnetoNRelationship() {
+        var orm = initTestDb(FooContainer.DDL, Foo.DDL);
 
         FooContainer fooContainer = new FooContainer();
         orm.insert(fooContainer);
@@ -38,6 +30,7 @@ public class OnetoNTest extends TestBase {
 
     @Test
     void testBasicNtoOneRelationship() {
+        var orm = initTestDb(FooContainer.DDL, Foo.DDL);
 
         FooContainer fooContainer = new FooContainer();
         orm.insert(fooContainer);

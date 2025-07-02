@@ -1,12 +1,8 @@
-package grug.db.chinook.beans;
-
-import grug.db.GrugORM;
-import grug.db.GrugORM.EnterpriseGrugBean;
-import grug.db.GrugORM.ResultList;
+package grug.db.models.chinook.pojos;
 
 import java.util.Date;
 
-public class EmployeeBean extends EnterpriseGrugBean {
+public class Employee {
 
     Long employeeId;
     String lastName;
@@ -139,17 +135,4 @@ public class EmployeeBean extends EnterpriseGrugBean {
     public void setEmail(String email) {
         this.email = email;
     }
-
-    public static GrugORM.GrugFinder<EmployeeBean> find() {
-        return orm().find(EmployeeBean.class);
-    }
-
-    public ResultList<EmployeeBean> getReports() {
-        return loadN(EmployeeBean.class, "ReportsTo");
-    }
-
-    public EmployeeBean getBoss() {
-        return load1(EmployeeBean.class, "ReportsTo");
-    }
-
 }

@@ -1,8 +1,9 @@
-package grug.db.chinook;
+package grug.db;
 
-import grug.db.GrugORM;
-import grug.db.chinook.beans.*;
-import grug.db.chinook.pojos.Track;
+import grug.db.models.chinook.beans.AlbumBean;
+import grug.db.models.chinook.beans.ArtistBean;
+import grug.db.models.chinook.beans.EmployeeBean;
+import grug.db.models.chinook.beans.TrackBean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +18,7 @@ public class ChinookBeanTest {
 
     @BeforeEach
     void setupOrm() {
-        makeORM();
+        configureOrm();
     }
 
     @Test
@@ -104,7 +105,7 @@ public class ChinookBeanTest {
     }
 
 
-    public GrugORM makeORM() {
+    public static GrugORM configureOrm() {
         return new GrugORM("jdbc:sqlite:db/chinook.db")
                 .withLogLevel(DEBUG)
                 .withDefaultFkColumn(aClass -> removeBeanSuffix(aClass.getSimpleName()) + "Id")

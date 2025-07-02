@@ -1,7 +1,7 @@
 package grug.db;
 
 import grug.db.models.SampleModel;
-import grug.db.models.SampleGrugRecord;
+import grug.db.models.SampleEgb;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,19 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ClassQueryTest extends TestBase {
 
-    //More class based queries, abstracted a bit from raw SQL
-
-    GrugORM orm = null;
-
     @BeforeEach
     public void setUp() throws IOException {
-        orm = initDBFileAndORM();
-        orm.exec(SampleModel.DDL);
-        orm.exec(SampleGrugRecord.DDL);
     }
 
     @Test
     void testBasicQueryBuilder() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
 
         for (int i = 0; i < 10 ; i++) {
             SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
@@ -45,23 +39,25 @@ public class ClassQueryTest extends TestBase {
 
     @Test
     void testBasicQueryBuilderWithStaticMethod() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
 
         for (int i = 0; i < 10 ; i++) {
-            SampleGrugRecord sampleModel = new SampleGrugRecord("bar", 10, true, new Date(2021, 1, 1));
+            SampleEgb sampleModel = new SampleEgb("bar", 10, true, new Date(2021, 1, 1));
             long id = orm.insert(sampleModel);
         }
 
-        var query = SampleGrugRecord
+        var query = SampleEgb
                 .where("date_val < :val")
                 .withVar("val", new Date(2050, 1, 1));
 
-        List<SampleGrugRecord> results = query.execute();
+        List<SampleEgb> results = query.execute();
 
         assertEquals(10, results.size());
     }
 
     @Test
     void testChainedQueryBuilder() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
 
         for (int i = 0; i < 10 ; i++) {
             SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(21, 1, 1));

@@ -1,7 +1,9 @@
-package grug.db.chinook;
+package grug.db;
 
-import grug.db.GrugORM;
-import grug.db.chinook.pojos.*;
+import grug.db.models.chinook.pojos.Album;
+import grug.db.models.chinook.pojos.Artist;
+import grug.db.models.chinook.pojos.Employee;
+import grug.db.models.chinook.pojos.Track;
 import org.junit.jupiter.api.Test;
 
 import static grug.db.GrugORM.*;
@@ -13,14 +15,14 @@ public class ChinookTest {
 
     @Test
     void bootstrapTest() {
-        GrugORM grugORM = makeORM();
+        GrugORM grugORM = configureOrm();
         var artists = grugORM.find(Artist.class).all();
         assertEquals(275, artists.size());
     }
 
     @Test
     void testJoin() {
-        GrugORM grugORM = makeORM();
+        GrugORM grugORM = configureOrm();
         var acDc = grugORM.find(Artist.class).byId(1);
         assertEquals("AC/DC", acDc.getName());
         var acDcAlbums = grugORM.loadN(acDc, Album.class);
@@ -29,7 +31,7 @@ public class ChinookTest {
 
     @Test
     void testQueryJoinTo() {
-        GrugORM grugORM = makeORM();
+        GrugORM grugORM = configureOrm();
         var query = grugORM.query(Album.class)
                 .join(Artist.class)
                 .where("artists.name = 'AC/DC'");
@@ -39,7 +41,7 @@ public class ChinookTest {
 
     @Test
     void testQueryJoinFrom() {
-        GrugORM grugORM = makeORM();
+        GrugORM grugORM = configureOrm();
         var query = grugORM.query(Artist.class)
                 .join(Album.class)
                 .where("albums.Title LIKE 'A%'");
@@ -49,7 +51,7 @@ public class ChinookTest {
 
     @Test
     void testQuerySelfJoinUsingRawString() {
-        GrugORM grugORM = makeORM();
+        GrugORM grugORM = configureOrm();
         var query = grugORM.query(Employee.class)
                 .join("employees AS boss ON employees.ReportsTo = boss.EmployeeID")
                 .where("boss.Email = :email").withVar("email", "andrew@chinookcorp.com");
@@ -59,7 +61,7 @@ public class ChinookTest {
 
     @Test
     void testQueryLeftJoin() {
-        GrugORM grugORM = makeORM();
+        GrugORM grugORM = configureOrm();
 
         // default inner join should produce 204 artists w/albums
         var query = grugORM.query(Artist.class)
@@ -74,7 +76,7 @@ public class ChinookTest {
 
     @Test
     void testMultiTableJoin() {
-        GrugORM grugORM = makeORM();
+        GrugORM grugORM = configureOrm();
 
         // inner join should produce 85 artists w/albums w/tracks that start with an A
         var query = grugORM.query(Artist.class)
@@ -86,7 +88,7 @@ public class ChinookTest {
     }
 
 
-    public GrugORM makeORM() {
+    public static GrugORM configureOrm() {
         return new GrugORM("jdbc:sqlite:db/chinook.db")
                 .withLogLevel(DEBUG)
                 .withDefaultFkColumn(aClass -> aClass.getSimpleName() + "Id")

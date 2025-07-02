@@ -13,17 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class DataTypesTest extends TestBase {
 
-    GrugORM orm = null;
-
-    @BeforeEach
-    public void setUp() throws IOException {
-        orm = initDBFileAndORM();
-        orm.exec(HasEnum.DDL);
-        orm.exec(HasDate.DDL);
-    }
-
     @Test
     void enumsSerializeAndDeserialize() {
+        var orm = initTestDb(HasEnum.DDL, HasDate.DDL);
         HasEnum hasEnum = new HasEnum();
         hasEnum.setMyEnum(BAR);
         long id = orm.insert(hasEnum);
@@ -34,6 +26,7 @@ public class DataTypesTest extends TestBase {
 
     @Test
     void datesSerializeAndDeserialize() {
+        var orm = initTestDb(HasEnum.DDL, HasDate.DDL);
         HasDate hasDate = new HasDate();
         Date date = new Date();
         hasDate.setDate(date);

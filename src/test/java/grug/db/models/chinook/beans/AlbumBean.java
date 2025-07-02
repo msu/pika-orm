@@ -1,6 +1,5 @@
-package grug.db.chinook.beans;
+package grug.db.models.chinook.beans;
 
-import grug.db.GrugORM;
 import grug.db.GrugORM.EnterpriseGrugBean;
 import grug.db.GrugORM.GrugFinder;
 

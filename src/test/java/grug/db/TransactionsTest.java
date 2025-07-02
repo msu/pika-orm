@@ -1,26 +1,18 @@
 package grug.db;
 
 import grug.db.models.TransactionDemo;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class TransactionsTest extends TestBase {
 
-    GrugORM orm = null;
-
-    @BeforeEach
-    public void setUp() throws Exception {
-        orm = initDBFileAndORM();
-        orm.exec(TransactionDemo.DDL);
-    }
-
     @Test
     public void testBasicInTransactionWithBadVal() {
+        var orm = initTestDb(TransactionDemo.DDL);
+
         TransactionDemo foo = new TransactionDemo("foo", 10);
         TransactionDemo bar = new TransactionDemo("bar", -10); // bad value
 
@@ -41,6 +33,8 @@ public class TransactionsTest extends TestBase {
 
     @Test
     public void testBasicInTransactionWithGoodVals() {
+        var orm = initTestDb(TransactionDemo.DDL);
+
         TransactionDemo foo = new TransactionDemo("foo", 10);
         TransactionDemo bar = new TransactionDemo("bar", 20); // bad value
 
@@ -61,6 +55,8 @@ public class TransactionsTest extends TestBase {
 
     @Test
     public void testNestedTransactionsJoinWithBadVal() {
+        var orm = initTestDb(TransactionDemo.DDL);
+
         TransactionDemo foo = new TransactionDemo("foo", 10);
         TransactionDemo bar = new TransactionDemo("bar", -10); // bad value
 
@@ -83,6 +79,8 @@ public class TransactionsTest extends TestBase {
 
     @Test
     public void testNestedTransactionsJoinWithGoodVals() {
+        var orm = initTestDb(TransactionDemo.DDL);
+
         TransactionDemo foo = new TransactionDemo("foo", 10);
         TransactionDemo bar = new TransactionDemo("bar", 20); // bad value
 
@@ -105,6 +103,8 @@ public class TransactionsTest extends TestBase {
 
     @Test
     public void testNestedTransactionsJoinWithBadValAfterNestedInstructionFinishes() {
+        var orm = initTestDb(TransactionDemo.DDL);
+
         TransactionDemo foo = new TransactionDemo("foo", 10);
         TransactionDemo bar = new TransactionDemo("bar", -10); // bad value
 

@@ -12,17 +12,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class ErrorsTest extends TestBase {
 
-    GrugORM orm = null;
-
-    @BeforeEach
-    public void setUp() throws IOException {
-        orm = initDBFileAndORM();
-        orm.exec(HasCustomizedMetadata.DDL);
-        orm.exec(HasBadColumnMapping.DDL);
-    }
-
     @Test
     public void testMissingParamsErrorsCorrectly() {
+        var orm = initTestDb(HasCustomizedMetadata.DDL, HasBadColumnMapping.DDL);
         try {
             orm.select(":foo", Map.of());
             fail("Should have failed because no :foo was supplied");
@@ -34,6 +26,7 @@ public class ErrorsTest extends TestBase {
 
     @Test
     public void testBadColumnGivesGoodErrorOnSelect() {
+        var orm = initTestDb(HasCustomizedMetadata.DDL, HasBadColumnMapping.DDL);
         String stdErr = captureStdErr(() -> {
             try {
                 orm.exec("INSERT INTO has_bad_column_mapping (foo) VALUES ('bar')");

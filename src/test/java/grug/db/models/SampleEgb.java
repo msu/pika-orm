@@ -5,10 +5,10 @@ import grug.db.GrugORM.EnterpriseGrugBean;
 
 import java.util.Date;
 
-public class SampleGrugRecord extends EnterpriseGrugBean {
+public class SampleEgb extends EnterpriseGrugBean {
 
     public static final String DDL = """
-            CREATE TABLE IF NOT EXISTS sample_grug_record (
+            CREATE TABLE IF NOT EXISTS sample_egb (
                 id INTEGER PRIMARY KEY,
                 str_val TEXT NOT NULL,
                 int_val INTEGER NOT NULL,
@@ -23,9 +23,9 @@ public class SampleGrugRecord extends EnterpriseGrugBean {
     private Boolean boolVal;
     private Date dateVal;
 
-    private SampleGrugRecord() {}
+    private SampleEgb() {}
 
-    public SampleGrugRecord(String strVal, Integer intVal, Boolean boolVal, Date dateVal) {
+    public SampleEgb(String strVal, Integer intVal, Boolean boolVal, Date dateVal) {
         this.strVal = strVal;
         this.intVal = intVal;
         this.boolVal = boolVal;
@@ -39,8 +39,8 @@ public class SampleGrugRecord extends EnterpriseGrugBean {
         }
     }
 
-    public static GrugORM.GrugClassQuery<SampleGrugRecord> where(String str) {
-        return GrugORM.get().query(SampleGrugRecord.class).where(str);
+    public static GrugORM.GrugClassQuery<SampleEgb> where(String str) {
+        return GrugORM.get().query(SampleEgb.class).where(str);
     }
 
 }

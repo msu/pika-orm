@@ -1,26 +1,16 @@
 package grug.db;
 
-import grug.db.models.OptimisticModel;
-import org.junit.jupiter.api.BeforeEach;
+import grug.db.models.OptimisticBean;
 import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class OptimisticConcurrencyTest extends TestBase {
 
-    GrugORM orm = null;
-
-    @BeforeEach
-    public void setUp() throws IOException {
-        orm = initDBFileAndORM();
-        orm.exec(OptimisticModel.DDL);
-    }
-
     @Test
     public void testBasicOptimisticConcurrency() {
-        OptimisticModel model = new OptimisticModel();
+        var orm = initTestDb(OptimisticBean.DDL);
+        OptimisticBean model = new OptimisticBean();
         model.setStr("foo");
         model.save();
         assertEquals(1, model.getId());
@@ -29,7 +19,8 @@ public class OptimisticConcurrencyTest extends TestBase {
 
     @Test
     public void testVersionUpdatesAfterSecondUpdate() {
-        OptimisticModel model = new OptimisticModel();
+        var orm = initTestDb(OptimisticBean.DDL);
+        OptimisticBean model = new OptimisticBean();
         model.setStr("foo");
         model.save();
         assertEquals(1, model.getId());
@@ -43,11 +34,12 @@ public class OptimisticConcurrencyTest extends TestBase {
 
     @Test
     public void testOptimisticUpdateDoesNotUpdateWhenVersionIsntCurrent() {
-        OptimisticModel originalModel = new OptimisticModel();
+        var orm = initTestDb(OptimisticBean.DDL);
+        OptimisticBean originalModel = new OptimisticBean();
         originalModel.setStr("foo");
         originalModel.save();
 
-        OptimisticModel fromDb = orm.find(OptimisticModel.class).byId(originalModel.getId());
+        OptimisticBean fromDb = orm.find(OptimisticBean.class).byId(originalModel.getId());
         assertEquals(1, fromDb.getId());
         assertEquals(1, fromDb.getVersion());
         assertEquals("foo", fromDb.getStr());

@@ -2,11 +2,9 @@ package grug.db;
 
 import grug.db.GrugORM.ResultList;
 import grug.db.models.SampleModel;
-import grug.db.models.SampleGrugRecord;
-import org.junit.jupiter.api.BeforeEach;
+import grug.db.models.SampleEgb;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -15,17 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class FindTest extends TestBase{
 
-    GrugORM orm = null;
-
-    @BeforeEach
-    public void setUp() throws IOException {
-        orm = initDBFileAndORM();
-        orm.exec(SampleModel.DDL);
-        orm.exec(SampleGrugRecord.DDL);
-    }
-
     @Test
     void testFind() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
         SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
         long id = orm.insert(sampleModel);
 
@@ -40,6 +30,7 @@ public class FindTest extends TestBase{
 
     @Test
     void testFindAll() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
         for (int i = 0; i < 10 ; i++) {
             SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
             long id = orm.insert(sampleModel);
@@ -65,6 +56,7 @@ public class FindTest extends TestBase{
 
     @Test
     void testSelectWhere() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         SampleModel m2  = new SampleModel("bar", 10, true, new Date());
         SampleModel m3 = new SampleModel("baz", 10, true, new Date());
@@ -80,6 +72,7 @@ public class FindTest extends TestBase{
 
     @Test
     void testGenericSelect() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         SampleModel m2  = new SampleModel("bar", 10, true, new Date());
         SampleModel m3 = new SampleModel("baz", 10, true, new Date());
@@ -111,6 +104,8 @@ public class FindTest extends TestBase{
 
     @Test
     void testGenericSelectWitRecord() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         SampleModel m2  = new SampleModel("bar", 10, true, new Date());
         SampleModel m3 = new SampleModel("foo", 10, true, new Date());

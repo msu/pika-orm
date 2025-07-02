@@ -1,4 +1,4 @@
-package grug.db.chinook.beans;
+package grug.db.models.chinook.beans;
 
 import grug.db.GrugORM.*;
 

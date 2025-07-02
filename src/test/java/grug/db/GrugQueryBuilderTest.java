@@ -1,19 +1,18 @@
 package grug.db;
 
-import grug.db.chinook.pojos.Album;
+import grug.db.models.chinook.pojos.Album;
 import org.junit.jupiter.api.Test;
 
 import static grug.db.GrugORM.*;
-import static grug.db.GrugORM.Interfaces.GrugLogger.Level.DEBUG;
-import static grug.db.TestBase.initDBFileAndORM;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static grug.db.ChinookTest.configureOrm;
 
 public class GrugQueryBuilderTest {
 
     @Test
     void testRawQueryBuilderCanSelectColumnsWithResultObject() {
-        var orm = makeORM();
+        var orm = configureOrm();
         var query = orm.queryBuilder("Albums")
                 .select("Title")
                 .where("Title LIKE '%A%'")
@@ -29,7 +28,7 @@ public class GrugQueryBuilderTest {
 
     @Test
     void testRawQueryBuilderCanSelectColumnsWithResultMap() {
-        var orm = makeORM();
+        var orm = configureOrm();
         var query = orm.queryBuilder("Albums")
                 .select("Title")
                 .where("Title LIKE '%A%'");
@@ -43,7 +42,7 @@ public class GrugQueryBuilderTest {
 
     @Test
     void testRawQueryBuilderCanSelectColumnsWithAliasesInResultMap() {
-        var orm = makeORM();
+        var orm = configureOrm();
         var query = orm.queryBuilder("Albums")
                 .select("Title as AlbumTitle")
                 .where("Title LIKE '%A%'");
@@ -58,7 +57,7 @@ public class GrugQueryBuilderTest {
 
     @Test
     void testRawQueryBuilderCanSelectColumnsWitTableQualificationWithAliasesInResultMap() {
-        var orm = makeORM();
+        var orm = configureOrm();
         var query = orm.queryBuilder("Albums")
                 .select("Albums.Title as AlbumTitle")
                 .where("Title LIKE '%A%'");
@@ -73,7 +72,7 @@ public class GrugQueryBuilderTest {
 
     @Test
     void testRawQueryBuilderCanSelectColumnsWitTableQualificationAndStarInResultMap() {
-        var orm = makeORM();
+        var orm = configureOrm();
         var query = orm.queryBuilder("albums")
                 .select("albums.*", "tracks.Name")
                 .join("Tracks on albums.AlbumId = tracks.TrackId")
@@ -89,7 +88,7 @@ public class GrugQueryBuilderTest {
 
     @Test
     void testRawQueryBuilderCanRemapAColumn() {
-        var orm = makeORM();
+        var orm = configureOrm();
         var query = orm.queryBuilder("albums")
                 .select("tracks.Name as Title") // remap tracks.Name to the album title (insane !!!)
                 .join("Tracks on albums.AlbumId = tracks.TrackId")
@@ -106,7 +105,7 @@ public class GrugQueryBuilderTest {
 
     @Test
     void testRawQueryBuilderCanJoinWithoutResultClass() {//not resultMapping to a class, just POJO hashmap stuff
-        var orm = makeORM();
+        var orm = configureOrm();
         var query = orm.queryBuilder("Albums")
                 .join("Artists on artists.artistId = albums.artistId")
                 .where("artists.Name LIKE '%AC/DC%'");
@@ -116,13 +115,13 @@ public class GrugQueryBuilderTest {
 
         System.out.println(results);//LinkedHashMaps Generic!
 
-        assertEquals("For Those About To Rock We Salute You", results.first().get("Title"));
+        assertEquals("For Those About To Rock We Salute You", results.first().getString("Title"));
 
     }
 
     @Test
     void testRawQueryBuilderJoinWithResultClass() {//This has a result map which will be mapped to Albums, we have more spesific access to class methods now and are working with objects
-        var orm = makeORM();
+        var orm = configureOrm();
         var query = orm.queryBuilder("Albums")
                 .join("Artists on artists.artistId = albums.artistId")
                 .where("artists.Name LIKE '%AC/DC%'")
@@ -139,7 +138,7 @@ public class GrugQueryBuilderTest {
 
     @Test
     void testRawQueryBuilderOrderByPagingWithResultClass() {//This has a result map which will be mapped to Albums, we have more spesific access to class methods now and are working with objects
-        var orm = makeORM();
+        var orm = configureOrm();
         var query = orm.queryBuilder("Albums")
                 .select("Title", "Artists.Name as artistname")
                 .join("Artists on artists.artistId = albums.artistId")
@@ -153,14 +152,5 @@ public class GrugQueryBuilderTest {
         assertEquals("The Song Remains The Same (Disc 2)", results.first().getString("Title"));
     }
 
-
-    public GrugORM makeORM() {
-        return new GrugORM("jdbc:sqlite:db/chinook.db")
-                .withLogLevel(DEBUG)
-                .withDefaultFkColumn(aClass -> aClass.getSimpleName() + "Id")
-                .withDefaultIdField(aClass -> decapitalize(aClass.getSimpleName()) + "Id")
-                .withDefaultColumnMapping(field -> capitalize(field.getName()))
-                .withDefaultTableMapping(aClass -> snakeCase(aClass.getSimpleName()) + "s");
-    }
-
+    
 }
