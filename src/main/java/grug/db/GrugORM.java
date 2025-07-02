@@ -382,6 +382,13 @@ public class GrugORM {
         connectionInfo.startTransaction();
     }
 
+    public void maybeCommitTransaction() {
+        ConnectionInfo connectionInfo = getCurrentConnection();
+        if (connectionInfo.isInTransaction()) {
+            connectionInfo.commitTransaction();
+        }
+    }
+
     public void commitTransaction() {
         ConnectionInfo connectionInfo = getCurrentConnection();
         if (connectionInfo == null) {
@@ -488,7 +495,7 @@ public class GrugORM {
         return id;
     }
 
-    public long[] insertAll(Object[] items) {
+    public long[] insertAll(Object... items) {
         return insertAll(List.of(items));
     }
 

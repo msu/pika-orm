@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public abstract class TestBase {
 
-    protected static GrugORM initTestDb(String... ddl) {
+    public static GrugORM initTestDb(String... ddl) {
         try {
             // remove old db if it exists
             Path path = Path.of("test", "test.db");
