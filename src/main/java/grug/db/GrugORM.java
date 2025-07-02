@@ -2004,7 +2004,7 @@ public class GrugORM {
                     CREATE TABLE IF NOT EXISTS grug_migration (
                         id INTEGER PRIMARY KEY,
                         applied_at INTEGER,
-                        name VARCHAR,
+                        name VARCHAR UNIQUE NOT NULL,
                         description VARCHAR,
                         up VARCHAR,
                         down VARCHAR,
@@ -2107,7 +2107,7 @@ public class GrugORM {
 
             @Override
             public String toString() {
-                return "Migration{id=%d, appliedAt=%d, column='%s', description='%s', up='%s', down='%s', status=%s}".formatted(id, appliedAt, name, description, up, down, status);
+                return "Migration{id=%d, appliedAt=%d, name='%s', description='%s', up='%s', down='%s', status=%s}".formatted(id, appliedAt, name, description, up, down, status);
             }
 
             public Object getDebugString() {
