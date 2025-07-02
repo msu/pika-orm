@@ -140,19 +140,17 @@ public class GrugQueryBuilderTest {
     @Test
     void testRawQueryBuilderOrderByPagingWithResultClass() {//This has a result map which will be mapped to Albums, we have more spesific access to class methods now and are working with objects
         var orm = makeORM();
-        var query = orm.queryBuilder("Albums")//TODO - problem with this query, not returning with results the artists.name column
-                .select("Title", "Artists.Name as artistname")//JDBC doesn't give tools with api to be able to make this work
-                .join("Artists on artists.artistId = albums.artistId")//aliasing and just using artists.name should be working
+        var query = orm.queryBuilder("Albums")
+                .select("Title", "Artists.Name as artistname")
+                .join("Artists on artists.artistId = albums.artistId")
                 .where("artistname LIKE '%Led Zeppelin%'")
                 .orderBy("Title", SortOrder.DESC);
 
         var results = query.execute();
 
-        System.out.println(results);
-        assertEquals(2, results.size());
-
-
-
+        assertEquals(14, results.size());
+        assertEquals("Led Zeppelin", results.first().getString("artistname"));
+        assertEquals("The Song Remains The Same (Disc 2)", results.first().getString("Title"));
     }
 
 

@@ -1986,7 +1986,7 @@ public class GrugORM {
                     CREATE TABLE IF NOT EXISTS grug_migration (
                         id INTEGER PRIMARY KEY,
                         applied_at INTEGER,
-                        column VARCHAR,
+                        name VARCHAR,
                         description VARCHAR,
                         up VARCHAR,
                         down VARCHAR,
