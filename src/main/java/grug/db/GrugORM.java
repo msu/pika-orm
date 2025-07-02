@@ -63,6 +63,9 @@ public class GrugORM {
     private int defaultPageSize = 20;
     private String limitOffsetClause = "LIMIT {0} OFFSET {1}";
 
+    // associated migrations file
+    private Migrations migrations;
+
     //====================================================================
     // constructors & builders
     //====================================================================
@@ -89,6 +92,14 @@ public class GrugORM {
 
     public GrugORM withMigrations(Migrations migrations) {
         migrations.setORM(this);
+        this.migrations = migrations;
+        return this;
+    }
+
+    public GrugORM applyMigrations() {
+        if(migrations != null) {
+            migrations.applyAll();
+        }
         return this;
     }
 

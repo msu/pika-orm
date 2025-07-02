@@ -8,15 +8,6 @@ import java.util.Date;
 
 public class Todo extends EnterpriseGrugBean {
 
-    public static final String DDL = """
-            CREATE TABLE IF NOT EXISTS todo (
-                id INTEGER PRIMARY KEY,
-                title TEXT,
-                description TEXT,
-                due_date TEXT,
-                completed INTEGER
-            );
-            """;
     Long id;
     String title;
     String description;

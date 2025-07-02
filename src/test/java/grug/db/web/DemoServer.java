@@ -1,24 +1,54 @@
 package grug.db.web;
 
 import grug.db.GrugORM;
+import grug.db.GrugORM.Migrations;
 import io.javalin.Javalin;
-import io.javalin.http.HttpStatus;
 
-import static grug.db.TestBase.initTestDb;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static grug.db.GrugORM.Interfaces.GrugLogger.Level.TRACE;
 
 public class DemoServer {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
-        var orm = initTestDb(Todo.DDL);
+        clearOldDb();
 
+        // init the ORM
+        GrugORM orm = new GrugORM("jdbc:sqlite:test/web.db")
+                .withLogLevel(TRACE)
+                .makeDefaultORM()
+                .withMigrations(new WebAppMigrations())
+                .applyMigrations();
+
+        // insert some data
         orm.insertAll(new Todo("Todo 1", "This is todo 1"),
                 new Todo("Todo 2", "This is todo 2"),
                 new Todo("Todo 3", "This is todo 3"));
 
-        var app = Javalin.create(/*config*/)
-                .get("/", context -> context.html(renderTodos()))
+        // create the web app
+        var app = Javalin.create()
+                .get("/", ctx -> ctx.html(renderTodos()))
+                .post("/", ctx -> {
+                    Todo newTodo = new Todo(ctx.formParam("title"), ctx.formParam("description"));
+                    if (newTodo.save()) {
+                        ctx.redirect("/todo/" + newTodo.getId());
+                    } else {
+
+                    }
+                })
                 .start(7070);
+    }
+
+    private static void clearOldDb() throws IOException {
+        // remove old db if it exists
+        Path path = Path.of("test", "web.db");
+        if (Files.exists(path)) {
+            Files.delete(path);
+        }
+        path.toFile().getParentFile().mkdirs();
     }
 
     private static String renderTodos() {
@@ -33,5 +63,6 @@ public class DemoServer {
         sb.append("</ul></body></html>");
         return sb.toString();
     }
+
 
 }
