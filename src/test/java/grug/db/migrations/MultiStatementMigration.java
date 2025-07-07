@@ -16,8 +16,8 @@ public class MultiStatementMigration extends GrugORM.Migrations {
                             id INTEGER PRIMARY KEY,
                             str_val TEXT,
                             int_val INTEGER,
-                            bool_val INTEGER,
-                            date_val INTEGER
+                            bool_val BOOLEAN,
+                            date_val DATETIME
                         );
                         INSERT INTO migration_demo_models(str_val) VALUES ('foo');
                         """)

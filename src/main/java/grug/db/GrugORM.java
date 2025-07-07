@@ -15,9 +15,7 @@ import java.util.*;
 import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -497,15 +495,15 @@ public class GrugORM {
         if (mapping.hasVersionColumn()) {
             newVersionValue = mapping.incrementVersion(values);
         }
-        long id = insert(mapping.getTableName(), values);
+        long id = insert(mapping.getTableName(), values, keyCol);
         if (mapping.hasVersionColumn() && id != INSERT_FAILED) {
             mapping.updateVersionValue(object, newVersionValue);
         }
+        if (!mapping.isReadOnly() && id != INSERT_FAILED) {
+            mapping.setId(object, id);
+        }
         if (object instanceof GrugRecordLifecycle lifecycle) {
             lifecycle.afterInsert();
-        }
-        if (!mapping.isReadOnly()) {
-            mapping.setId(object, id);
         }
         return id;
     }
@@ -524,7 +522,7 @@ public class GrugORM {
         return ids;
     }
 
-    private long insert(String tableName, Map<String, Object> values) {
+    private long insert(String tableName, Map<String, Object> values, String... keyCols) {
         if (!(values instanceof LinkedHashMap<String, Object>)) {
             values = new LinkedHashMap<>(values);
         }
@@ -559,7 +557,7 @@ public class GrugORM {
         logger.log(getQueryLogLevel(), "INSERT SQL: {}\n  Args:{}", insertString, values.values());
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
-            PreparedStatement preparedStatement = conn.prepareStatement(insertString);
+            PreparedStatement preparedStatement = conn.prepareStatement(insertString, keyCols);
             int col = 1;
             for (Object o : values.values()) {
                 setValueForQuery(preparedStatement, col++, o);
@@ -1547,7 +1545,7 @@ public class GrugORM {
                     String tableName = metaData.getTableName(j);
                     if(columnSpec.accept(tableName, columnName)) {
                         Object value = resultSet.getObject(columnName);
-                        resultMap.put(columnName, value);
+                        resultMap.putInternal(columnName, value);
                     }
                 }
                 return (T) resultMap;
@@ -2038,7 +2036,7 @@ public class GrugORM {
             public static final String DDL = """
                     CREATE TABLE IF NOT EXISTS grug_migrations (
                         id INTEGER PRIMARY KEY,
-                        applied_at INTEGER,
+                        applied_at DATETIME,
                         name VARCHAR UNIQUE NOT NULL,
                         description VARCHAR,
                         up VARCHAR,
@@ -2185,7 +2183,11 @@ public class GrugORM {
     // GrugORM Results Objects
     //========================================================================================
 
-    public static class ResultMap extends LinkedHashMap<String, Object> {
+    public static class ResultMap implements Map<String, Object> {
+        
+        private Map<String, Object> result = new LinkedHashMap<>();
+        private Map<String, Object> immutableVersion = Collections.unmodifiableMap(result);
+        
         @SuppressWarnings("unchecked")
         public <T> T get(String key, Class<T> type) {
             return (T) this.get(key);
@@ -2193,23 +2195,165 @@ public class GrugORM {
         public String getString(String key){
             return this.get(key, String.class);
         }
+        public String asString(String key) {
+            return String.valueOf(this.get(key));
+        }
         public Integer getInteger(String key){
             return this.get(key, Integer.class);
+        }
+        public Integer asInteger(String key) {
+            return Integer.valueOf(asString(key));
         }
         public Long getLong(String key){
             return this.get(key, Long.class);
         }
+        public Long asLong(String key) {
+            return Long.valueOf(asString(key));
+        }
         public Float getFloat(String key){
             return this.get(key, Float.class);
+        }
+        public Float asFloat(String key) {
+            return Float.valueOf(asString(key));
         }
         public Double getDouble(String key){
             return this.get(key, Double.class);
         }
+        public Double asDouble(String key) {
+            return Double.valueOf(asString(key));
+        }
         public Date getDate(String key){
             return this.get(key, Date.class);
         }
+        public Date asDate(String key) {
+            return new Date(asString(key));
+        }
         public Boolean getBoolean(String key){
             return this.get(key, Boolean.class);
+        }
+        public Boolean asBoolean(String key) {
+            Object o = get(key);
+            if (o == null) {
+                return false;
+            } else if (Boolean.FALSE.equals(o)) {
+                return false;
+            } else if(o instanceof Number n && n.intValue() == 0){
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+        public int size() {
+            return immutableVersion.size();
+        }
+
+        public boolean isEmpty() {
+            return immutableVersion.isEmpty();
+        }
+
+        @Override
+        public boolean containsKey(Object key) {
+            return immutableVersion.containsKey(key);
+        }
+
+        @Override
+        public boolean containsValue(Object value) {
+            return immutableVersion.containsValue(value);
+        }
+
+        @Override
+        public Object get(Object key) {
+            return immutableVersion.get(key);
+        }
+
+        @Override
+        public Object put(String key, Object value) {
+            return immutableVersion.put(key, value);
+        }
+
+        @Override
+        public Object remove(Object key) {
+            return immutableVersion.remove(key);
+        }
+
+        @Override
+        public void putAll(Map<? extends String, ?> m) {
+            immutableVersion.putAll(m);
+        }
+
+        @Override
+        public void clear() {
+            immutableVersion.clear();
+        }
+
+        public Set<String> keySet() {
+            return immutableVersion.keySet();
+        }
+
+        public Collection<Object> values() {
+            return immutableVersion.values();
+        }
+
+        public Set<Entry<String, Object>> entrySet() {
+            return immutableVersion.entrySet();
+        }
+
+        public Object getOrDefault(Object key, Object defaultValue) {
+            return immutableVersion.getOrDefault(key, defaultValue);
+        }
+
+        public void forEach(BiConsumer<? super String, ? super Object> action) {
+            immutableVersion.forEach(action);
+        }
+
+        public void replaceAll(BiFunction<? super String, ? super Object, ?> function) {
+            immutableVersion.replaceAll(function);
+        }
+
+        public Object putIfAbsent(String key, Object value) {
+            return immutableVersion.putIfAbsent(key, value);
+        }
+
+        public boolean remove(Object key, Object value) {
+            return immutableVersion.remove(key, value);
+        }
+
+        public boolean replace(String key, Object oldValue, Object newValue) {
+            return immutableVersion.replace(key, oldValue, newValue);
+        }
+
+        public Object replace(String key, Object value) {
+            return immutableVersion.replace(key, value);
+        }
+
+        public Object computeIfAbsent(String key,  Function<? super String, ?> mappingFunction) {
+            return immutableVersion.computeIfAbsent(key, mappingFunction);
+        }
+
+        public Object computeIfPresent(String key,  BiFunction<? super String, ? super Object, ?> remappingFunction) {
+            return immutableVersion.computeIfPresent(key, remappingFunction);
+        }
+
+        public Object compute(String key,  BiFunction<? super String, ? super Object, ?> remappingFunction) {
+            return immutableVersion.compute(key, remappingFunction);
+        }
+
+        public Object merge(String key,  Object value,  BiFunction<? super Object, ? super Object, ?> remappingFunction) {
+            return immutableVersion.merge(key, value, remappingFunction);
+        }
+
+        public void putInternal(String columnName, Object value) {
+            result.put(columnName, value);
+        }
+
+        // create a case-insensitive version
+        public ResultMap caseInsensitive() {
+            ResultMap resultMap = new ResultMap();
+            resultMap.result = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+            resultMap.result.putAll(this.result);
+            resultMap.immutableVersion = Collections.unmodifiableMap(resultMap.result);
+            return resultMap;
         }
     }
 

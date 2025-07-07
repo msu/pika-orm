@@ -16,8 +16,8 @@ public class MigrationsFile1 extends GrugORM.Migrations {
                             id INTEGER PRIMARY KEY,
                             str_val TEXT,
                             int_val INTEGER,
-                            bool_val INTEGER,
-                            date_val INTEGER
+                            bool_val BOOLEAN,
+                            date_val DATETIME
                         );
                         """)
                 .down("""

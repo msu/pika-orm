@@ -12,8 +12,8 @@ public class SampleEgb extends EnterpriseGrugBean {
                 id INTEGER PRIMARY KEY,
                 str_val TEXT NOT NULL,
                 int_val INTEGER NOT NULL,
-                bool_val INTEGER NOT NULL,
-                date_val INTEGER NOT NULL
+                bool_val BOOLEAN NOT NULL,
+                date_val DATE NOT NULL
             );
             """;
 

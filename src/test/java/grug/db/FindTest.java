@@ -87,9 +87,10 @@ public class FindTest extends TestBase{
         GrugORM.ResultMap first = results.getFirst();
 
 
-        assertEquals("foo", first.get("str_val"));
-        assertEquals(10, first.get("int_val"));
-        assertEquals(1, first.get("bool_val"));
+        GrugORM.ResultMap insensitive = first.caseInsensitive();
+        assertEquals("foo", insensitive.get("str_val"));
+        assertEquals(10, insensitive.get("int_val"));
+        assertEquals(true, insensitive.asBoolean("bool_val"));
     }
 
     record SampleModelGroupByQuery(String strVal, Long sum) {

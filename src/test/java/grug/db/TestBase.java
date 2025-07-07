@@ -7,11 +7,26 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.List;
 
 import static grug.db.GrugORM.Interfaces.GrugLogger.Level.TRACE;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public abstract class TestBase {
+
+    public enum DatabaseMode {
+        SQLITE,
+        H2,
+    }
+
+    private static DatabaseMode MODE = DatabaseMode.SQLITE;
+    public static void setMode(DatabaseMode mode) {
+        MODE = mode;
+    }
+    public static DatabaseMode getMode() {
+        return MODE;
+    }
 
     public static void copyFileTo(String from, String to) {
         Path source = Path.of(from);
@@ -26,16 +41,32 @@ public abstract class TestBase {
 
     public static GrugORM initTestDb(String... ddl) {
         try {
+
+            List<String> ddlAsList = Arrays.asList(ddl);
+            GrugORM grugORM;
             // remove old db if it exists
-            Path path = Path.of("test/test.db");
-            if (Files.exists(path)) {
-                Files.delete(path);
+
+            if(MODE == DatabaseMode.H2) {
+                // make compatible w/h2
+                ddlAsList = ddlAsList.stream().map(
+                        str -> str.replace("PRIMARY KEY", "auto_increment DEFAULT ON NULL")
+                ).toList();
+                grugORM = new GrugORM("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;");
+                grugORM.exec("DROP ALL OBJECTS"); // clear database
+            } else {
+                Path path = Path.of("test/test.db");
+                if (Files.exists(path)) {
+                    Files.delete(path);
+                }
+                Files.createDirectories(path.getParent());                grugORM = new GrugORM("jdbc:sqlite:./test/test.db");
             }
-            Files.createDirectories(path.getParent());
-            GrugORM grugORM = new GrugORM("jdbc:sqlite:test/test.db")
-                    .withLogLevel(TRACE)
-                    .makeDefaultORM();
-            for (String ddlToRun : ddl) {
+
+            // set trace level and make default
+            grugORM.withLogLevel(TRACE)
+            .makeDefaultORM();
+
+            // execute DDL
+            for (String ddlToRun : ddlAsList) {
                 grugORM.exec(ddlToRun);
             }
             return grugORM;
