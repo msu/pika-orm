@@ -3,24 +3,35 @@ package grug.db;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 import static grug.db.GrugORM.Interfaces.GrugLogger.Level.TRACE;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public abstract class TestBase {
 
+    public static void copyFileTo(String from, String to) {
+        Path source = Path.of(from);
+        Path target = Path.of(to);
+        try {
+            Files.createDirectories(target.getParent());
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     public static GrugORM initTestDb(String... ddl) {
         try {
             // remove old db if it exists
-            Path path = Path.of("test", "test.db");
+            Path path = Path.of("test/test.db");
             if (Files.exists(path)) {
                 Files.delete(path);
             }
-
-            path.toFile().getParentFile().mkdirs();
-
+            Files.createDirectories(path.getParent());
             GrugORM grugORM = new GrugORM("jdbc:sqlite:test/test.db")
                     .withLogLevel(TRACE)
                     .makeDefaultORM();

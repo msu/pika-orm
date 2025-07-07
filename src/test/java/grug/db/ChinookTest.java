@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import static grug.db.GrugORM.*;
 import static grug.db.GrugORM.Interfaces.GrugLogger.Level.DEBUG;
 import static grug.db.GrugORM.JoinType.LEFT;
+import static grug.db.TestBase.copyFileTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ChinookTest {
@@ -89,7 +90,8 @@ public class ChinookTest {
 
 
     public static GrugORM configureOrm() {
-        return new GrugORM("jdbc:sqlite:db/chinook.db")
+        copyFileTo("dbs/chinook.original", "test/chinook.db");
+        return new GrugORM("jdbc:sqlite:test/chinook.db")
                 .withLogLevel(DEBUG)
                 .withDefaultColumnMapping(field -> TextTools.capitalize(field.getName()))
                 .withDefaultFkColumn(aClass -> aClass.getSimpleName() + "Id")

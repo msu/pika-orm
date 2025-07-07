@@ -7,11 +7,16 @@ import grug.db.models.chinook.beans.TrackBean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 import static grug.db.GrugORM.Interfaces.GrugLogger.Level.DEBUG;
 import static grug.db.GrugORM.*;
 import static grug.db.GrugORM.SortOrder.*;
+import static grug.db.TestBase.copyFileTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ChinookBeanTest {
@@ -104,9 +109,9 @@ public class ChinookBeanTest {
         assertEquals(6, result.size());
     }
 
-
     public static GrugORM configureOrm() {
-        return new GrugORM("jdbc:sqlite:db/chinook.db")
+        copyFileTo("dbs/chinook.original", "test/chinook.db");
+        return new GrugORM("jdbc:sqlite:test/chinook.db")
                 .withLogLevel(DEBUG)
                 .withDefaultFkColumn(aClass -> removeBeanSuffix(aClass.getSimpleName()) + "Id")
                 .withDefaultIdField(aClass -> {
