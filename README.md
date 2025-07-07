@@ -48,7 +48,7 @@ anything about the backing database.
 In this case the schema for the table that holds this POJO would look like this:
 
 ```sql
-CREATE TABLE my_model(
+CREATE TABLE my_models (
     id      INTEGER PRIMARY KEY,
     str_val VARCHAR NOT NULL
 );
@@ -58,7 +58,7 @@ CREATE TABLE my_model(
 
 ### Default Mapping
 
-* `ClassName` -> `class_name`
+* `ClassName` -> `class_names`
 * `fieldName` -> `field_name`
 * `id` -> id column/field name
 * `<table_name>_id` -> foreign key column/field name

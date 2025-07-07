@@ -8,7 +8,7 @@ import java.util.Date;
 public class SampleEgb extends EnterpriseGrugBean {
 
     public static final String DDL = """
-            CREATE TABLE IF NOT EXISTS sample_egb (
+            CREATE TABLE IF NOT EXISTS sample_egbs (
                 id INTEGER PRIMARY KEY,
                 str_val TEXT NOT NULL,
                 int_val INTEGER NOT NULL,

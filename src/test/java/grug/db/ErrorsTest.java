@@ -29,7 +29,7 @@ public class ErrorsTest extends TestBase {
         var orm = initTestDb(HasCustomizedMetadata.DDL, HasBadColumnMapping.DDL);
         String stdErr = captureStdErr(() -> {
             try {
-                orm.exec("INSERT INTO has_bad_column_mapping (foo) VALUES ('bar')");
+                orm.exec("INSERT INTO has_bad_column_mappings (foo) VALUES ('bar')");
                 orm.find(HasBadColumnMapping.class).all();
                 fail("Should have failed because no field bar is on the table");
             } catch (Exception e) {

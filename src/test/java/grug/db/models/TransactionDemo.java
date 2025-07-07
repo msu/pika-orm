@@ -8,7 +8,7 @@ import java.io.Serializable;
 public class TransactionDemo implements GrugRecordLifecycle {
 
     public static final String DDL = """
-            CREATE TABLE IF NOT EXISTS transaction_demo (
+            CREATE TABLE IF NOT EXISTS transaction_demos (
                 id INTEGER PRIMARY KEY,
                 name TEXT,
                 value INTEGER

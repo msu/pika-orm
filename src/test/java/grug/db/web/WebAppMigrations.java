@@ -14,13 +14,13 @@ public class WebAppMigrations extends GrugORM.Migrations {
     public GrugMigration initialTodoSchema() {
         return makeMigration("Todo Schema")
                 .up("""
-                        CREATE TABLE IF NOT EXISTS todo (
+                        CREATE TABLE IF NOT EXISTS todos (
                             id INTEGER PRIMARY KEY,
                             title TEXT,
                             description TEXT,
                             due_date TEXT,
                             completed INTEGER
                         );""")
-                .down("DROP TABLE todo");
+                .down("DROP TABLE todos");
     }
 }

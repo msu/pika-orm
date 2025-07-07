@@ -5,7 +5,7 @@ import grug.db.GrugORM.EnterpriseGrugBean;
 public class OptimisticBean extends EnterpriseGrugBean {
 
     public static final String DDL = """
-            CREATE TABLE IF NOT EXISTS optimistic_bean (
+            CREATE TABLE IF NOT EXISTS optimistic_beans (
                  id INTEGER PRIMARY KEY,
                  version INTEGER NOT NULL,
                  str TEXT

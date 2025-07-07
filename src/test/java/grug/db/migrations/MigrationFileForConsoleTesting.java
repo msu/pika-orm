@@ -15,33 +15,33 @@ public class MigrationFileForConsoleTesting extends GrugORM.Migrations {
     public GrugMigration addBarTable() {
         return makeMigration("add bar table")
                 .up("""
-                        CREATE TABLE IF NOT EXISTS bar (
+                        CREATE TABLE IF NOT EXISTS bars (
                             id INTEGER PRIMARY KEY,
                             str_val TEXT
                         );
                         """)
                 .down("""
-                        DROP TABLE bar;
+                        DROP TABLE bars;
                         """);
     }
 
     public GrugMigration addFooTable() {
         return makeMigration("add foo table")
                 .up("""
-                        CREATE TABLE IF NOT EXISTS foo (
+                        CREATE TABLE IF NOT EXISTS foos (
                             id INTEGER PRIMARY KEY,
                             str_val TEXT
                         );
                         """)
                 .down("""
-                        DROP TABLE foo;
+                        DROP TABLE foos;
                         """);
     }
 
     public GrugMigration addMigrationDemoTable() {
         return makeMigration("migration1")
                 .up("""
-                        CREATE TABLE IF NOT EXISTS migration_demo_model (
+                        CREATE TABLE IF NOT EXISTS migration_demo_models (
                             id INTEGER PRIMARY KEY,
                             str_val TEXT,
                             int_val INTEGER,
@@ -50,7 +50,7 @@ public class MigrationFileForConsoleTesting extends GrugORM.Migrations {
                         );
                         """)
                 .down("""
-                        DROP TABLE migration_demo_model;
+                        DROP TABLE migration_demo_models;
                         """);
     }
 

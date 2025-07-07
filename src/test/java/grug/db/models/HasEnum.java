@@ -4,7 +4,7 @@ import java.util.Objects;
 
 public final class HasEnum {
     public static final String DDL = """
-            CREATE TABLE IF NOT EXISTS has_enum (
+            CREATE TABLE IF NOT EXISTS has_enums (
                 id INTEGER PRIMARY KEY,
                 my_enum TEXT NOT NULL
             );

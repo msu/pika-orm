@@ -36,7 +36,7 @@ public class DemoServer {
                     if (newTodo.save()) {
                         ctx.redirect("/todo/" + newTodo.getId());
                     } else {
-
+                        // TODO finish CRUD app
                     }
                 })
                 .start(7070);

@@ -6,7 +6,7 @@ import java.util.List;
 
 public class FooContainer {
     public static final String DDL = """
-            CREATE TABLE IF NOT EXISTS foo_container (
+            CREATE TABLE IF NOT EXISTS foo_containers (
                 id INTEGER PRIMARY KEY
             );
             """;

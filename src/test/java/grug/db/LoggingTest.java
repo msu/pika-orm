@@ -28,7 +28,7 @@ public class LoggingTest extends TestBase {
             System.setOut(tmpOut);
             assertEquals(1, orm.insert(sampleModel));
             String loggedMessage = new String(tmpOutBuffer.toByteArray());
-            String expectedLogMessage = "INSERT SQL: INSERT INTO sample_model (bool_val, date_val, int_val, str_val) VALUES (?, ?, ?, ?)\n" +
+            String expectedLogMessage = "INSERT SQL: INSERT INTO sample_models (bool_val, date_val, int_val, str_val) VALUES (?, ?, ?, ?)\n" +
                     "  Args:[true, 3921-02-01, 10, foo]\n";
             assertStringContains(loggedMessage, expectedLogMessage);
         } finally {
@@ -60,7 +60,7 @@ public class LoggingTest extends TestBase {
         String loggedMessage = captureStdErr(() -> {
             assertEquals(1, orm.insert(sampleModel));
         });
-        String expectedLogMessage = "INSERT SQL: INSERT INTO sample_model (bool_val, date_val, int_val, str_val) VALUES (?, ?, ?, ?)\n" +
+        String expectedLogMessage = "INSERT SQL: INSERT INTO sample_models (bool_val, date_val, int_val, str_val) VALUES (?, ?, ?, ?)\n" +
                 "  Args:[true, 3921-02-01, 10, foo]\n";
         assertStringContains(loggedMessage, expectedLogMessage);
     }

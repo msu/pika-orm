@@ -109,9 +109,9 @@ public class ChinookBeanTest {
         return new GrugORM("jdbc:sqlite:db/chinook.db")
                 .withLogLevel(DEBUG)
                 .withDefaultFkColumn(aClass -> removeBeanSuffix(aClass.getSimpleName()) + "Id")
-                .withDefaultIdField(aClass -> decapitalize(removeBeanSuffix(aClass.getSimpleName())) + "Id")
-                .withDefaultColumnMapping(field -> capitalize(field.getName()))
-                .withDefaultTableMapping(aClass -> snakeCase(removeBeanSuffix(aClass.getSimpleName())) + "s")
+                .withDefaultIdField(aClass -> TextTools.decapitalize(removeBeanSuffix(aClass.getSimpleName())) + "Id")
+                .withDefaultColumnMapping(field -> TextTools.capitalize(field.getName()))
+                .withDefaultTableMapping(aClass -> TextTools.snakeCase(removeBeanSuffix(aClass.getSimpleName())) + "s")
                 .makeDefaultORM();
     }
 

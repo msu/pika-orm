@@ -4,7 +4,7 @@ import java.util.Date;
 
 public final class HasDate {
     public static final String DDL = """
-            CREATE TABLE IF NOT EXISTS has_date (
+            CREATE TABLE IF NOT EXISTS has_dates (
                 id INTEGER PRIMARY KEY,
                 date INTEGER NOT NULL
             );

@@ -22,7 +22,7 @@ public class CustomizationTest extends TestBase {
         orm.withMapping(HasCustomizedMetadata.class,
                 new Mapping(){
                     public String mapToTable() {
-                        return "foo";
+                        return "foos";
                     }
                     public FieldMapping mapField(Field field) {
                         return switch (field.getName()) {

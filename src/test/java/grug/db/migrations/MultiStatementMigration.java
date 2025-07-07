@@ -12,14 +12,14 @@ public class MultiStatementMigration extends GrugORM.Migrations {
     public GrugMigration addMigrationDemoTable() {
         return makeMigration("migration1")
                 .up("""
-                        CREATE TABLE IF NOT EXISTS migration_demo_model (
+                        CREATE TABLE IF NOT EXISTS migration_demo_models (
                             id INTEGER PRIMARY KEY,
                             str_val TEXT,
                             int_val INTEGER,
                             bool_val INTEGER,
                             date_val INTEGER
                         );
-                        INSERT INTO migration_demo_model(str_val) VALUES ('foo');
+                        INSERT INTO migration_demo_models(str_val) VALUES ('foo');
                         """)
                 .down("""
                         DROP TABLE migration_demo_model;

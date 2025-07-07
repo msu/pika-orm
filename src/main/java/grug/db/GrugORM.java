@@ -46,10 +46,14 @@ public class GrugORM {
     private final ConcurrentHashMap<Class, Mapping> mappings = new ConcurrentHashMap<Class, Mapping>();
 
     // Default mapping logic
-    private Function<Class, String> defaultClassToTableMapping = aClass -> snakeCase(aClass.getSimpleName());
-    private Function<Field, String> defaultFieldToColumnMapping = field -> snakeCase(field.getName());
+    private Function<Class, String> defaultClassToTableMapping = aClass -> {
+        String className = aClass.getSimpleName();
+        String plural = TextTools.pluralize(className);
+        return TextTools.snakeCase(plural);
+    };
+    private Function<Field, String> defaultFieldToColumnMapping = field -> TextTools.snakeCase(field.getName());
     private Function<Class, String> defaultIdFieldName = aClass -> "id";
-    private Function<Class, String> defaultFkColumnName = aClass -> snakeCase(aClass.getSimpleName()) + "_id";
+    private Function<Class, String> defaultFkColumnName = aClass -> TextTools.snakeCase(aClass.getSimpleName()) + "_id";
     private Function<Class, String> defaultVersionFieldName = aClass -> "version";
     private Function<Class, Function<Object, Object>> defaultVersionIncrementer = aClass -> (previousValue) -> {
         if(previousValue == null) {
@@ -468,7 +472,7 @@ public class GrugORM {
             logger.log(GrugLogger.Level.ERROR, """
                     Exception in select() with SQL
                     {}\s
-                    with args {}: {}""", indent(2, sql), args, e.getMessage());
+                    with args {}: {}""", TextTools.indent(2, sql), args, e.getMessage());
             throw rethrow(e);
         }
     }
@@ -772,44 +776,75 @@ public class GrugORM {
         return finalSql.toString();
     }
 
-    public static String decapitalize(String name) {
-        if (name == null || name.isEmpty()) {
-            return name;
-        }
-        char[] chars = name.toCharArray();
-        chars[0] = Character.toLowerCase(chars[0]);
-        return new String(chars);
-    }
-
-    public static String indent(int spaces, String str) {
-        return Arrays.stream(str.split("\n"))
-                .map(s -> " ".repeat(spaces) + s )
-                .collect(Collectors.joining("\n"));
-    }
-    public static String capitalize(String name) {
-        if (name == null || name.isEmpty()) {
-            return name;
-        }
-        char[] chars = name.toCharArray();
-        chars[0] = Character.toUpperCase(chars[0]);
-        return new String(chars);
-    }
-
-    public static String snakeCase(String string) {
-        StringBuilder result = new StringBuilder();
-        char[] charArray = string.toCharArray();
-        for (int i = 0; i < charArray.length; i++) {
-            char c = charArray[i];
-            if (Character.isUpperCase(c)) {
-                if (i != 0) {
-                    result.append("_");
-                }
-                result.append(Character.toLowerCase(c));
-            } else {
-                result.append(c);
+    public static class TextTools {
+        public static String decapitalize(String name) {
+            if (name == null || name.isEmpty()) {
+                return name;
             }
+            char[] chars = name.toCharArray();
+            chars[0] = Character.toLowerCase(chars[0]);
+            return new String(chars);
         }
-        return result.toString();
+
+        public static String indent(int spaces, String str) {
+            return Arrays.stream(str.split("\n"))
+                    .map(s -> " ".repeat(spaces) + s )
+                    .collect(Collectors.joining("\n"));
+        }
+
+        public static String capitalize(String name) {
+            if (name == null || name.isEmpty()) {
+                return name;
+            }
+            char[] chars = name.toCharArray();
+            chars[0] = Character.toUpperCase(chars[0]);
+            return new String(chars);
+        }
+
+        public static String snakeCase(String string) {
+            StringBuilder result = new StringBuilder();
+            char[] charArray = string.toCharArray();
+            for (int i = 0; i < charArray.length; i++) {
+                char c = charArray[i];
+                if (Character.isUpperCase(c)) {
+                    if (i != 0) {
+                        result.append("_");
+                    }
+                    result.append(Character.toLowerCase(c));
+                } else {
+                    result.append(c);
+                }
+            }
+            return result.toString();
+        }
+
+        // an extremely simplified english pluralization algorithm based
+        // on https://blob.perl.org/tpc/1998/User_Applications/Algorithmic%20Approach%20Plurals/Algorithmic_Plurals.html
+        static LinkedHashMap<Pattern, String> INFLECTIONS = new LinkedHashMap<>();
+        private static void addInflection(String suffix, String replacement){
+            INFLECTIONS.put(Pattern.compile(".*" + suffix + "$"), replacement);
+        }
+        static {
+            addInflection("[ch](h)", "hes");
+            addInflection("(ss)", "sses");
+            addInflection("[aeo]l(f)", "ves");
+            addInflection("[^d]ea(f)", "ves");
+            addInflection("ar(f)", "ves");
+            addInflection("[nlw]i(fe)", "ves");
+            addInflection("[aeiou](y)", "ys");
+            addInflection("(y)", "ies");
+        }
+        public static String pluralize(String noun) {
+            for (Map.Entry<Pattern, String> inflection : INFLECTIONS.entrySet()) {
+                Matcher matcher = inflection.getKey().matcher(noun);
+                if (matcher.matches()) {
+                    StringBuilder result = new StringBuilder(noun);
+                    result.replace(matcher.start(1), matcher.end(1), inflection.getValue());
+                    return result.toString();
+                }
+            }
+            return noun + "s"; // default to appending 's'
+        }
     }
 
     public <T> GrugClassQuery<T> query(Class<T> baseClass) {
@@ -2001,7 +2036,7 @@ public class GrugORM {
         public static final class GrugMigration {
 
             public static final String DDL = """
-                    CREATE TABLE IF NOT EXISTS grug_migration (
+                    CREATE TABLE IF NOT EXISTS grug_migrations (
                         id INTEGER PRIMARY KEY,
                         applied_at INTEGER,
                         name VARCHAR UNIQUE NOT NULL,

@@ -4,7 +4,7 @@ import grug.db.GrugORM;
 
 public class Foo {
     public static final String DDL = """
-            CREATE TABLE IF NOT EXISTS foo (
+            CREATE TABLE IF NOT EXISTS foos (
                 id INTEGER PRIMARY KEY,
                 foo_container_id INTEGER NOT NULL
             );

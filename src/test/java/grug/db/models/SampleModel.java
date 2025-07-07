@@ -9,7 +9,7 @@ import java.util.Date;
 public class SampleModel implements GrugRecordLifecycle {
 
     public static String DDL = """
-            CREATE TABLE IF NOT EXISTS sample_model (
+            CREATE TABLE IF NOT EXISTS sample_models (
                 id INTEGER PRIMARY KEY,
                 str_val TEXT NOT NULL,
                 int_val INTEGER NOT NULL,

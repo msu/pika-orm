@@ -4,7 +4,7 @@ import java.util.*;
 
 public class HasCustomizedMetadata {
     public static String DDL = """
-            CREATE TABLE IF NOT EXISTS foo (
+            CREATE TABLE IF NOT EXISTS foos (
                 id INTEGER PRIMARY KEY,
                 json TEXT
             );

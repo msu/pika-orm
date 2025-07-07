@@ -92,9 +92,9 @@ public class ChinookTest {
         return new GrugORM("jdbc:sqlite:db/chinook.db")
                 .withLogLevel(DEBUG)
                 .withDefaultFkColumn(aClass -> aClass.getSimpleName() + "Id")
-                .withDefaultIdField(aClass -> decapitalize(aClass.getSimpleName()) + "Id")
-                .withDefaultColumnMapping(field -> capitalize(field.getName()))
-                .withDefaultTableMapping(aClass -> snakeCase(aClass.getSimpleName()) + "s");
+                .withDefaultIdField(aClass -> TextTools.decapitalize(aClass.getSimpleName()) + "Id")
+                .withDefaultColumnMapping(field -> TextTools.capitalize(field.getName()))
+                .withDefaultTableMapping(aClass -> TextTools.snakeCase(aClass.getSimpleName()) + "s");
     }
 
 }
