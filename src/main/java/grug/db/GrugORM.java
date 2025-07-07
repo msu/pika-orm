@@ -8,6 +8,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.RecordComponent;
+import java.math.BigDecimal;
+import java.net.URL;
 import java.sql.*;
 import java.text.MessageFormat;
 import java.time.Instant;
@@ -19,6 +21,7 @@ import java.util.function.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @SuppressWarnings({"rawtypes", "UnusedReturnValue", "UnnecessaryLocalVariable"})
 public class GrugORM {
@@ -54,7 +57,7 @@ public class GrugORM {
     private Function<Class, String> defaultFkColumnName = aClass -> TextTools.snakeCase(aClass.getSimpleName()) + "_id";
     private Function<Class, String> defaultVersionFieldName = aClass -> "version";
     private Function<Class, Function<Object, Object>> defaultVersionIncrementer = aClass -> (previousValue) -> {
-        if(previousValue == null) {
+        if (previousValue == null) {
             return 1;
         } else {
             return ((Long) previousValue) + 1;
@@ -99,7 +102,7 @@ public class GrugORM {
     }
 
     public GrugORM applyMigrations() {
-        if(migrations != null) {
+        if (migrations != null) {
             migrations.applyAll();
         }
         return this;
@@ -216,11 +219,13 @@ public class GrugORM {
         return new GrugFinder<>(classToFind);
     }
 
-    public class GrugFinder<T>  {
+    public class GrugFinder<T> {
         Class<T> classToFind;
+
         public GrugFinder(Class<T> classToFind) {
             this.classToFind = classToFind;
         }
+
         public T byId(Object id) {
             Mapping mapping = getMapping(classToFind);
             String column = mapping.getIdColumn();
@@ -229,12 +234,14 @@ public class GrugORM {
             ResultList<T> result = select(sql, Map.of("arg", id), classToFind);
             return result.first();
         }
+
         public T byKey(String col, Object value) {
             Mapping mapping = getMapping(classToFind);
             String sql = "SELECT * FROM " + mapping.getTableName() + " WHERE " + col + "=:arg " + MessageFormat.format(limitOffsetClause, 1, 0);
             ResultList<T> result = select(sql, Map.of("arg", value), classToFind);
             return result.first();
         }
+
         public ResultList<T> all() {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
@@ -242,6 +249,7 @@ public class GrugORM {
             String sql = selectClause + "true=true";
             return select(sql, Map.of(), classToFind);
         }
+
         public ResultList<T> allBy(String column, Object val) {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
@@ -249,6 +257,7 @@ public class GrugORM {
             String sql = selectClause + column + "=:val ";
             return select(sql, Map.of("val", val), classToFind);
         }
+
         public ResultList<T> where(String whereClause, Map<String, Object> args) {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
@@ -256,9 +265,11 @@ public class GrugORM {
             String sql = selectClause + whereClause;
             return select(sql, args, classToFind);
         }
+
         public ResultList<T> bySQL(String sql, Map<String, Object> args) {
             return get().select(sql, args, classToFind);
         }
+
         public GrugClassQuery<T> byQuery() {
             return new GrugClassQuery<>(classToFind);
         }
@@ -289,7 +300,7 @@ public class GrugORM {
             logger.log(GrugLogger.Level.DEBUG, "Incremented open count on connection {}: {}", uuid, "*".repeat(openCount));
         }
 
-        @Override
+
         public void close() {
             openCount--;
             logger.log(GrugLogger.Level.DEBUG, "Decremented open count on connection {}: {}", uuid, "*".repeat(openCount));
@@ -463,7 +474,7 @@ public class GrugORM {
                 if (object instanceof GrugRecordLifecycle lifecycle) {
                     lifecycle.afterSelect();
                 }
-                result.add(object);
+                result.addInternal(object);
             }
             return result;
         } catch (Exception e) {
@@ -601,7 +612,7 @@ public class GrugORM {
             nextVersionValue = mapping.incrementVersion(valuesToUpdate);
         }
         boolean update = update(tableName, keyCol, keyVal, versionColumn, currentVersionValue, valuesToUpdate);
-        if(mapping.hasVersionColumn() && update) {
+        if (mapping.hasVersionColumn() && update) {
             mapping.updateVersionValue(object, nextVersionValue);
         }
         if (object instanceof GrugRecordLifecycle lifecycle) {
@@ -786,7 +797,7 @@ public class GrugORM {
 
         public static String indent(int spaces, String str) {
             return Arrays.stream(str.split("\n"))
-                    .map(s -> " ".repeat(spaces) + s )
+                    .map(s -> " ".repeat(spaces) + s)
                     .collect(Collectors.joining("\n"));
         }
 
@@ -819,9 +830,11 @@ public class GrugORM {
         // an extremely simplified english pluralization algorithm based
         // on https://blob.perl.org/tpc/1998/User_Applications/Algorithmic%20Approach%20Plurals/Algorithmic_Plurals.html
         static LinkedHashMap<Pattern, String> INFLECTIONS = new LinkedHashMap<>();
-        private static void addInflection(String suffix, String replacement){
+
+        private static void addInflection(String suffix, String replacement) {
             INFLECTIONS.put(Pattern.compile(".*" + suffix + "$"), replacement);
         }
+
         static {
             addInflection("[ch](h)", "hes");
             addInflection("(ss)", "sses");
@@ -832,6 +845,7 @@ public class GrugORM {
             addInflection("[aeiou](y)", "ys");
             addInflection("(y)", "ies");
         }
+
         public static String pluralize(String noun) {
             for (Map.Entry<Pattern, String> inflection : INFLECTIONS.entrySet()) {
                 Matcher matcher = inflection.getKey().matcher(noun);
@@ -859,6 +873,7 @@ public class GrugORM {
             enum Level {
                 ERROR, WARN, INFO, DEBUG, TRACE
             }
+
             void log(Level level, String msg, Object... args);
         }
 
@@ -942,7 +957,7 @@ public class GrugORM {
             // override in subclasses
         }
 
-        @Override
+
         public void afterSelect() {
             this.persisted = true;
         }
@@ -999,11 +1014,13 @@ public class GrugORM {
     public enum SortOrder {
         ASC, DESC;
     }
+
     public enum JoinType {
         INNER, OUTER, LEFT, RIGHT;
     }
+
     private record OrderBy(String col, SortOrder direction) {
-        @Override
+
         public String toString() {
             return col + " " + (direction == null ? "" : direction.name());
         }
@@ -1036,7 +1053,7 @@ public class GrugORM {
             whereClause.append(condition);
             return this;
         }
-        
+
         public GrugQueryBuilder<T> select(String... columns) {
             return select(Arrays.asList(columns));
         }
@@ -1069,14 +1086,14 @@ public class GrugORM {
 
         private String generateSQL() {
             String sql = generateSelectClause();
-            if(!joins.isEmpty()) {
+            if (!joins.isEmpty()) {
                 sql += "\n" + String.join("\n", joins);
             }
-            if(!whereClause.isEmpty()) {
+            if (!whereClause.isEmpty()) {
                 sql += "\nWHERE " + whereClause;
             }
-            if (!orderBys.isEmpty()){
-                sql += "\nORDER BY "+ String.join(", ", orderBys.stream().map(OrderBy::toString).toList());
+            if (!orderBys.isEmpty()) {
+                sql += "\nORDER BY " + String.join(", ", orderBys.stream().map(OrderBy::toString).toList());
             }
             if (page != -1) {
                 int limit;
@@ -1101,7 +1118,7 @@ public class GrugORM {
                 selectClause.append("DISTINCT ");
             }
             String prefix = columnPrefix != null ? columnPrefix + "." : "";
-            if(columns != null) {
+            if (columns != null) {
                 selectClause.append(columns.stream().map(s -> prefix + s).collect(Collectors.joining(", ")));
             } else {
                 selectClause.append(prefix).append("*");
@@ -1126,7 +1143,7 @@ public class GrugORM {
         }
 
         public GrugQueryBuilder<T> join(String joinSql) {
-            if(!joinSql.toUpperCase().contains("JOIN")) {
+            if (!joinSql.toUpperCase().contains("JOIN")) {
                 joinSql = "JOIN " + joinSql;
             }
             this.joins.add(joinSql);
@@ -1157,7 +1174,7 @@ public class GrugORM {
         }
     }
 
-    public class GrugClassQuery<T>  {
+    public class GrugClassQuery<T> {
 
         private final GrugQueryBuilder<T> query;
         private final Class classToFind;
@@ -1196,10 +1213,10 @@ public class GrugORM {
         private Class resolveFkClass(Class class1, Class class2) {
             Mapping class1Mapping = getMapping(class1);
             Mapping class2Mapping = getMapping(class2);
-            if(class1Mapping.hasColumn(class2Mapping.getDefaultForeignKeyColumnName())) {
+            if (class1Mapping.hasColumn(class2Mapping.getDefaultForeignKeyColumnName())) {
                 return class1;
             }
-            if(class2Mapping.hasColumn(class1Mapping.getDefaultForeignKeyColumnName())) {
+            if (class2Mapping.hasColumn(class1Mapping.getDefaultForeignKeyColumnName())) {
                 return class2;
             }
             throw new IllegalStateException(MessageFormat.format("Cannot determine a foreign key relationship between {0} and {1}, please use an explicit join", class1.getSimpleName(), class2.getSimpleName()));
@@ -1287,7 +1304,7 @@ public class GrugORM {
         // thank you slf4j for using a non-standard logging format, very cool
         final Pattern parens = Pattern.compile("\\{}");
 
-        @Override
+
         public void log(Level level, String msg, Object... args) {
             if (level.ordinal() <= internalLoggerLevel.ordinal()) {
                 String logMsg = "[" + Instant.now() + "] " + level + ": " + msg;
@@ -1328,17 +1345,25 @@ public class GrugORM {
 
         switch (val) {
             case Boolean b -> ps.setBoolean(parameterIndex, b);
+            case Short s -> ps.setShort(parameterIndex, s);
             case Integer i -> ps.setInt(parameterIndex, i);
             case Long l -> ps.setLong(parameterIndex, l);
             case Float f -> ps.setDouble(parameterIndex, f);
             case Double d -> ps.setDouble(parameterIndex, d);
+            case BigDecimal bd -> ps.setBigDecimal(parameterIndex, bd);
             case String str -> ps.setString(parameterIndex, str);
             case Time d -> ps.setTime(parameterIndex, d);
+            case Timestamp ts -> ps.setTimestamp(parameterIndex, ts);
             case Date d -> {
                 Timestamp timestamp = new Timestamp(d.getTime());
                 ps.setTimestamp(parameterIndex, timestamp);
             }
             case Blob blob -> ps.setBlob(parameterIndex, blob);
+            case NClob nclob -> ps.setNClob(parameterIndex, nclob);
+            case Clob clob -> ps.setClob(parameterIndex, clob);
+            case Byte b -> ps.setByte(parameterIndex, b);
+            case byte[] bytes -> ps.setBytes(parameterIndex, bytes);
+            case URL url -> ps.setURL(parameterIndex, url);
             default -> ps.setObject(parameterIndex, val);
         }
     }
@@ -1402,7 +1427,8 @@ public class GrugORM {
         private Constructor constructor;
         private FieldMapping versionMapping;
 
-        protected Mapping() {}
+        protected Mapping() {
+        }
 
         public void setOrm(GrugORM orm) {
             this.orm = orm;
@@ -1452,7 +1478,7 @@ public class GrugORM {
             FieldMapping versionMapping = null;
             for (FieldMapping mapping : fieldNameToMapping.values()) {
                 if (mapping.isVersionProperty()) {
-                    if(versionMapping == null) {
+                    if (versionMapping == null) {
                         versionMapping = mapping;
                     } else {
                         throw new IllegalStateException("Cannot have more than one field as the version column: " + versionMapping.getFieldName() +
@@ -1460,7 +1486,7 @@ public class GrugORM {
                     }
                 }
             }
-            if(versionMapping == null) {
+            if (versionMapping == null) {
                 String versionFieldName = orm.defaultVersionFieldName.apply(classForTable);
                 versionMapping = fieldNameToMapping.get(versionFieldName);
             }
@@ -1471,7 +1497,7 @@ public class GrugORM {
             FieldMapping idMapping = null;
             for (FieldMapping mapping : fieldNameToMapping.values()) {
                 if (mapping.isId()) {
-                    if(idMapping == null) {
+                    if (idMapping == null) {
                         idMapping = mapping;
                     } else {
                         throw new IllegalStateException("Cannot have more than one field as the id column: " + idMapping.getFieldName() +
@@ -1479,7 +1505,7 @@ public class GrugORM {
                     }
                 }
             }
-            if(idMapping == null) {
+            if (idMapping == null) {
                 String idFieldName = orm.defaultIdFieldName.apply(classForTable);
                 idMapping = fieldNameToMapping.get(idFieldName);
             }
@@ -1543,7 +1569,7 @@ public class GrugORM {
                 for (int j = 1; j <= i; j++) {
                     String columnName = metaData.getColumnName(j);
                     String tableName = metaData.getTableName(j);
-                    if(columnSpec.accept(tableName, columnName)) {
+                    if (columnSpec.accept(tableName, columnName)) {
                         Object value = resultSet.getObject(columnName);
                         resultMap.putInternal(columnName, value);
                     }
@@ -1622,7 +1648,7 @@ public class GrugORM {
         }
 
         private FieldMapping getIdMapping() {
-            if(idMapping == null) {
+            if (idMapping == null) {
                 throw new IllegalStateException("The class " + classForTable.getName() + " has no id column");
             } else {
                 return idMapping;
@@ -1688,6 +1714,7 @@ public class GrugORM {
             this.versionIncrementer = orm.defaultVersionIncrementer.apply(mappedField.getDeclaringClass());
             this.dbStorageType = mappedField.getType();
         }
+
         public String getFieldName() {
             return mappedField.getName();
         }
@@ -1790,7 +1817,9 @@ public class GrugORM {
 
     private static class ColumnsSpec {
 
-        private record Column(String column, String table, String alias) {}
+        private record Column(String column, String table, String alias) {
+        }
+
         List<Column> columns = new ArrayList<>();
         boolean acceptAll = true;
 
@@ -1819,20 +1848,20 @@ public class GrugORM {
         }
 
         public boolean accept(String tableName, String columnName) {
-            if(acceptAll) {
+            if (acceptAll) {
                 return true;
             }
             for (Column column : columns) {
                 if (column.table == null) {
-                    if(columnName.equals(column.alias)) {
+                    if (columnName.equals(column.alias)) {
                         return true;
-                    } else if(columnName.equals(column.column)) {
+                    } else if (columnName.equals(column.column)) {
                         return true;
                     }
                 } else {
-                    if(columnName.equals(column.alias)) {
+                    if (columnName.equals(column.alias)) {
                         return true;
-                    } else if(tableName.equals(column.table) && (columnName.equals(column.column) || "*".equals(column.column))) {
+                    } else if (tableName.equals(column.table) && (columnName.equals(column.column) || "*".equals(column.column))) {
                         return true;
                     }
                 }
@@ -2121,7 +2150,7 @@ public class GrugORM {
                 });
             }
 
-            @Override
+
             public boolean equals(Object o) {
                 if (this == o) return true;
                 if (o == null || getClass() != o.getClass()) return false;
@@ -2129,7 +2158,7 @@ public class GrugORM {
                 return Objects.equals(name, migration.name) && Objects.equals(up, migration.up) && Objects.equals(down, migration.down);
             }
 
-            @Override
+
             public int hashCode() {
                 return Objects.hash(name, up, down);
             }
@@ -2138,7 +2167,7 @@ public class GrugORM {
                 return status;
             }
 
-            @Override
+
             public String toString() {
                 return "Migration{id=%d, appliedAt=%d, name='%s', description='%s', up='%s', down='%s', status=%s}".formatted(id, appliedAt, name, description, up, down, status);
             }
@@ -2184,186 +2213,228 @@ public class GrugORM {
     //========================================================================================
 
     public static class ResultMap implements Map<String, Object> {
-        
+
         private Map<String, Object> result = new LinkedHashMap<>();
-        private Map<String, Object> immutableVersion = Collections.unmodifiableMap(result);
-        
+        private Map<String, Object> readOnlyDelegate = Collections.unmodifiableMap(result);
+
+        // allows internal modification, sure wish java had an immutable map interface
+        private void putInternal(String columnName, Object value) {
+            result.put(columnName, value);
+        }
+
+        // automatic down-casting helpers
         @SuppressWarnings("unchecked")
         public <T> T get(String key, Class<T> type) {
-            return (T) this.get(key);
+            return (T) result.get(key);
         }
-        public String getString(String key){
+
+        public String getString(String key) {
             return this.get(key, String.class);
         }
+
+        public Short getShort(String key) {
+            return this.get(key, Short.class);
+        }
+
+        public Integer getInteger(String key) {
+            return this.get(key, Integer.class);
+        }
+
+        public Long getLong(String key) {
+            return this.get(key, Long.class);
+        }
+
+        public Float getFloat(String key) {
+            return this.get(key, Float.class);
+        }
+
+        public Double getDouble(String key) {
+            return this.get(key, Double.class);
+        }
+
+        public BigDecimal getBigDecimal(String key) {
+            return this.get(key, BigDecimal.class);
+        }
+
+        public Date getDate(String key) {
+            return this.get(key, Date.class);
+        }
+
+        public Boolean getBoolean(String key) {
+            return this.get(key, Boolean.class);
+        }
+
+        // the 'as' methods will attempt to coerce a value to the given type
+
         public String asString(String key) {
             return String.valueOf(this.get(key));
         }
-        public Integer getInteger(String key){
-            return this.get(key, Integer.class);
+
+        public Short asShort(String key) {
+            return Short.valueOf(asString(key));
         }
+
         public Integer asInteger(String key) {
             return Integer.valueOf(asString(key));
         }
-        public Long getLong(String key){
-            return this.get(key, Long.class);
-        }
+
         public Long asLong(String key) {
             return Long.valueOf(asString(key));
         }
-        public Float getFloat(String key){
-            return this.get(key, Float.class);
-        }
+
         public Float asFloat(String key) {
             return Float.valueOf(asString(key));
         }
-        public Double getDouble(String key){
-            return this.get(key, Double.class);
-        }
+
         public Double asDouble(String key) {
             return Double.valueOf(asString(key));
         }
-        public Date getDate(String key){
-            return this.get(key, Date.class);
+
+        public BigDecimal asBigDecimal(String key) {
+            return new BigDecimal(asString(key));
         }
+
         public Date asDate(String key) {
             return new Date(asString(key));
         }
-        public Boolean getBoolean(String key){
-            return this.get(key, Boolean.class);
-        }
+
         public Boolean asBoolean(String key) {
             Object o = get(key);
             if (o == null) {
                 return false;
             } else if (Boolean.FALSE.equals(o)) {
                 return false;
-            } else if(o instanceof Number n && n.intValue() == 0){
+            } else if (o instanceof Number n && n.intValue() == 0) {
                 return false;
             } else {
                 return true;
             }
         }
 
-        public int size() {
-            return immutableVersion.size();
-        }
-
-        public boolean isEmpty() {
-            return immutableVersion.isEmpty();
-        }
-
-        @Override
-        public boolean containsKey(Object key) {
-            return immutableVersion.containsKey(key);
-        }
-
-        @Override
-        public boolean containsValue(Object value) {
-            return immutableVersion.containsValue(value);
-        }
-
-        @Override
-        public Object get(Object key) {
-            return immutableVersion.get(key);
-        }
-
-        @Override
-        public Object put(String key, Object value) {
-            return immutableVersion.put(key, value);
-        }
-
-        @Override
-        public Object remove(Object key) {
-            return immutableVersion.remove(key);
-        }
-
-        @Override
-        public void putAll(Map<? extends String, ?> m) {
-            immutableVersion.putAll(m);
-        }
-
-        @Override
-        public void clear() {
-            immutableVersion.clear();
-        }
-
-        public Set<String> keySet() {
-            return immutableVersion.keySet();
-        }
-
-        public Collection<Object> values() {
-            return immutableVersion.values();
-        }
-
-        public Set<Entry<String, Object>> entrySet() {
-            return immutableVersion.entrySet();
-        }
-
-        public Object getOrDefault(Object key, Object defaultValue) {
-            return immutableVersion.getOrDefault(key, defaultValue);
-        }
-
-        public void forEach(BiConsumer<? super String, ? super Object> action) {
-            immutableVersion.forEach(action);
-        }
-
-        public void replaceAll(BiFunction<? super String, ? super Object, ?> function) {
-            immutableVersion.replaceAll(function);
-        }
-
-        public Object putIfAbsent(String key, Object value) {
-            return immutableVersion.putIfAbsent(key, value);
-        }
-
-        public boolean remove(Object key, Object value) {
-            return immutableVersion.remove(key, value);
-        }
-
-        public boolean replace(String key, Object oldValue, Object newValue) {
-            return immutableVersion.replace(key, oldValue, newValue);
-        }
-
-        public Object replace(String key, Object value) {
-            return immutableVersion.replace(key, value);
-        }
-
-        public Object computeIfAbsent(String key,  Function<? super String, ?> mappingFunction) {
-            return immutableVersion.computeIfAbsent(key, mappingFunction);
-        }
-
-        public Object computeIfPresent(String key,  BiFunction<? super String, ? super Object, ?> remappingFunction) {
-            return immutableVersion.computeIfPresent(key, remappingFunction);
-        }
-
-        public Object compute(String key,  BiFunction<? super String, ? super Object, ?> remappingFunction) {
-            return immutableVersion.compute(key, remappingFunction);
-        }
-
-        public Object merge(String key,  Object value,  BiFunction<? super Object, ? super Object, ?> remappingFunction) {
-            return immutableVersion.merge(key, value, remappingFunction);
-        }
-
-        public void putInternal(String columnName, Object value) {
-            result.put(columnName, value);
-        }
-
-        // create a case-insensitive version
+        // create a case-insensitive version of the results, some dbs are ugly w/ the cases
         public ResultMap caseInsensitive() {
             ResultMap resultMap = new ResultMap();
             resultMap.result = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
             resultMap.result.putAll(this.result);
-            resultMap.immutableVersion = Collections.unmodifiableMap(resultMap.result);
+            resultMap.readOnlyDelegate = Collections.unmodifiableMap(resultMap.result);
             return resultMap;
+        }
+
+        //==============================================================================
+        // Delegate map ops to the read only version, sure wish java had delegation :/
+        //==============================================================================
+
+        public int size() {
+            return readOnlyDelegate.size();
+        }
+
+        public boolean isEmpty() {
+            return readOnlyDelegate.isEmpty();
+        }
+
+        public boolean containsKey(Object key) {
+            return readOnlyDelegate.containsKey(key);
+        }
+
+        public boolean containsValue(Object value) {
+            return readOnlyDelegate.containsValue(value);
+        }
+
+        public Object get(Object key) {
+            return readOnlyDelegate.get(key);
+        }
+
+        public Object put(String key, Object value) {
+            return readOnlyDelegate.put(key, value);
+        }
+
+        public Object remove(Object key) {
+            return readOnlyDelegate.remove(key);
+        }
+
+        public void putAll(Map<? extends String, ?> m) {
+            readOnlyDelegate.putAll(m);
+        }
+
+        public void clear() {
+            readOnlyDelegate.clear();
+        }
+
+        public Set<String> keySet() {
+            return readOnlyDelegate.keySet();
+        }
+
+        public Collection<Object> values() {
+            return readOnlyDelegate.values();
+        }
+
+        public Set<Entry<String, Object>> entrySet() {
+            return readOnlyDelegate.entrySet();
+        }
+
+        public Object getOrDefault(Object key, Object defaultValue) {
+            return readOnlyDelegate.getOrDefault(key, defaultValue);
+        }
+
+        public void forEach(BiConsumer<? super String, ? super Object> action) {
+            readOnlyDelegate.forEach(action);
+        }
+
+        public void replaceAll(BiFunction<? super String, ? super Object, ?> function) {
+            readOnlyDelegate.replaceAll(function);
+        }
+
+        public Object putIfAbsent(String key, Object value) {
+            return readOnlyDelegate.putIfAbsent(key, value);
+        }
+
+        public boolean remove(Object key, Object value) {
+            return readOnlyDelegate.remove(key, value);
+        }
+
+        public boolean replace(String key, Object oldValue, Object newValue) {
+            return readOnlyDelegate.replace(key, oldValue, newValue);
+        }
+
+        public Object replace(String key, Object value) {
+            return readOnlyDelegate.replace(key, value);
+        }
+
+        public Object computeIfAbsent(String key, Function<? super String, ?> mappingFunction) {
+            return readOnlyDelegate.computeIfAbsent(key, mappingFunction);
+        }
+
+        public Object computeIfPresent(String key, BiFunction<? super String, ? super Object, ?> remappingFunction) {
+            return readOnlyDelegate.computeIfPresent(key, remappingFunction);
+        }
+
+        public Object compute(String key, BiFunction<? super String, ? super Object, ?> remappingFunction) {
+            return readOnlyDelegate.compute(key, remappingFunction);
+        }
+
+        public Object merge(String key, Object value, BiFunction<? super Object, ? super Object, ?> remappingFunction) {
+            return readOnlyDelegate.merge(key, value, remappingFunction);
         }
     }
 
-    public static class ResultList<T> extends ArrayList<T> {
+    public static class ResultList<T> implements List<T> {
 
-        public ResultList() {}
+        List<T> results;
+        List<T> readOnlyDelegate;
+
+        public ResultList() {
+            results = new ArrayList<>();
+            readOnlyDelegate = Collections.unmodifiableList(results);
+        }
 
         public ResultList(Collection<T> values) {
-            super(values);
+            results = new ArrayList<>(values);
+            readOnlyDelegate = Collections.unmodifiableList(results);
         }
+
+        //==============================================================================
+        // Stream alternative (i hate streams)
+        //==============================================================================
 
         public <Q> ResultList<Q> map(Function<T, Q> mapper) {
             ResultList<Q> mappedResult = new ResultList<>();
@@ -2381,7 +2452,7 @@ public class GrugORM {
             Map<K, List<T>> mappedResult = new HashMap<>();
             for (T t : this) {
                 mappedResult
-                        .computeIfAbsent(mapper.apply(t), _-> new ArrayList<>())
+                        .computeIfAbsent(mapper.apply(t), _ -> new ArrayList<>())
                         .add(t);
             }
             return mappedResult;
@@ -2453,6 +2524,174 @@ public class GrugORM {
 
         public ResultList<T> copy() {
             return new ResultList<>(this);
+        }
+
+        //==============================================================================
+        // Delegate list ops to the read only version, sure wish java had delegation :/
+        //==============================================================================
+
+        public int size() {
+            return readOnlyDelegate.size();
+        }
+
+        public boolean isEmpty() {
+            return readOnlyDelegate.isEmpty();
+        }
+
+        public boolean contains(Object o) {
+            return readOnlyDelegate.contains(o);
+        }
+
+        public Iterator<T> iterator() {
+            return readOnlyDelegate.iterator();
+        }
+
+        public Object[] toArray() {
+            return readOnlyDelegate.toArray();
+        }
+
+        public <T1> T1[] toArray(T1[] a) {
+            return readOnlyDelegate.toArray(a);
+        }
+
+        public boolean add(T t) {
+            return readOnlyDelegate.add(t);
+        }
+
+        public boolean remove(Object o) {
+            return readOnlyDelegate.remove(o);
+        }
+
+        public boolean containsAll(Collection<?> c) {
+            return readOnlyDelegate.containsAll(c);
+        }
+
+        public boolean addAll(Collection<? extends T> c) {
+            return readOnlyDelegate.addAll(c);
+        }
+
+        public boolean addAll(int index, Collection<? extends T> c) {
+            return readOnlyDelegate.addAll(index, c);
+        }
+
+        public boolean removeAll(Collection<?> c) {
+            return readOnlyDelegate.removeAll(c);
+        }
+
+        public boolean retainAll(Collection<?> c) {
+            return readOnlyDelegate.retainAll(c);
+        }
+
+        public void replaceAll(UnaryOperator<T> operator) {
+            readOnlyDelegate.replaceAll(operator);
+        }
+
+        public void sort(Comparator<? super T> c) {
+            readOnlyDelegate.sort(c);
+        }
+
+        public void clear() {
+            readOnlyDelegate.clear();
+        }
+
+        public boolean equals(Object o) {
+            return readOnlyDelegate.equals(o);
+        }
+
+        public int hashCode() {
+            return readOnlyDelegate.hashCode();
+        }
+
+        public T get(int index) {
+            return readOnlyDelegate.get(index);
+        }
+
+        public T set(int index, T element) {
+            return readOnlyDelegate.set(index, element);
+        }
+
+        public void add(int index, T element) {
+            readOnlyDelegate.add(index, element);
+        }
+
+        public T remove(int index) {
+            return readOnlyDelegate.remove(index);
+        }
+
+        public int indexOf(Object o) {
+            return readOnlyDelegate.indexOf(o);
+        }
+
+        public int lastIndexOf(Object o) {
+            return readOnlyDelegate.lastIndexOf(o);
+        }
+
+        public ListIterator<T> listIterator() {
+            return readOnlyDelegate.listIterator();
+        }
+
+        public ListIterator<T> listIterator(int index) {
+            return readOnlyDelegate.listIterator(index);
+        }
+
+        public List<T> subList(int fromIndex, int toIndex) {
+            return readOnlyDelegate.subList(fromIndex, toIndex);
+        }
+
+        public Spliterator<T> spliterator() {
+            return readOnlyDelegate.spliterator();
+        }
+
+        public void addFirst(T t) {
+            readOnlyDelegate.addFirst(t);
+        }
+
+        public void addLast(T t) {
+            readOnlyDelegate.addLast(t);
+        }
+
+        public T getFirst() {
+            return readOnlyDelegate.getFirst();
+        }
+
+        public T getLast() {
+            return readOnlyDelegate.getLast();
+        }
+
+        public T removeFirst() {
+            return readOnlyDelegate.removeFirst();
+        }
+
+        public T removeLast() {
+            return readOnlyDelegate.removeLast();
+        }
+
+        public List<T> reversed() {
+            return readOnlyDelegate.reversed();
+        }
+
+        public <T1> T1[] toArray(IntFunction<T1[]> generator) {
+            return readOnlyDelegate.toArray(generator);
+        }
+
+        public boolean removeIf(Predicate<? super T> filter) {
+            return readOnlyDelegate.removeIf(filter);
+        }
+
+        public Stream<T> stream() {
+            return readOnlyDelegate.stream();
+        }
+
+        public Stream<T> parallelStream() {
+            return readOnlyDelegate.parallelStream();
+        }
+
+        public void forEach(Consumer<? super T> action) {
+            readOnlyDelegate.forEach(action);
+        }
+
+        private void addInternal(T object) {
+            results.add(object);
         }
     }
 
