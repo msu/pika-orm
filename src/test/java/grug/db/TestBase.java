@@ -72,7 +72,7 @@ public abstract class TestBase {
                     Connection connection = DriverManager.getConnection("jdbc:mariadb://localhost", "root", "");
                     connection.prepareStatement("DROP DATABASE test").execute();
                     connection.prepareStatement("CREATE DATABASE test").execute();
-                    grugORM = new GrugORM(() -> DriverManager.getConnection("jdbc:mariadb://localhost/test", "root", ""));
+                    grugORM = new GrugORM(() -> DriverManager.getConnection("jdbc:mariadb://localhost/test", "root", "")).withEmptyInsertClause("VALUES ()");
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }

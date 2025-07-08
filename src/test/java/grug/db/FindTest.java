@@ -5,6 +5,7 @@ import grug.db.models.SampleModel;
 import grug.db.models.SampleEgb;
 import org.junit.jupiter.api.Test;
 
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,10 @@ public class FindTest extends TestBase{
 
         assertEquals(id, sampleModel.getId());
         assertEquals(fromDb.getStrVal(), sampleModel.getStrVal());
-        assertEquals(fromDb.getDateVal(), sampleModel.getDateVal());
+        Date dateFromDb = fromDb.getDateVal();
+        Date dateFromModel = sampleModel.getDateVal();
+        // mariadb rounds DATETIME to the nearest second
+        assertEquals(dateFromDb.toInstant().truncatedTo(ChronoUnit.SECONDS), dateFromModel.toInstant().truncatedTo(ChronoUnit.SECONDS));
         assertEquals(fromDb.getBoolVal(), sampleModel.getBoolVal());
         assertEquals(fromDb.getIntVal(), sampleModel.getIntVal());
     }

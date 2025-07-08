@@ -68,6 +68,9 @@ public class GrugORM {
     private int defaultPageSize = 20;
     private String limitOffsetClause = "LIMIT {0} OFFSET {1}";
 
+    // what to insert when no values are present (mysql-like dbs should use "VALUES ()")
+    private String emptyInsertClause = "DEFAULT VALUES";
+
     // associated migrations file
     private Migrations migrations;
 
@@ -150,6 +153,11 @@ public class GrugORM {
 
     public GrugORM withOffsetClause(String offsetClause) {
         this.limitOffsetClause = offsetClause;
+        return this;
+    }
+
+    public GrugORM withEmptyInsertClause(String emptyInsertClause) {
+        this.emptyInsertClause = emptyInsertClause;
         return this;
     }
 
@@ -540,7 +548,7 @@ public class GrugORM {
         StringBuilder sb = new StringBuilder("INSERT INTO ");
         sb.append(tableName);
         if (values.isEmpty()) {
-            sb.append(" DEFAULT VALUES");
+            sb.append(" ").append(emptyInsertClause);
         } else {
             sb.append(" (");
             boolean first = true;

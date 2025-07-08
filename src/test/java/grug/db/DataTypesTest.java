@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 import static grug.db.models.HasEnum.MyEnum.BAR;
@@ -33,7 +34,8 @@ public class DataTypesTest extends TestBase {
         long id = orm.insert(hasDate);
 
         HasDate fromDb = orm.find(HasDate.class).byId(id);
-        assertEquals(date, fromDb.getDate());
+        // mariadb rounds DATETIME to the nearest second
+        assertEquals(date.toInstant().truncatedTo(ChronoUnit.SECONDS), fromDb.getDate().toInstant().truncatedTo(ChronoUnit.SECONDS));
     }
 
 }
