@@ -1,5 +1,8 @@
 package grug.db;
 
+import ch.vorburger.exec.ManagedProcessException;
+import ch.vorburger.mariadb4j.DB;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -7,6 +10,8 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.Arrays;
 import java.util.List;
 
@@ -18,8 +23,10 @@ public abstract class TestBase {
     public enum DatabaseMode {
         SQLITE,
         H2,
+        MARIADB,
     }
 
+    private static DB MARIA_DB_INSTANCE;
     private static DatabaseMode MODE = DatabaseMode.SQLITE;
     public static void setMode(DatabaseMode mode) {
         MODE = mode;
@@ -53,12 +60,29 @@ public abstract class TestBase {
                 ).toList();
                 grugORM = new GrugORM("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;");
                 grugORM.exec("DROP ALL OBJECTS"); // clear database
+            } else if(MODE == DatabaseMode.MARIADB) {
+                try {
+                    ddlAsList = ddlAsList.stream().map(
+                            str -> str.replace("PRIMARY KEY", "PRIMARY KEY AUTO_INCREMENT")
+                    ).toList();
+                    if (MARIA_DB_INSTANCE == null) {
+                        MARIA_DB_INSTANCE = DB.newEmbeddedDB(3306);
+                        MARIA_DB_INSTANCE.start();
+                    }
+                    Connection connection = DriverManager.getConnection("jdbc:mariadb://localhost", "root", "");
+                    connection.prepareStatement("DROP DATABASE test").execute();
+                    connection.prepareStatement("CREATE DATABASE test").execute();
+                    grugORM = new GrugORM(() -> DriverManager.getConnection("jdbc:mariadb://localhost/test", "root", ""));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             } else {
                 Path path = Path.of("test/test.db");
                 if (Files.exists(path)) {
                     Files.delete(path);
                 }
-                Files.createDirectories(path.getParent());                grugORM = new GrugORM("jdbc:sqlite:./test/test.db");
+                Files.createDirectories(path.getParent());
+                grugORM = new GrugORM("jdbc:sqlite:./test/test.db");
             }
 
             // set trace level and make default
