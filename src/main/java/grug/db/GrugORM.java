@@ -2,6 +2,7 @@ package grug.db;
 
 import grug.db.GrugORM.Interfaces.GrugLogger;
 import grug.db.GrugORM.Interfaces.GrugRecordLifecycle;
+import grug.db.GrugORM.Interfaces.SafeAutoCloseable;
 
 import java.io.Console;
 import java.lang.reflect.Constructor;
@@ -22,6 +23,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 @SuppressWarnings({"rawtypes", "UnusedReturnValue", "UnnecessaryLocalVariable"})
 public class GrugORM {
@@ -287,7 +289,7 @@ public class GrugORM {
     // Connection management
     //====================================================================
 
-    private class ConnectionInfo implements AutoCloseable {
+    private class ConnectionInfo implements SafeAutoCloseable {
 
         ConnectionInfo previous;
         Connection conn;
@@ -385,6 +387,12 @@ public class GrugORM {
         return connectionInfo;
     }
 
+    public SafeAutoCloseable establishConnection() {
+        ConnectionInfo connectionInfo = pushNewConnection();
+        connectionInfo.incrementOpenCount();
+        return connectionInfo;
+    }
+
     private ConnectionInfo pushNewConnection() {
         ConnectionInfo previousConnection = getCurrentConnection();
         Connection connection = createConnection();
@@ -460,24 +468,12 @@ public class GrugORM {
     }
 
     public <T> ResultList<T> select(String sql, Map<String, Object> args, Class resultClass, List<String> colsToMap) {
-        return select(sql, args, resultClass, new ColumnsSpec(colsToMap), null);
+        return select(sql, args, resultClass, new ColumnsSpec(colsToMap));
     }
 
-    public <T> void selectAndConsume(String sql, Map<String, Object> args, Class resultClass, Consumer<T> callback) {
-        select(sql, args, resultClass, null, callback);
-    }
-
-    public <T> void selectAndConsume(String sql, Map<String, Object> args, Class resultClass, Consumer<T> callback, String... colsToMap) {
-        select(sql, args, resultClass, new ColumnsSpec(List.of(colsToMap)), callback);
-    }
-
-    public <T> void selectAndConsume(String sql, Map<String, Object> args, Class resultClass, Consumer<T>callback, List<String> colsToMap) {
-        select(sql, args, resultClass, new ColumnsSpec(colsToMap), callback);
-    }
-
-    private <T> ResultList<T> select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, Consumer<T> callback) {
-        Mapping mapping = getMapping(resultClass);
+    private <T> ResultList<T> select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec) {
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
+            Mapping mapping = getMapping(resultClass);
             Connection conn = ci.conn;
             ArrayList<Object> vals = new ArrayList<>();
             String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
@@ -494,20 +490,56 @@ public class GrugORM {
                 if (object instanceof GrugRecordLifecycle lifecycle) {
                     lifecycle.afterSelect();
                 }
-                if(callback != null) {
-                    callback.accept(object);
-                } else {
-                    result.addInternal(object);
-                }
+                result.addInternal(object);
             }
             return result;
         } catch (Exception e) {
-            logger.log(GrugLogger.Level.ERROR, """
-                    Exception in select() with SQL
-                    {}\s
-                    with args {}: {}""", TextTools.indent(2, sql), args, e.getMessage());
-            throw rethrow(e);
+            throw handleSelectException(sql, args, e);
         }
+    }
+
+    public <T> Stream<T> stream(String sql, Map<String, Object> args, Class resultClass) {
+        return stream(sql, args, resultClass, (List<String>) null);
+    }
+
+    public <T> Stream<T> stream(String sql, Map<String, Object> args, Class resultClass, String... colsToMap) {
+        return stream(sql, args, resultClass, Arrays.asList(colsToMap));
+    }
+
+    public <T> Stream<T> stream(String sql, Map<String, Object> args, Class resultClass, List<String> colsToMap) {
+        return stream(sql, args, resultClass, new ColumnsSpec(colsToMap));
+    }
+
+    private <T> Stream<T> stream(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec) {
+        ConnectionInfo ci = getCurrentConnection();
+        if (ci == null) {
+            throw new IllegalStateException("You must manually establish a connection with establishConnection() and manage closing the connection yourself before streaming results");
+        }
+        Mapping mapping = getMapping(resultClass);
+        PreparedStatement ps;
+        try {
+            Connection conn = ci.conn;
+            ArrayList<Object> vals = new ArrayList<>();
+            String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
+            logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
+            ps = conn.prepareStatement(updatedSql);
+            for (int i = 0; i < vals.size(); i++) {
+                Object val = vals.get(i);
+                setValueForQuery(ps, i + 1, val);
+            }
+        } catch (Exception e) {
+            throw handleSelectException(sql, args, e);
+        }
+        Iterable<T> iterable = new ResultIterable<>(ps, mapping, columnSpec, sql, args);
+        return StreamSupport.stream(iterable.spliterator(), false);
+    }
+
+    private RuntimeException handleSelectException(String sql, Map args, Exception e) {
+        logger.log(GrugLogger.Level.ERROR, """
+                Exception in select() with SQL
+                {}\s
+                with args {}: {}""", TextTools.indent(2, sql), args, e.getMessage());
+        throw rethrow(e);
     }
 
     public long insert(Object object) {
@@ -915,6 +947,11 @@ public class GrugORM {
             default void afterDelete() {
             }
         }
+
+        interface SafeAutoCloseable extends AutoCloseable {
+            @Override
+            void close();
+        }
     }
 
     public static class EnterpriseGrugBean implements GrugRecordLifecycle {
@@ -1062,6 +1099,10 @@ public class GrugORM {
             return this;
         }
 
+        public GrugQueryBuilder<T> where(String condition, Map<String, Object> vars) {
+            return where(condition).withVars(vars);
+        }
+
         public GrugQueryBuilder<T> select(String... columns) {
             return select(Arrays.asList(columns));
         }
@@ -1092,9 +1133,9 @@ public class GrugORM {
             return GrugORM.this.select(sql, valMap, resultClass, columns);
         }
 
-        public void consumeWith(Consumer<T> consumer) {
+        public Stream<T> stream() {
             String sql = generateSQL();
-            GrugORM.this.selectAndConsume(sql, valMap, resultClass, consumer, columns);
+            return GrugORM.this.stream(sql, valMap, resultClass, new ColumnsSpec(columns));
         }
 
         private String generateSQL() {
@@ -1262,12 +1303,17 @@ public class GrugORM {
             return this;
         }
 
+        public GrugClassQuery<T> where(String condition, Map<String, Object> vals) {
+            query.where(condition, vals);
+            return this;
+        }
+
         public ResultList<T> execute() {
             return query.execute();
         }
 
-        public void consumeWith(Consumer<T> consumer) {
-            query.consumeWith(consumer);
+        public Stream<T> stream() {
+            return query.stream();
         }
 
         public GrugClassQuery<T> withVars(Map<String, Object> vals) {
@@ -2718,6 +2764,68 @@ public class GrugORM {
         }
     }
 
+    private class ResultIterable<T> implements Iterable<T> {
+        private final PreparedStatement ps;
+        private final Mapping mapping;
+        private final ColumnsSpec columnSpec;
+        private final String sql;
+        private final Map<String, Object> args;
+
+        public ResultIterable(PreparedStatement ps, Mapping mapping, ColumnsSpec columnSpec, String sql, Map<String, Object> args) {
+            this.ps = ps;
+            this.mapping = mapping;
+            this.columnSpec = columnSpec;
+            this.sql = sql;
+            this.args = args;
+        }
+
+        @Override
+        public Iterator<T> iterator() {
+            try {
+                return new ResultIterator<>(ps.executeQuery(), mapping, columnSpec, this);
+            } catch (SQLException e) {
+                throw handleSelectException(sql, args, e);
+            }
+        }
+    }
+
+    private class ResultIterator<T> implements Iterator<T> {
+        private final ResultSet resultSet;
+        private final Mapping mapping;
+        private final ColumnsSpec columnSpec;
+        private final ResultIterable iterable;
+
+        public ResultIterator(ResultSet resultSet, Mapping mapping, ColumnsSpec columnSpec, ResultIterable iterable) {
+                this.resultSet = resultSet;
+                this.mapping = mapping;
+                this.columnSpec = columnSpec;
+                this.iterable = iterable;
+        }
+
+        @Override
+        public boolean hasNext() {
+            try {
+                return resultSet.next();
+            } catch (Exception e) {
+                throw handleSelectException(iterable.sql, iterable.args, e);
+            }
+        }
+
+        @Override
+        public T next() {
+            try {
+                T object = mapping.newObjectFromResult(resultSet, columnSpec);
+                if (object instanceof GrugRecordLifecycle lifecycle) {
+                    lifecycle.afterSelect();
+                }
+                return object;
+            } catch (Exception e) {
+                throw handleSelectException(iterable.sql, iterable.args, e);
+            }
+        }
+    }
+
+
     //================================================================================================
     // Stuff to clean up java's checked exception garbage
     //================================================================================================
@@ -2765,4 +2873,5 @@ public class GrugORM {
             throw new RuntimeException(e);
         }
     }
+
 }
