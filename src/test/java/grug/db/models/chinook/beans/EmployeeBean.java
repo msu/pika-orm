@@ -140,7 +140,7 @@ public class EmployeeBean extends EnterpriseGrugBean {
         this.email = email;
     }
 
-    public static GrugORM.GrugFinder<EmployeeBean> find() {
+    public static GrugORM.GrugListFinder<EmployeeBean> find() {
         return orm().find(EmployeeBean.class);
     }
 

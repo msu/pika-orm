@@ -1,8 +1,7 @@
 package grug.db.web;
 
-import grug.db.GrugORM;
 import grug.db.GrugORM.EnterpriseGrugBean;
-import grug.db.GrugORM.GrugFinder;
+import grug.db.GrugORM.GrugListFinder;
 
 import java.util.Date;
 
@@ -57,7 +56,7 @@ public class Todo extends EnterpriseGrugBean {
         this.completed = completed;
     }
 
-    public static GrugFinder<Todo> find() {
+    public static GrugListFinder<Todo> find() {
         return orm().find(Todo.class);
     }
 

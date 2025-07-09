@@ -225,14 +225,30 @@ public class GrugORM {
         return find(classOf1).byId(parentPkValue);
     }
 
-    public <T> GrugFinder<T> find(Class<T> classToFind) {
-        return new GrugFinder<>(classToFind);
+    //====================================================================
+    // Main entrypoints into the query layer
+    //====================================================================
+
+    public <T> GrugListFinder<T> find(Class<T> classToFind) {
+        return new GrugListFinder<>(classToFind);
     }
 
-    public class GrugFinder<T> {
+    public <T> GrugStreamFinder<T> stream(Class<T> classToFind) {
+        return new GrugStreamFinder<>(classToFind);
+    }
+
+    public <T> GrugClassQuery<T> query(Class<T> baseClass) {
+        return new GrugClassQuery<>(baseClass);
+    }
+
+    public GrugQueryBuilder<ResultMap> queryBuilder(String baseTable) {
+        return new GrugQueryBuilder<>(baseTable);
+    }
+
+    public class GrugListFinder<T> {
         Class<T> classToFind;
 
-        public GrugFinder(Class<T> classToFind) {
+        public GrugListFinder(Class<T> classToFind) {
             this.classToFind = classToFind;
         }
 
@@ -260,28 +276,12 @@ public class GrugORM {
             return select(sql, Map.of(), classToFind);
         }
 
-        public Stream<T> allAsStream() {
-            Mapping metaData = getMapping(classToFind);
-            String tableName = metaData.getTableName();
-            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
-            String sql = selectClause + "true=true";
-            return stream(sql, Map.of(), classToFind);
-        }
-
         public ResultList<T> allBy(String column, Object val) {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
             String selectClause = "SELECT * FROM " + tableName + " WHERE ";
             String sql = selectClause + column + "=:val ";
             return select(sql, Map.of("val", val), classToFind);
-        }
-
-        public Stream<T> allByAsStream(String column, Object val) {
-            Mapping metaData = getMapping(classToFind);
-            String tableName = metaData.getTableName();
-            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
-            String sql = selectClause + column + "=:val ";
-            return stream(sql, Map.of("val", val), classToFind);
         }
 
         public ResultList<T> where(String whereClause, Map<String, Object> args) {
@@ -292,7 +292,53 @@ public class GrugORM {
             return select(sql, args, classToFind);
         }
 
-        public Stream<T> whereAsStream(String whereClause, Map<String, Object> args) {
+        public ResultList<T> bySQL(String sql, Map<String, Object> args) {
+            return get().select(sql, args, classToFind);
+        }
+
+        public GrugClassQuery<T> byQuery() {
+            return query(classToFind);
+        }
+    }
+
+    public class GrugStreamFinder<T> {
+        Class<T> classToFind;
+
+        public GrugStreamFinder(Class<T> classToFind) {
+            this.classToFind = classToFind;
+        }
+
+        public Stream<T> byId(Object id) {
+            Mapping mapping = getMapping(classToFind);
+            String column = mapping.getIdColumn();
+            Mapping mapping1 = getMapping(classToFind);
+            String sql = "SELECT * FROM " + mapping1.getTableName() + " WHERE " + column + "=:arg " + MessageFormat.format(limitOffsetClause, 1, 0);
+            return stream(sql, Map.of("arg", id), classToFind);
+        }
+
+        public Stream<T> byKey(String col, Object value) {
+            Mapping mapping = getMapping(classToFind);
+            String sql = "SELECT * FROM " + mapping.getTableName() + " WHERE " + col + "=:arg " + MessageFormat.format(limitOffsetClause, 1, 0);
+            return stream(sql, Map.of("arg", value), classToFind);
+        }
+
+        public Stream<T> all() {
+            Mapping metaData = getMapping(classToFind);
+            String tableName = metaData.getTableName();
+            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
+            String sql = selectClause + "true=true";
+            return stream(sql, Map.of(), classToFind);
+        }
+
+        public Stream<T> allBy(String column, Object val) {
+            Mapping metaData = getMapping(classToFind);
+            String tableName = metaData.getTableName();
+            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
+            String sql = selectClause + column + "=:val ";
+            return stream(sql, Map.of("val", val), classToFind);
+        }
+
+        public Stream<T> where(String whereClause, Map<String, Object> args) {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
             String selectClause = "SELECT * FROM " + tableName + " WHERE ";
@@ -300,16 +346,12 @@ public class GrugORM {
             return stream(sql, args, classToFind);
         }
 
-        public ResultList<T> bySQL(String sql, Map<String, Object> args) {
-            return get().select(sql, args, classToFind);
-        }
-
-        public Stream<T> bySQLAsStream(String sql, Map<String, Object> args) {
-            return get().stream(sql, args, classToFind);
+        public Stream<T> bySQL(String sql, Map<String, Object> args) {
+            return stream(sql, args, classToFind);
         }
 
         public GrugClassQuery<T> byQuery() {
-            return new GrugClassQuery<>(classToFind);
+            return query(classToFind);
         }
     }
 
@@ -479,6 +521,10 @@ public class GrugORM {
     // Database interaction
     //====================================================================
 
+    public ResultList<ResultMap> select(String sql) {
+        return select(sql, Map.of());
+    }
+
     public <T> ResultList<T> select(String sql, Class<T> resultClass) {
         return select(sql, Map.of(), resultClass);
     }
@@ -524,6 +570,18 @@ public class GrugORM {
         } catch (Exception e) {
             throw handleSelectException(sql, args, e);
         }
+    }
+
+    public Stream<ResultMap> stream(String sql) {
+        return stream(sql, Map.of(), ResultMap.class);
+    }
+
+    public <T> Stream<T> stream(String sql, Class<T> resultClass) {
+        return stream(sql, Map.of(), resultClass);
+    }
+
+    public Stream<ResultMap> stream(String sql, Map<String, Object> args) {
+        return stream(sql, args, ResultMap.class);
     }
 
     public <T> Stream<T> stream(String sql, Map<String, Object> args, Class resultClass) {
@@ -925,14 +983,6 @@ public class GrugORM {
             }
             return noun + "s"; // default to appending 's'
         }
-    }
-
-    public <T> GrugClassQuery<T> query(Class<T> baseClass) {
-        return new GrugClassQuery<>(baseClass);
-    }
-
-    public GrugQueryBuilder<ResultMap> queryBuilder(String baseTable) {
-        return new GrugQueryBuilder<>(baseTable);
     }
 
     public interface Interfaces {
