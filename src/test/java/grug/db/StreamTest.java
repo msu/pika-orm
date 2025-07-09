@@ -20,7 +20,7 @@ public class StreamTest extends TestBase{
         SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
         long id = orm.insert(sampleModel);
         try (var _ = orm.establishConnection()) {
-            var stream = orm.find(SampleModel.class).byQuery().stream();
+            var stream = orm.find(SampleModel.class).allAsStream();
             var fromDb = stream.findFirst().get();
 
             assertEquals(id, sampleModel.getId());
@@ -45,27 +45,24 @@ public class StreamTest extends TestBase{
         try (var _ = orm.establishConnection()) {
 
             List<SampleModel> results =
-                    orm.find(SampleModel.class).byQuery()
-                            .where("int_val=:val", Map.of("val", 10))
-                            .stream()
+                    orm.find(SampleModel.class)
+                            .whereAsStream("int_val=:val", Map.of("val", 10))
                             .toList();
 
             assertEquals(10, results.size());
 
             results = orm.find(SampleModel.class)
-                    .byQuery()
-                    .where("date_val > :val", Map.of("val", new Date(2050, 1, 1)))
-                    .stream().toList();
+                    .whereAsStream("date_val > :val", Map.of("val", new Date(2050, 1, 1)))
+                    .toList();
 
             assertEquals(0, results.size());
 
             results = orm.find(SampleModel.class)
-                    .byQuery()
-                    .where("str_val like :val", Map.of("val", "%b%"))
-                    .stream().toList();
+                    .whereAsStream("str_val like :val", Map.of("val", "%b%"))
+                    .toList();
             assertEquals(10, results.size());
 
-            results = orm.find(SampleModel.class).byQuery().stream().toList();
+            results = orm.find(SampleModel.class).allAsStream().toList();
             assertEquals(10, results.size());
         }
     }
