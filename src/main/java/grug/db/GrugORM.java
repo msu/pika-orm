@@ -460,10 +460,22 @@ public class GrugORM {
     }
 
     public <T> ResultList<T> select(String sql, Map<String, Object> args, Class resultClass, List<String> colsToMap) {
-        return select(sql, args, resultClass, new ColumnsSpec(colsToMap));
+        return select(sql, args, resultClass, new ColumnsSpec(colsToMap), null);
     }
 
-    private <T> ResultList<T> select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec) {
+    public <T> void selectAndConsume(String sql, Map<String, Object> args, Class resultClass, Consumer<T> callback) {
+        select(sql, args, resultClass, null, callback);
+    }
+
+    public <T> void selectAndConsume(String sql, Map<String, Object> args, Class resultClass, Consumer<T> callback, String... colsToMap) {
+        select(sql, args, resultClass, new ColumnsSpec(List.of(colsToMap)), callback);
+    }
+
+    public <T> void selectAndConsume(String sql, Map<String, Object> args, Class resultClass, Consumer<T>callback, List<String> colsToMap) {
+        select(sql, args, resultClass, new ColumnsSpec(colsToMap), callback);
+    }
+
+    private <T> ResultList<T> select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, Consumer<T> callback) {
         Mapping mapping = getMapping(resultClass);
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
@@ -482,7 +494,11 @@ public class GrugORM {
                 if (object instanceof GrugRecordLifecycle lifecycle) {
                     lifecycle.afterSelect();
                 }
-                result.addInternal(object);
+                if(callback != null) {
+                    callback.accept(object);
+                } else {
+                    result.addInternal(object);
+                }
             }
             return result;
         } catch (Exception e) {
@@ -1076,6 +1092,11 @@ public class GrugORM {
             return GrugORM.this.select(sql, valMap, resultClass, columns);
         }
 
+        public void consumeWith(Consumer<T> consumer) {
+            String sql = generateSQL();
+            GrugORM.this.selectAndConsume(sql, valMap, resultClass, consumer, columns);
+        }
+
         private String generateSQL() {
             String sql = generateSelectClause();
             if (!joins.isEmpty()) {
@@ -1164,9 +1185,10 @@ public class GrugORM {
         public String toString() {
             return generateSQL() + "\nVals:" + this.valMap;
         }
+
     }
 
-    public class GrugClassQuery<T> {
+    public class GrugClassQuery<T> implements Callable<ResultList<T>> {
 
         private final GrugQueryBuilder<T> query;
         private final Class classToFind;
@@ -1244,6 +1266,10 @@ public class GrugORM {
             return query.execute();
         }
 
+        public void consumeWith(Consumer<T> consumer) {
+            query.consumeWith(consumer);
+        }
+
         public GrugClassQuery<T> withVars(Map<String, Object> vals) {
             query.withVars(vals);
             return this;
@@ -1289,6 +1315,11 @@ public class GrugORM {
 
         public void setLastJoinedClass(Class lastJoinedClass) {
             this.lastJoinedClass = lastJoinedClass;
+        }
+
+        @Override
+        public ResultList<T> call() throws Exception {
+            return execute();
         }
     }
 
