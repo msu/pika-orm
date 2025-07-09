@@ -1,6 +1,5 @@
 package grug.db;
 
-import ch.vorburger.exec.ManagedProcessException;
 import ch.vorburger.mariadb4j.DB;
 
 import java.io.ByteArrayOutputStream;
@@ -72,7 +71,7 @@ public abstract class TestBase {
                     Connection connection = DriverManager.getConnection("jdbc:mariadb://localhost", "root", "");
                     connection.prepareStatement("DROP DATABASE test").execute();
                     connection.prepareStatement("CREATE DATABASE test").execute();
-                    grugORM = new GrugORM(() -> DriverManager.getConnection("jdbc:mariadb://localhost/test", "root", "")).withEmptyInsertClause("VALUES ()");
+                    grugORM = new GrugORM(() -> DriverManager.getConnection("jdbc:mariadb://localhost/test", "root", ""));
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -82,7 +81,7 @@ public abstract class TestBase {
                     Files.delete(path);
                 }
                 Files.createDirectories(path.getParent());
-                grugORM = new GrugORM("jdbc:sqlite:./test/test.db");
+                grugORM = new GrugORM("jdbc:sqlite:./test/test.db").withSQLiteQuirks();
             }
 
             // set trace level and make default

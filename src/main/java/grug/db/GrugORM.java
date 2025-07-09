@@ -68,8 +68,8 @@ public class GrugORM {
     private int defaultPageSize = 20;
     private String limitOffsetClause = "LIMIT {0} OFFSET {1}";
 
-    // what to insert when no values are present (mysql-like dbs should use "VALUES ()")
-    private String emptyInsertClause = "DEFAULT VALUES";
+    // SQLite Quirks
+    private boolean sqlLiteQuirks = false;
 
     // associated migrations file
     private Migrations migrations;
@@ -156,8 +156,8 @@ public class GrugORM {
         return this;
     }
 
-    public GrugORM withEmptyInsertClause(String emptyInsertClause) {
-        this.emptyInsertClause = emptyInsertClause;
+    public GrugORM withSQLiteQuirks() {
+        this.sqlLiteQuirks = true;
         return this;
     }
 
@@ -548,28 +548,20 @@ public class GrugORM {
         StringBuilder sb = new StringBuilder("INSERT INTO ");
         sb.append(tableName);
         if (values.isEmpty()) {
-            sb.append(" ").append(emptyInsertClause);
+            if (sqlLiteQuirks) {
+                sb.append(" DEFAULT VALUES");
+            } else {
+                sb.append(" (");
+                sb.append(String.join(", ", keyCols));
+                sb.append(") VALUES (");
+                sb.append(Arrays.stream(keyCols).map(_ -> "DEFAULT").collect(Collectors.joining(", ")));
+                sb.append(")");
+            }
         } else {
             sb.append(" (");
-            boolean first = true;
-            for (String name : values.keySet()) {
-                if (first) {
-                    first = false;
-                } else {
-                    sb.append(", ");
-                }
-                sb.append(name);
-            }
+            sb.append(String.join(", ", values.keySet()));
             sb.append(") VALUES (");
-            first = true;
-            for (String _ : values.keySet()) {
-                if (first) {
-                    first = false;
-                } else {
-                    sb.append(", ");
-                }
-                sb.append("?");
-            }
+            sb.append(values.keySet().stream().map(_ -> "?").collect(Collectors.joining(", ")));
             sb.append(")");
         }
         String insertString = sb.toString();
@@ -636,15 +628,7 @@ public class GrugORM {
         StringBuilder sb = new StringBuilder("UPDATE ");
         sb.append(tableName);
         sb.append(" SET ");
-        boolean first = true;
-        for (String name : values.keySet()) {
-            if (first) {
-                first = false;
-            } else {
-                sb.append(", ");
-            }
-            sb.append(name).append(" = ?");
-        }
+        sb.append(values.keySet().stream().map(col -> col + "=?").collect(Collectors.joining(", ")));
         sb.append(" WHERE ");
         sb.append(keyCol).append("=?");
         if (versionCol != null) {
