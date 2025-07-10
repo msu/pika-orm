@@ -95,6 +95,8 @@ public class FindTest extends TestBase{
         assertEquals("foo", insensitive.get("str_val"));
         assertEquals(10, insensitive.get("int_val"));
         assertEquals(true, insensitive.asBoolean("bool_val"));
+        // mariadb rounds DATETIME to the nearest second
+        assertEquals(m1.getDateVal().toInstant().truncatedTo(ChronoUnit.SECONDS), insensitive.asDate("date_val").toInstant().truncatedTo(ChronoUnit.SECONDS));
     }
 
     record SampleModelGroupByQuery(String strVal, Long sum) {

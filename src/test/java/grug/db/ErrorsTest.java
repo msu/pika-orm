@@ -2,10 +2,8 @@ package grug.db;
 
 import grug.db.models.HasBadColumnMapping;
 import grug.db.models.HasCustomizedMetadata;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;

@@ -21,15 +21,19 @@ public class CustomizationTest extends TestBase {
 
         orm.withMapping(HasCustomizedMetadata.class,
                 new Mapping(){
+
+                    @Override
                     public String mapToTable() {
                         return "foos";
                     }
+
+                    @Override
                     public FieldMapping mapField(Field field) {
                         return switch (field.getName()) {
                             case "ignoreMe" -> ignore(field);
                             case "myId" -> map(field).toColumn("id").asId();
                             case "json" -> map(field).asType(String.class).transformForDB(gson::toJson)
-                                    .transformFromDB((val) -> gson.fromJson(String.valueOf(val), Map.class));
+                                    .transformFromDB(val -> gson.fromJson(String.valueOf(val), Map.class));
                             default -> defaultMapping(field);
                         };
                     }
@@ -40,7 +44,7 @@ public class CustomizationTest extends TestBase {
 
         orm.insert(custom);
         var fromDb = orm.find(HasCustomizedMetadata.class).byId(custom.getId());
-        assertEquals(fromDb.getId(), 1L);
+        assertEquals(1L, fromDb.getId());
         assertEquals(fromDb.getMap(), custom.getMap());
     }
 

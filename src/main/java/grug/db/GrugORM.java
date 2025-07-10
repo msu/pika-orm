@@ -13,7 +13,11 @@ import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.*;
 import java.text.MessageFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.Date;
 import java.util.concurrent.Callable;
@@ -34,6 +38,7 @@ public class GrugORM {
 
     private static GrugORM DEFAULT_ORM = null;
 
+    // TODO Do we need a remove() call on this at some point?
     private static final ThreadLocal<ConnectionInfo> CURRENT_CONNECTION = new ThreadLocal<>();
 
     private static final ForceThrower FORCE_THROWER = generateForceThrower();
@@ -46,7 +51,7 @@ public class GrugORM {
     private boolean logQueries = false;
 
     // Mapping stuff
-    private final ConcurrentHashMap<Class, Mapping> mappings = new ConcurrentHashMap<Class, Mapping>();
+    private final ConcurrentHashMap<Class, Mapping> mappings = new ConcurrentHashMap<>();
 
     // Default mapping logic
     private Function<Class, String> defaultClassToTableMapping = aClass -> {
@@ -58,7 +63,7 @@ public class GrugORM {
     private Function<Class, String> defaultIdFieldName = aClass -> "id";
     private Function<Class, String> defaultFkColumnName = aClass -> TextTools.snakeCase(aClass.getSimpleName()) + "_id";
     private Function<Class, String> defaultVersionFieldName = aClass -> "version";
-    private Function<Class, Function<Object, Object>> defaultVersionIncrementer = aClass -> (previousValue) -> {
+    private Function<Class, Function<Object, Object>> defaultVersionIncrementer = aClass -> previousValue -> {
         if (previousValue == null) {
             return 1;
         } else {
@@ -453,8 +458,7 @@ public class GrugORM {
     }
 
     private static ConnectionInfo getCurrentConnection() {
-        ConnectionInfo connectionInfo = CURRENT_CONNECTION.get();
-        return connectionInfo;
+        return CURRENT_CONNECTION.get();
     }
 
     public SafeAutoCloseable establishConnection() {
@@ -552,21 +556,22 @@ public class GrugORM {
             ArrayList<Object> vals = new ArrayList<>();
             String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
             logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
-            PreparedStatement ps = conn.prepareStatement(updatedSql);
-            for (int i = 0; i < vals.size(); i++) {
-                Object val = vals.get(i);
-                setValueForQuery(ps, i + 1, val);
-            }
-            ResultSet resultSet = time(ps::executeQuery);
-            ResultList<T> result = new ResultList<>();
-            while (resultSet.next()) {
-                T object = mapping.newObjectFromResult(resultSet, columnSpec);
-                if (object instanceof GrugRecordLifecycle lifecycle) {
-                    lifecycle.afterSelect();
+            try (PreparedStatement preparedStatement = conn.prepareStatement(updatedSql)) {
+                for (int i = 0; i < vals.size(); i++) {
+                    Object val = vals.get(i);
+                    setValueForQuery(preparedStatement, i + 1, val);
                 }
-                result.addInternal(object);
+                ResultSet resultSet = time(preparedStatement::executeQuery);
+                ResultList<T> result = new ResultList<>();
+                while (resultSet.next()) {
+                    T object = mapping.newObjectFromResult(resultSet, columnSpec);
+                    if (object instanceof GrugRecordLifecycle lifecycle) {
+                        lifecycle.afterSelect();
+                    }
+                    result.addInternal(object);
+                }
+                return result;
             }
-            return result;
         } catch (Exception e) {
             throw handleSelectException(sql, args, e);
         }
@@ -608,6 +613,7 @@ public class GrugORM {
             ArrayList<Object> vals = new ArrayList<>();
             String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
             logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
+            // TODO should this prepared statement be closed at some point? Can it be?
             ps = conn.prepareStatement(updatedSql);
             for (int i = 0; i < vals.size(); i++) {
                 Object val = vals.get(i);
@@ -629,20 +635,16 @@ public class GrugORM {
     }
 
     public long insert(Object object) {
-        if (object instanceof GrugRecordLifecycle lifecycle) {
-            if (!lifecycle.validate()) {
-                return INSERT_FAILED;
-            }
+        if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.validate()) {
+            return INSERT_FAILED;
         }
         Class<?> clazz = object.getClass();
         Mapping mapping = getMapping(clazz);
         String keyCol = mapping.getIdColumn();
         Map<String, Object> values = mapping.toDatabaseMap(object);
         values.remove(keyCol);
-        if (object instanceof GrugRecordLifecycle lifecycle) {
-            if (!lifecycle.beforeInsert()) {
-                return INSERT_FAILED;
-            }
+        if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.beforeInsert()) {
+            return INSERT_FAILED;
         }
         Object newVersionValue = null;
         if (mapping.hasVersionColumn()) {
@@ -702,17 +704,18 @@ public class GrugORM {
         logger.log(getQueryLogLevel(), "INSERT SQL: {}\n  Args:{}", insertString, values.values());
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
-            PreparedStatement preparedStatement = conn.prepareStatement(insertString, keyCols);
-            int col = 1;
-            for (Object o : values.values()) {
-                setValueForQuery(preparedStatement, col++, o);
-            }
-            int updated = time(preparedStatement::executeUpdate);
-            ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
-            if (generatedKeys.next()) {
-                return generatedKeys.getLong(1);
-            } else {
-                return INSERT_FAILED;
+            try (PreparedStatement ps = conn.prepareStatement(insertString, keyCols)) {
+                int col = 1;
+                for (Object o : values.values()) {
+                    setValueForQuery(ps, col++, o);
+                }
+                time(ps::executeUpdate);
+                ResultSet generatedKeys = ps.getGeneratedKeys();
+                if (generatedKeys.next()) {
+                    return generatedKeys.getLong(1);
+                } else {
+                    return INSERT_FAILED;
+                }
             }
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in insert() with SQL {} & args {}: {}", insertString, values.values(), e.getMessage());
@@ -721,10 +724,8 @@ public class GrugORM {
     }
 
     public boolean update(Object object) {
-        if (object instanceof GrugRecordLifecycle lifecycle) {
-            if (!lifecycle.validate()) {
-                return false;
-            }
+        if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.validate()) {
+            return false;
         }
         Class<?> clazz = object.getClass();
         Mapping mapping = getMapping(clazz);
@@ -732,10 +733,8 @@ public class GrugORM {
         String keyCol = mapping.getIdColumn();
         Map<String, Object> valuesToUpdate = mapping.toDatabaseMap(object);
         Object keyVal = valuesToUpdate.remove(keyCol); // remove the key
-        if (object instanceof GrugRecordLifecycle lifecycle) {
-            if (!lifecycle.beforeUpdate()) {
-                return false;
-            }
+        if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.beforeUpdate()) {
+            return false;
         }
         String versionColumn = null;
         Object currentVersionValue = null;
@@ -773,18 +772,19 @@ public class GrugORM {
         logger.log(getQueryLogLevel(), "UPDATE SQL: {}\n  Args:{}", updateSQL, values.values());
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
-            PreparedStatement preparedStatement = conn.prepareStatement(updateSQL);
-            int col = 1;
-            for (Object o : values.values()) {
-                setValueForQuery(preparedStatement, col++, o);
+            try (PreparedStatement preparedStatement = conn.prepareStatement(updateSQL)) {
+                int col = 1;
+                for (Object o : values.values()) {
+                    setValueForQuery(preparedStatement, col++, o);
+                }
+                setValueForQuery(preparedStatement, col, keyVal);
+                if (versionCol != null) {
+                    col++;
+                    setValueForQuery(preparedStatement, col, verionVal);
+                }
+                int i = time(preparedStatement::executeUpdate);
+                return i == 1;
             }
-            setValueForQuery(preparedStatement, col, keyVal);
-            if (versionCol != null) {
-                col++;
-                setValueForQuery(preparedStatement, col, verionVal);
-            }
-            int i = time(preparedStatement::executeUpdate);
-            return i == 1;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & args {}: {}", updateSQL, values.values(), e.getMessage());
             throw rethrow(e);
@@ -798,10 +798,8 @@ public class GrugORM {
         String keyCol = mapping.getIdColumn();
         Map<String, Object> valuesToUpdate = mapping.toDatabaseMap(object);
         Object keyVal = valuesToUpdate.get(keyCol);
-        if (object instanceof GrugRecordLifecycle lifecycle) {
-            if (!lifecycle.beforeDelete()) {
-                return false;
-            }
+        if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.beforeDelete()) {
+            return false;
         }
         boolean delete = delete(tableName, keyCol, keyVal);
         if (object instanceof GrugRecordLifecycle lifecycle) {
@@ -819,10 +817,11 @@ public class GrugORM {
         logger.log(getQueryLogLevel(), "DELETE SQL: {}\n  Args:{}", deleteSQL, List.of(keyVal));
         try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
             Connection conn = ci.conn;
-            PreparedStatement preparedStatement = conn.prepareStatement(sb.toString());
-            setValueForQuery(preparedStatement, 1, keyVal);
-            int i = time(preparedStatement::executeUpdate);
-            return i == 1;
+            try (PreparedStatement preparedStatement = conn.prepareStatement(sb.toString())) {
+                setValueForQuery(preparedStatement, 1, keyVal);
+                int i = time(preparedStatement::executeUpdate);
+                return i == 1;
+            }
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
             throw rethrow(e);
@@ -845,9 +844,9 @@ public class GrugORM {
             Connection conn = ci.conn;
             logger.log(getQueryLogLevel(), "EXECUTING RAW SQL: {}\n", sql);
             //noinspection SqlSourceToSinkFlow
-            PreparedStatement preparedStatement = conn.prepareStatement(sql);
-            boolean execute = time(preparedStatement::execute);
-            return execute;
+            try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
+                return time(preparedStatement::execute);
+            }
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in exec() with SQL {}: {}", sql, e.getMessage());
             throw rethrow(e);
@@ -912,6 +911,11 @@ public class GrugORM {
     }
 
     public static class TextTools {
+
+        private TextTools() {
+            // utility class, no instantiation
+        }
+
         public static String decapitalize(String name) {
             if (name == null || name.isEmpty()) {
                 return name;
@@ -1041,7 +1045,7 @@ public class GrugORM {
         }
 
         public boolean hasErrors() {
-            return errors != null && !errors.isEmpty();
+            return!errors.isEmpty();
         }
 
         public void clearErrors() {
@@ -1070,6 +1074,7 @@ public class GrugORM {
             return errors.computeIfAbsent(key, _ -> new ArrayList<>());
         }
 
+        @Override
         public final boolean validate() {
             clearErrors();
             validation();
@@ -1081,6 +1086,7 @@ public class GrugORM {
         }
 
 
+        @Override
         public void afterSelect() {
             this.persisted = true;
         }
@@ -1501,10 +1507,9 @@ public class GrugORM {
             case String str -> ps.setString(parameterIndex, str);
             case Time d -> ps.setTime(parameterIndex, d);
             case Timestamp ts -> ps.setTimestamp(parameterIndex, ts);
-            case Date d -> {
-                Timestamp timestamp = new Timestamp(d.getTime());
-                ps.setTimestamp(parameterIndex, timestamp);
-            }
+            case Date d -> ps.setTimestamp(parameterIndex, new Timestamp(d.getTime()));
+            case LocalDate ld -> ps.setDate(parameterIndex, java.sql.Date.valueOf(ld));
+            case LocalDateTime ldt -> ps.setTimestamp(parameterIndex, Timestamp.valueOf(ldt));
             case Blob blob -> ps.setBlob(parameterIndex, blob);
             case NClob nclob -> ps.setNClob(parameterIndex, nclob);
             case Clob clob -> ps.setClob(parameterIndex, clob);
@@ -1513,37 +1518,6 @@ public class GrugORM {
             case URL url -> ps.setURL(parameterIndex, url);
             default -> ps.setObject(parameterIndex, val);
         }
-    }
-
-    private static Object getValueFromResultSet(String columnName, Class targetType, ResultSet resultSet) {
-        Object fieldVal = null;
-        try {
-            if (targetType == String.class) {
-                fieldVal = resultSet.getString(columnName);
-            } else if (targetType == Integer.class || targetType == int.class) {
-                fieldVal = resultSet.getInt(columnName);
-            } else if (targetType == Boolean.class || targetType == boolean.class) {
-                fieldVal = resultSet.getBoolean(columnName);
-            } else if (targetType == Long.class || targetType == long.class) {
-                fieldVal = resultSet.getLong(columnName);
-            } else if (targetType == Double.class || targetType == double.class) {
-                fieldVal = resultSet.getDouble(columnName);
-            } else if (targetType.isEnum()) {
-                // enums deserialize as strings
-                String strValue = resultSet.getString(columnName);
-                fieldVal = Enum.valueOf(targetType, strValue);
-            } else if (targetType == Date.class) {
-                Timestamp timestamp = resultSet.getTimestamp(columnName);
-                if (timestamp != null) {
-                    fieldVal = new Date(timestamp.getTime());
-                }
-            } else {
-                fieldVal = resultSet.getObject(columnName, targetType);
-            }
-        } catch (SQLException e) {
-            throw rethrow(e);
-        }
-        return fieldVal;
     }
 
     private Mapping getMapping(Class<?> clazz) {
@@ -1714,8 +1688,8 @@ public class GrugORM {
                 ResultSetMetaData metaData = resultSet.getMetaData();
                 int i = metaData.getColumnCount();
                 for (int j = 1; j <= i; j++) {
-                    String columnName = metaData.getColumnName(j);
                     String tableName = metaData.getTableName(j);
+                    String columnName = metaData.getColumnName(j);
                     if (columnSpec.accept(tableName, columnName)) {
                         Object value = resultSet.getObject(columnName);
                         resultMap.putInternal(columnName, value);
@@ -1760,15 +1734,15 @@ public class GrugORM {
             try {
                 ResultSetMetaData metaData = resultSet.getMetaData();
                 int columnCount = metaData.getColumnCount();
-                String cols = "[";
+                StringBuilder cols = new StringBuilder("[");
                 for (int i = 1; i <= columnCount; i++) {
-                    cols += metaData.getColumnName(i);
+                    cols.append(metaData.getColumnName(i));
                     if (i < columnCount) {
-                        cols += ",";
+                        cols.append(",");
                     }
                 }
-                cols += "]";
-                return cols;
+                cols.append("]");
+                return cols.toString();
             } catch (SQLException e) {
                 throw rethrow(e);
             }
@@ -1903,6 +1877,37 @@ public class GrugORM {
             return value;
         }
 
+        private static Object getValueFromResultSet(String columnName, Class targetType, ResultSet resultSet) {
+            Object fieldVal = null;
+            try {
+                if (targetType == String.class) {
+                    fieldVal = resultSet.getString(columnName);
+                } else if (targetType == Integer.class || targetType == int.class) {
+                    fieldVal = resultSet.getInt(columnName);
+                } else if (targetType == Boolean.class || targetType == boolean.class) {
+                    fieldVal = resultSet.getBoolean(columnName);
+                } else if (targetType == Long.class || targetType == long.class) {
+                    fieldVal = resultSet.getLong(columnName);
+                } else if (targetType == Double.class || targetType == double.class) {
+                    fieldVal = resultSet.getDouble(columnName);
+                } else if (targetType.isEnum()) {
+                    // enums deserialize as strings
+                    String strValue = resultSet.getString(columnName);
+                    fieldVal = Enum.valueOf(targetType, strValue);
+                } else if (targetType == Date.class) {
+                    Timestamp timestamp = resultSet.getTimestamp(columnName);
+                    if (timestamp != null) {
+                        fieldVal = new Date(timestamp.getTime());
+                    }
+                } else {
+                    fieldVal = resultSet.getObject(columnName, targetType);
+                }
+            } catch (SQLException e) {
+                throw rethrow(e);
+            }
+            return fieldVal;
+        }
+
         public FieldMapping asId() {
             this.idColumn = true;
             return this;
@@ -1913,7 +1918,7 @@ public class GrugORM {
             return this;
         }
 
-        public FieldMapping withVersionIncrementer(Function<Object, Object> versionIncrementer) {
+        public FieldMapping withVersionIncrementer(UnaryOperator<Object> versionIncrementer) {
             this.versionIncrementer = versionIncrementer;
             return this;
         }
@@ -1928,12 +1933,12 @@ public class GrugORM {
             return this;
         }
 
-        public FieldMapping transformForDB(Function<Object, Object> func) {
+        public FieldMapping transformForDB(UnaryOperator<Object> func) {
             this.toDatabaseValue = func;
             return this;
         }
 
-        public FieldMapping transformFromDB(Function<Object, Object> func) {
+        public FieldMapping transformFromDB(UnaryOperator<Object> func) {
             this.fromDatabaseValue = func;
             return this;
         }
@@ -2021,7 +2026,7 @@ public class GrugORM {
     // Migrations System
     //========================================================================================
 
-    public static abstract class Migrations {
+    public abstract static class Migrations {
 
         public static final String HELP_MSG = """
                 Migrations Commands
@@ -2033,7 +2038,7 @@ public class GrugORM {
                   exit/quit - exit this tool
                   help/?    - show this help message
                 """;
-        private LinkedHashMap<String, GrugMigration> migrations;
+        private LinkedHashMap<String, GrugMigration> migrationsMap;
         private GrugORM orm;
 
         public void setORM(GrugORM orm) {
@@ -2056,10 +2061,10 @@ public class GrugORM {
 
         protected void add(GrugMigration migration) {
             String migrationName = migration.getName();
-            if (migrations.containsKey(migrationName)) {
+            if (migrationsMap.containsKey(migrationName)) {
                 throw new IllegalArgumentException("Migration " + migrationName + " already exists!");
             }
-            migrations.put(migrationName, migration);
+            migrationsMap.put(migrationName, migration);
         }
 
         /**
@@ -2072,12 +2077,11 @@ public class GrugORM {
         public abstract void migrations();
 
         public static GrugMigration makeMigration(String name) {
-            GrugMigration migration = new GrugMigration(name);
-            return migration;
+            return new GrugMigration(name);
         }
 
         public void console() {
-            GrugORM orm = getORM();
+            getORM();
             orm.exec(GrugMigration.DDL);
             Console console = System.console();
             label:
@@ -2108,7 +2112,7 @@ public class GrugORM {
         }
 
         private String show() {
-            GrugORM orm = getORM();
+            getORM();
             orm.exec(GrugMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
 
@@ -2124,7 +2128,7 @@ public class GrugORM {
         }
 
         public void up() {
-            GrugORM orm = getORM();
+            getORM();
             orm.exec(GrugMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
 
@@ -2138,7 +2142,7 @@ public class GrugORM {
         }
 
         public void down() {
-            GrugORM orm = getORM();
+            getORM();
             orm.exec(GrugMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
 
@@ -2155,7 +2159,7 @@ public class GrugORM {
          * Applies all outstanding migrations in the order they are declared
          */
         public void applyAll() {
-            GrugORM orm = getORM();
+            getORM();
             orm.exec(GrugMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
             for (GrugMigration migration : mergedMigrations.values()) {
@@ -2167,11 +2171,11 @@ public class GrugORM {
 
         private LinkedHashMap<String, GrugMigration> loadMigrations(GrugORM orm) {
 
-            migrations = new LinkedHashMap<>();
+            migrationsMap = new LinkedHashMap<>();
             migrations();
             // compute migrations with persisted migrations merged in
             ResultList<GrugMigration> persistedMigrations = orm.find(GrugMigration.class).all();
-            var mergedMigrations = new LinkedHashMap<>(migrations);
+            var mergedMigrations = new LinkedHashMap<>(migrationsMap);
             for (GrugMigration persistedMigration : persistedMigrations.copy()) {
                 GrugMigration existingMigration = mergedMigrations.get(persistedMigration.getName());
                 if (existingMigration != null) {
@@ -2371,6 +2375,7 @@ public class GrugORM {
 
         // automatic down-casting helpers
         @SuppressWarnings("unchecked")
+        // TODO is the type parameter necessary here?
         public <T> T get(String key, Class<T> type) {
             return (T) result.get(key);
         }
@@ -2442,7 +2447,16 @@ public class GrugORM {
         }
 
         public Date asDate(String key) {
-            return new Date(asString(key));
+            try {
+                return new Date(Long.parseLong(asString(key)));
+            } catch (NumberFormatException _) {
+                // if the value is not a long, try to parse it as a date string
+                try {
+                    return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(asString(key));
+                } catch (ParseException parseException) {
+                    throw new IllegalArgumentException("Could not parse date from value: " + asString(key), parseException);
+                }
+            }
         }
 
         public Boolean asBoolean(String key) {
@@ -2471,94 +2485,117 @@ public class GrugORM {
         // Delegate map ops to the read only version, sure wish java had delegation :/
         //==============================================================================
 
+        @Override
         public int size() {
             return readOnlyDelegate.size();
         }
 
+        @Override
         public boolean isEmpty() {
             return readOnlyDelegate.isEmpty();
         }
 
+        @Override
         public boolean containsKey(Object key) {
             return readOnlyDelegate.containsKey(key);
         }
 
+        @Override
         public boolean containsValue(Object value) {
             return readOnlyDelegate.containsValue(value);
         }
 
+        @Override
         public Object get(Object key) {
             return readOnlyDelegate.get(key);
         }
 
+        @Override
         public Object put(String key, Object value) {
             return readOnlyDelegate.put(key, value);
         }
 
+        @Override
         public Object remove(Object key) {
             return readOnlyDelegate.remove(key);
         }
 
+        @Override
         public void putAll(Map<? extends String, ?> m) {
             readOnlyDelegate.putAll(m);
         }
 
+        @Override
         public void clear() {
             readOnlyDelegate.clear();
         }
 
+        @Override
         public Set<String> keySet() {
             return readOnlyDelegate.keySet();
         }
 
+        @Override
         public Collection<Object> values() {
             return readOnlyDelegate.values();
         }
 
+        @Override
         public Set<Entry<String, Object>> entrySet() {
             return readOnlyDelegate.entrySet();
         }
 
+        @Override
         public Object getOrDefault(Object key, Object defaultValue) {
             return readOnlyDelegate.getOrDefault(key, defaultValue);
         }
 
+        @Override
         public void forEach(BiConsumer<? super String, ? super Object> action) {
             readOnlyDelegate.forEach(action);
         }
 
+        @Override
         public void replaceAll(BiFunction<? super String, ? super Object, ?> function) {
             readOnlyDelegate.replaceAll(function);
         }
 
+        @Override
         public Object putIfAbsent(String key, Object value) {
             return readOnlyDelegate.putIfAbsent(key, value);
         }
 
+        @Override
         public boolean remove(Object key, Object value) {
             return readOnlyDelegate.remove(key, value);
         }
 
+        @Override
         public boolean replace(String key, Object oldValue, Object newValue) {
             return readOnlyDelegate.replace(key, oldValue, newValue);
         }
 
+        @Override
         public Object replace(String key, Object value) {
             return readOnlyDelegate.replace(key, value);
         }
 
+        @Override
         public Object computeIfAbsent(String key, Function<? super String, ?> mappingFunction) {
             return readOnlyDelegate.computeIfAbsent(key, mappingFunction);
         }
 
+        @Override
         public Object computeIfPresent(String key, BiFunction<? super String, ? super Object, ?> remappingFunction) {
             return readOnlyDelegate.computeIfPresent(key, remappingFunction);
         }
 
+        @Override
         public Object compute(String key, BiFunction<? super String, ? super Object, ?> remappingFunction) {
             return readOnlyDelegate.compute(key, remappingFunction);
         }
 
+        @Override
         public Object merge(String key, Object value, BiFunction<? super Object, ? super Object, ?> remappingFunction) {
             return readOnlyDelegate.merge(key, value, remappingFunction);
         }
@@ -2729,11 +2766,11 @@ public class GrugORM {
             return readOnlyDelegate.retainAll(c);
         }
 
-        public void replaceAll(UnaryOperator<T> operator) {
+        @Override public void replaceAll(UnaryOperator<T> operator) {
             readOnlyDelegate.replaceAll(operator);
         }
 
-        public void sort(Comparator<? super T> c) {
+        @Override public void sort(Comparator<? super T> c) {
             readOnlyDelegate.sort(c);
         }
 
@@ -2765,75 +2802,75 @@ public class GrugORM {
             return readOnlyDelegate.remove(index);
         }
 
-        public int indexOf(Object o) {
+        @Override public int indexOf(Object o) {
             return readOnlyDelegate.indexOf(o);
         }
 
-        public int lastIndexOf(Object o) {
+        @Override public int lastIndexOf(Object o) {
             return readOnlyDelegate.lastIndexOf(o);
         }
 
-        public ListIterator<T> listIterator() {
+        @Override public ListIterator<T> listIterator() {
             return readOnlyDelegate.listIterator();
         }
 
-        public ListIterator<T> listIterator(int index) {
+        @Override public ListIterator<T> listIterator(int index) {
             return readOnlyDelegate.listIterator(index);
         }
 
-        public List<T> subList(int fromIndex, int toIndex) {
+        @Override public List<T> subList(int fromIndex, int toIndex) {
             return readOnlyDelegate.subList(fromIndex, toIndex);
         }
 
-        public Spliterator<T> spliterator() {
+        @Override public Spliterator<T> spliterator() {
             return readOnlyDelegate.spliterator();
         }
 
-        public void addFirst(T t) {
+        @Override public void addFirst(T t) {
             readOnlyDelegate.addFirst(t);
         }
 
-        public void addLast(T t) {
+        @Override public void addLast(T t) {
             readOnlyDelegate.addLast(t);
         }
 
-        public T getFirst() {
+        @Override public T getFirst() {
             return readOnlyDelegate.getFirst();
         }
 
-        public T getLast() {
+        @Override public T getLast() {
             return readOnlyDelegate.getLast();
         }
 
-        public T removeFirst() {
+        @Override public T removeFirst() {
             return readOnlyDelegate.removeFirst();
         }
 
-        public T removeLast() {
+        @Override public T removeLast() {
             return readOnlyDelegate.removeLast();
         }
 
-        public List<T> reversed() {
+        @Override public List<T> reversed() {
             return readOnlyDelegate.reversed();
         }
 
-        public <T1> T1[] toArray(IntFunction<T1[]> generator) {
+        @Override public <T1> T1[] toArray(IntFunction<T1[]> generator) {
             return readOnlyDelegate.toArray(generator);
         }
 
-        public boolean removeIf(Predicate<? super T> filter) {
+        @Override public boolean removeIf(Predicate<? super T> filter) {
             return readOnlyDelegate.removeIf(filter);
         }
 
-        public Stream<T> stream() {
+        @Override public Stream<T> stream() {
             return readOnlyDelegate.stream();
         }
 
-        public Stream<T> parallelStream() {
+        @Override public Stream<T> parallelStream() {
             return readOnlyDelegate.parallelStream();
         }
 
-        public void forEach(Consumer<? super T> action) {
+        @Override public void forEach(Consumer<? super T> action) {
             readOnlyDelegate.forEach(action);
         }
 
@@ -2945,8 +2982,8 @@ public class GrugORM {
             }
         }.defineClass();
         try {
-            //noinspection deprecation
-            return (ForceThrower) tmpClass.newInstance();
+            //noinspection
+            return (ForceThrower) tmpClass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
