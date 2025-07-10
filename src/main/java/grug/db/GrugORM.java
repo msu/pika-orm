@@ -371,6 +371,8 @@ public class GrugORM {
         int openCount;
         int transactionCount;
         UUID uuid;
+        ArrayList<PreparedStatement> preparedStatements = new ArrayList<>();
+        ArrayList<ResultSet> resultSets = new ArrayList<>();
 
         public ConnectionInfo(Connection connection, ConnectionInfo previousConnection) {
             this.conn = connection;
@@ -392,9 +394,27 @@ public class GrugORM {
             if (openCount == 0) { // if we are back at the top level of the connection count we close the connection
                 logger.log(GrugLogger.Level.INFO, "Closing connection {} on Thread {}", uuid, Thread.currentThread().getName());
                 try {
-                    safely(() -> conn.close());
+                    for (var rs : resultSets) {
+                        try {
+                            if(!rs.isClosed()){
+                                rs.close();
+                            }
+                        } catch (SQLException e) { /* swallow */ }
+                    }
+                    for (var ps : preparedStatements) {
+                        try {
+                            if(!ps.isClosed()){
+                                ps.close();
+                            }
+                        } catch (SQLException e) { /* swallow */ }
+                    }
                 } finally {
-                    CURRENT_CONNECTION.set(this.previous);
+                    // always try to close the connection no matter what
+                    try {
+                        safely(() -> conn.close());
+                    } finally {
+                        CURRENT_CONNECTION.set(this.previous);
+                    }
                 }
             }
         }
@@ -413,7 +433,7 @@ public class GrugORM {
             transactionCount++;
         }
 
-        public void commitTransaction() {
+        public void finishTransaction() {
             if (isInTransaction()) {
                 transactionCount--;
                 if (transactionCount == 0) {
@@ -422,7 +442,7 @@ public class GrugORM {
                 } else {
                     logger.log(GrugLogger.Level.INFO, "Nested transaction detected for connection {}, deferring commit", uuid);
                 }
-                close();
+                close(); // TODO should this be here?
             } else {
                 logger.log(GrugLogger.Level.ERROR, "No current transaction for connection {}", uuid);
             }
@@ -442,6 +462,33 @@ public class GrugORM {
                 logger.log(GrugLogger.Level.ERROR, "No current transaction for connection {}", uuid);
             }
         }
+
+        private ResultSet execute(PreparedStatement ps) {
+            ResultSet resultSet = time(ps::executeQuery);
+            resultSets.add(resultSet);
+            return resultSet;
+        }
+
+        private PreparedStatement prepareStatement(String updatedSql, Collection<Object> vals) throws SQLException {
+            return prepareStatement(updatedSql, vals, null);
+        }
+
+        private PreparedStatement prepareStatement(String updatedSql, Collection<Object> vals, String[] keyCols) throws SQLException {
+            PreparedStatement ps;
+            if (keyCols != null) {
+                ps = conn.prepareStatement(updatedSql, keyCols);
+            } else {
+                ps = conn.prepareStatement(updatedSql);
+            }
+            preparedStatements.add(ps);
+            int offset = 1;
+            for (Object val : vals) {
+                setValueForQuery(ps, offset, val);
+                offset++;
+            }
+            return ps;
+        }
+
     }
 
     private Connection createConnection() {
@@ -480,11 +527,23 @@ public class GrugORM {
     // Transaction management
     //====================================================================
 
-    public void inTransaction(Runnable runnable) {
+    public void withTransaction(Runnable runnable) {
         try {
             startTransaction();
             runnable.run();
             commitTransaction();
+        } catch (Exception e) {
+            rollBackTransaction();
+            throw rethrow(e);
+        }
+    }
+
+    public <T> T withTransaction(Callable<T> runnable) {
+        try {
+            startTransaction();
+            T result = runnable.call();
+            commitTransaction();
+            return result;
         } catch (Exception e) {
             rollBackTransaction();
             throw rethrow(e);
@@ -499,7 +558,7 @@ public class GrugORM {
     public void maybeCommitTransaction() {
         ConnectionInfo connectionInfo = getCurrentConnection();
         if (connectionInfo.isInTransaction()) {
-            connectionInfo.commitTransaction();
+            connectionInfo.finishTransaction();
         }
     }
 
@@ -508,7 +567,7 @@ public class GrugORM {
         if (connectionInfo == null) {
             logger.log(GrugLogger.Level.ERROR, "No current connection for transaction.");
         } else {
-            connectionInfo.commitTransaction();
+            connectionInfo.finishTransaction();
         }
     }
 
@@ -550,32 +609,27 @@ public class GrugORM {
     }
 
     private <T> ResultList<T> select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec) {
-        try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
-            Mapping mapping = getMapping(resultClass);
-            Connection conn = ci.conn;
-            ArrayList<Object> vals = new ArrayList<>();
-            String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
-            logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
-            try (PreparedStatement preparedStatement = conn.prepareStatement(updatedSql)) {
-                for (int i = 0; i < vals.size(); i++) {
-                    Object val = vals.get(i);
-                    setValueForQuery(preparedStatement, i + 1, val);
+        Mapping mapping = getMapping(resultClass);
+        ArrayList<Object> vals = new ArrayList<>();
+        String updatedSql = updateSqlVars(sql, args, vals);
+        logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
+        try (var ci = getOrCreateConnectionInfo();
+             var ps = ci.prepareStatement(updatedSql, vals);
+             var resultSet = ci.execute(ps)) {
+            ResultList<T> resultList = new ResultList<>();
+            while (resultSet.next()) {
+                T result = mapping.newObjectFromResult(resultSet, columnSpec);
+                if (result instanceof GrugRecordLifecycle lifecycle) {
+                    lifecycle.afterSelect();
                 }
-                ResultSet resultSet = time(preparedStatement::executeQuery);
-                ResultList<T> result = new ResultList<>();
-                while (resultSet.next()) {
-                    T object = mapping.newObjectFromResult(resultSet, columnSpec);
-                    if (object instanceof GrugRecordLifecycle lifecycle) {
-                        lifecycle.afterSelect();
-                    }
-                    result.addInternal(object);
-                }
-                return result;
+                resultList.addInternal(result);
             }
+            return resultList;
         } catch (Exception e) {
             throw handleSelectException(sql, args, e);
         }
     }
+
 
     public Stream<ResultMap> stream(String sql) {
         return stream(sql, Map.of(), ResultMap.class);
@@ -607,23 +661,35 @@ public class GrugORM {
             throw new IllegalStateException("You must manually establish a connection with establishConnection() and manage closing the connection yourself before streaming results");
         }
         Mapping mapping = getMapping(resultClass);
-        PreparedStatement ps;
+        ArrayList<Object> vals = new ArrayList<>();
+        String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
+        logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
         try {
-            Connection conn = ci.conn;
-            ArrayList<Object> vals = new ArrayList<>();
-            String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
-            logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
-            // TODO should this prepared statement be closed at some point? Can it be?
-            ps = conn.prepareStatement(updatedSql);
-            for (int i = 0; i < vals.size(); i++) {
-                Object val = vals.get(i);
-                setValueForQuery(ps, i + 1, val);
-            }
+            PreparedStatement ps = ci.prepareStatement(updatedSql, vals);
+            ResultSet rs = ci.execute(ps);
+            return StreamSupport.stream(new Spliterators.AbstractSpliterator<>(Long.MAX_VALUE, Spliterator.ORDERED) {
+                @Override
+                public boolean tryAdvance(Consumer<? super T> action) {
+                    try {
+                        if (rs.next()) {
+                            T result = mapping.newObjectFromResult(rs, columnSpec);
+                            if (result instanceof GrugRecordLifecycle lifecycle) {
+                                lifecycle.afterSelect();
+                            }
+                            action.accept(result);
+                            return true;
+                        } else {
+                            rs.close();
+                            return false;
+                        }
+                    } catch (Exception e) {
+                        throw rethrow(e);
+                    }
+                }
+            }, false);
         } catch (Exception e) {
             throw handleSelectException(sql, args, e);
         }
-        Iterable<T> iterable = new ResultIterable<>(ps, mapping, columnSpec, sql, args);
-        return StreamSupport.stream(iterable.spliterator(), false);
     }
 
     private RuntimeException handleSelectException(String sql, Map args, Exception e) {
@@ -647,6 +713,7 @@ public class GrugORM {
             return INSERT_FAILED;
         }
         Object newVersionValue = null;
+        // TODO - remove this?  It's an insert...
         if (mapping.hasVersionColumn()) {
             newVersionValue = mapping.incrementVersion(values);
         }
@@ -701,24 +768,19 @@ public class GrugORM {
             sb.append(")");
         }
         String insertString = sb.toString();
-        logger.log(getQueryLogLevel(), "INSERT SQL: {}\n  Args:{}", insertString, values.values());
-        try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
-            Connection conn = ci.conn;
-            try (PreparedStatement ps = conn.prepareStatement(insertString, keyCols)) {
-                int col = 1;
-                for (Object o : values.values()) {
-                    setValueForQuery(ps, col++, o);
-                }
-                time(ps::executeUpdate);
-                ResultSet generatedKeys = ps.getGeneratedKeys();
-                if (generatedKeys.next()) {
-                    return generatedKeys.getLong(1);
-                } else {
-                    return INSERT_FAILED;
-                }
+        Collection<Object> queryValues = values.values();
+        logger.log(getQueryLogLevel(), "INSERT SQL: {}\n  Args:{}", insertString, queryValues);
+        try (ConnectionInfo ci = getOrCreateConnectionInfo();
+             PreparedStatement preparedStatement = ci.prepareStatement(insertString, queryValues, keyCols)) {
+            time(preparedStatement::executeUpdate);
+            ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+            if (generatedKeys.next()) {
+                return generatedKeys.getLong(1);
+            } else {
+                return INSERT_FAILED;
             }
         } catch (Exception e) {
-            logger.log(GrugLogger.Level.ERROR, "Exception in insert() with SQL {} & args {}: {}", insertString, values.values(), e.getMessage());
+            logger.log(GrugLogger.Level.ERROR, "Exception in insert() with SQL {} & args {}: {}", insertString, queryValues, e.getMessage());
             throw rethrow(e);
         }
     }
@@ -754,7 +816,7 @@ public class GrugORM {
         return update;
     }
 
-    private boolean update(String tableName, String keyCol, Object keyVal, String versionCol, Object verionVal, Map<String, Object> values) {
+    private boolean update(String tableName, String keyCol, Object keyVal, String versionCol, Object versionVal, Map<String, Object> values) {
         if (!(values instanceof TreeMap<String, Object>)) {
             values = new TreeMap<>(values);
         }
@@ -770,21 +832,18 @@ public class GrugORM {
 
         String updateSQL = sb.toString();
         logger.log(getQueryLogLevel(), "UPDATE SQL: {}\n  Args:{}", updateSQL, values.values());
-        try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
-            Connection conn = ci.conn;
-            try (PreparedStatement preparedStatement = conn.prepareStatement(updateSQL)) {
-                int col = 1;
-                for (Object o : values.values()) {
-                    setValueForQuery(preparedStatement, col++, o);
-                }
-                setValueForQuery(preparedStatement, col, keyVal);
-                if (versionCol != null) {
-                    col++;
-                    setValueForQuery(preparedStatement, col, verionVal);
-                }
-                int i = time(preparedStatement::executeUpdate);
-                return i == 1;
-            }
+
+        // construct final values collection
+        ArrayList<Object> finalValues = new ArrayList<>(values.values());
+        finalValues.add(keyVal);
+        if(versionCol != null) {
+            finalValues.add(versionVal);
+        }
+
+        try (ConnectionInfo ci = getOrCreateConnectionInfo();
+             var preparedStatement = ci.prepareStatement(updateSQL, finalValues)) {
+            int i = time(preparedStatement::executeUpdate);
+            return i == 1;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & args {}: {}", updateSQL, values.values(), e.getMessage());
             throw rethrow(e);
@@ -809,19 +868,12 @@ public class GrugORM {
     }
 
     private boolean delete(String tableName, String keyCol, Object keyVal) {
-        StringBuilder sb = new StringBuilder("DELETE FROM ");
-        sb.append(tableName);
-        sb.append(" WHERE ");
-        sb.append(keyCol).append("=?");
-        String deleteSQL = sb.toString();
+        String deleteSQL = "DELETE FROM " + tableName + " WHERE " + keyCol + "=?";
         logger.log(getQueryLogLevel(), "DELETE SQL: {}\n  Args:{}", deleteSQL, List.of(keyVal));
-        try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
-            Connection conn = ci.conn;
-            try (PreparedStatement preparedStatement = conn.prepareStatement(sb.toString())) {
-                setValueForQuery(preparedStatement, 1, keyVal);
-                int i = time(preparedStatement::executeUpdate);
-                return i == 1;
-            }
+        try (ConnectionInfo ci = getOrCreateConnectionInfo();
+             var preparedStatement = ci.prepareStatement(deleteSQL, List.of(keyVal))) {
+            int i = time(preparedStatement::executeUpdate);
+            return i == 1;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
             throw rethrow(e);
@@ -840,13 +892,11 @@ public class GrugORM {
             logger.log(GrugLogger.Level.WARN, "SQL is blank, will not be executed!");
             return false;
         }
-        try (ConnectionInfo ci = getOrCreateConnectionInfo()) {
-            Connection conn = ci.conn;
+        try (ConnectionInfo ci = getOrCreateConnectionInfo();
+             var preparedStatement = ci.prepareStatement(sql, List.of())) {
             logger.log(getQueryLogLevel(), "EXECUTING RAW SQL: {}\n", sql);
-            //noinspection SqlSourceToSinkFlow
-            try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
-                return time(preparedStatement::execute);
-            }
+            boolean result = time(preparedStatement::execute);
+            return result;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in exec() with SQL {}: {}", sql, e.getMessage());
             throw rethrow(e);
@@ -2276,7 +2326,7 @@ public class GrugORM {
             }
 
             void runUp(GrugORM orm) {
-                orm.inTransaction(() -> {
+                orm.withTransaction(() -> {
                     String[] upSqlSplitOnSemicolons = getUpSqlSplitOnSemicolons();
                     for (String sql : upSqlSplitOnSemicolons) {
                         orm.exec(sql);
@@ -2292,7 +2342,7 @@ public class GrugORM {
             }
 
             void runDown(GrugORM orm) {
-                orm.inTransaction(() -> {
+                orm.withTransaction(() -> {
                     String[] upSqlSplitOnSemicolons = getDownSqlSplitOnSemicolons();
                     for (String sql : upSqlSplitOnSemicolons) {
                         orm.exec(sql);
@@ -2879,68 +2929,6 @@ public class GrugORM {
         }
     }
 
-    private class ResultIterable<T> implements Iterable<T> {
-        private final PreparedStatement ps;
-        private final Mapping mapping;
-        private final ColumnsSpec columnSpec;
-        private final String sql;
-        private final Map<String, Object> args;
-
-        public ResultIterable(PreparedStatement ps, Mapping mapping, ColumnsSpec columnSpec, String sql, Map<String, Object> args) {
-            this.ps = ps;
-            this.mapping = mapping;
-            this.columnSpec = columnSpec;
-            this.sql = sql;
-            this.args = args;
-        }
-
-        @Override
-        public Iterator<T> iterator() {
-            try {
-                return new ResultIterator<>(ps.executeQuery(), mapping, columnSpec, this);
-            } catch (SQLException e) {
-                throw handleSelectException(sql, args, e);
-            }
-        }
-    }
-
-    private class ResultIterator<T> implements Iterator<T> {
-        private final ResultSet resultSet;
-        private final Mapping mapping;
-        private final ColumnsSpec columnSpec;
-        private final ResultIterable iterable;
-
-        public ResultIterator(ResultSet resultSet, Mapping mapping, ColumnsSpec columnSpec, ResultIterable iterable) {
-                this.resultSet = resultSet;
-                this.mapping = mapping;
-                this.columnSpec = columnSpec;
-                this.iterable = iterable;
-        }
-
-        @Override
-        public boolean hasNext() {
-            try {
-                return resultSet.next();
-            } catch (Exception e) {
-                throw handleSelectException(iterable.sql, iterable.args, e);
-            }
-        }
-
-        @Override
-        public T next() {
-            try {
-                T object = mapping.newObjectFromResult(resultSet, columnSpec);
-                if (object instanceof GrugRecordLifecycle lifecycle) {
-                    lifecycle.afterSelect();
-                }
-                return object;
-            } catch (Exception e) {
-                throw handleSelectException(iterable.sql, iterable.args, e);
-            }
-        }
-    }
-
-
     //================================================================================================
     // Stuff to clean up java's checked exception garbage
     //================================================================================================
@@ -2988,5 +2976,4 @@ public class GrugORM {
             throw new RuntimeException(e);
         }
     }
-
 }

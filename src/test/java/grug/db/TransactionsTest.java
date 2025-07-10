@@ -17,7 +17,7 @@ public class TransactionsTest extends TestBase {
         TransactionDemo bar = new TransactionDemo("bar", -10); // bad value
 
         try {
-            orm.inTransaction(() -> {
+            orm.withTransaction(() -> {
                 orm.insert(foo);
                 orm.insert(bar);
             });
@@ -39,9 +39,11 @@ public class TransactionsTest extends TestBase {
         TransactionDemo bar = new TransactionDemo("bar", 20); // bad value
 
         try {
-            orm.inTransaction(() -> {
+
+            var x =  orm.withTransaction(() -> {
                 orm.insert(foo);
                 orm.insert(bar);
+                return foo;
             });
         } catch (Exception e) {
             e.printStackTrace();
@@ -61,9 +63,9 @@ public class TransactionsTest extends TestBase {
         TransactionDemo bar = new TransactionDemo("bar", -10); // bad value
 
         try {
-            orm.inTransaction(() -> {
+            orm.withTransaction(() -> {
                 orm.insert(foo);
-                orm.inTransaction(() -> {
+                orm.withTransaction(() -> {
                     orm.insert(bar);
                 });
             });
@@ -85,9 +87,9 @@ public class TransactionsTest extends TestBase {
         TransactionDemo bar = new TransactionDemo("bar", 20); // bad value
 
         try {
-            orm.inTransaction(() -> {
+            orm.withTransaction(() -> {
                 orm.insert(foo);
-                orm.inTransaction(() -> {
+                orm.withTransaction(() -> {
                     orm.insert(bar);
                 });
             });
@@ -109,8 +111,8 @@ public class TransactionsTest extends TestBase {
         TransactionDemo bar = new TransactionDemo("bar", -10); // bad value
 
         try {
-            orm.inTransaction(() -> {
-                orm.inTransaction(() -> {
+            orm.withTransaction(() -> {
+                orm.withTransaction(() -> {
                     orm.insert(foo);
                 });
                 orm.insert(bar); // insert bad after inner transaction
