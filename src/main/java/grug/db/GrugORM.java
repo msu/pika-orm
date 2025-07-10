@@ -246,8 +246,8 @@ public class GrugORM {
         return new GrugClassQuery<>(baseClass);
     }
 
-    public GrugQueryBuilder<ResultMap> queryBuilder(String baseTable) {
-        return new GrugQueryBuilder<>(baseTable);
+    public GrugQuery<ResultMap> queryBuilder(String baseTable) {
+        return new GrugQuery<>(baseTable);
     }
 
     public class GrugListFinder<T> {
@@ -1200,8 +1200,8 @@ public class GrugORM {
         }
     }
 
-    public class GrugQueryBuilder<T> {
-        //Has much more of a notion of writing SQL, GrugFinderClass is abstracted in practice to this lower level builder, basically only uses Strings in SQL
+    public class GrugQuery<T> {
+
         private final String baseTable;
         private boolean distinct;
         private List<String> columns;
@@ -1215,12 +1215,12 @@ public class GrugORM {
         private int pageSize = -1;
         private int page = -1;
 
-        public GrugQueryBuilder(String baseTable) {
+        public GrugQuery(String baseTable) {
             this.baseTable = baseTable;
             this.resultClass = ResultMap.class;
         }
 
-        public GrugQueryBuilder<T> where(String condition) {
+        public GrugQuery<T> where(String condition) {
             if (!whereClause.isEmpty()) {
                 whereClause.append(" AND ");
             }
@@ -1228,33 +1228,33 @@ public class GrugORM {
             return this;
         }
 
-        public GrugQueryBuilder<T> where(String condition, Map<String, Object> vars) {
+        public GrugQuery<T> where(String condition, Map<String, Object> vars) {
             return where(condition).withVars(vars);
         }
 
-        public GrugQueryBuilder<T> select(String... columns) {
+        public GrugQuery<T> select(String... columns) {
             return select(Arrays.asList(columns));
         }
 
-        public GrugQueryBuilder<T> select(List<String> columns) {
+        public GrugQuery<T> select(List<String> columns) {
             this.columns = columns;
             return this;
         }
 
-        public GrugQueryBuilder<T> withColumnPrefix(String columnPrefix) {
+        public GrugQuery<T> withColumnPrefix(String columnPrefix) {
             this.columnPrefix = columnPrefix;
             return this;
         }
 
-        public GrugQueryBuilder<T> distinct() {
+        public GrugQuery<T> distinct() {
             this.distinct = true;
             return this;
         }
 
-        public <Q> GrugQueryBuilder<Q> withResult(Class<Q> clazz) {
+        public <Q> GrugQuery<Q> withResult(Class<Q> clazz) {
             this.resultClass = clazz;
             //noinspection unchecked
-            return (GrugQueryBuilder<Q>) this;
+            return (GrugQuery<Q>) this;
         }
 
         public ResultList<T> execute() {
@@ -1310,14 +1310,14 @@ public class GrugORM {
             return selectClause.toString();
         }
 
-        public GrugQueryBuilder<T> withVars(Map<String, Object> vals) {
+        public GrugQuery<T> withVars(Map<String, Object> vals) {
             for (Map.Entry<String, Object> stringObjectEntry : vals.entrySet()) {
                 withVar(stringObjectEntry.getKey(), stringObjectEntry.getValue());
             }
             return this;
         }
 
-        public GrugQueryBuilder<T> withVar(String name, Object value) {
+        public GrugQuery<T> withVar(String name, Object value) {
             if (valMap.containsKey(name)) {
                 throw new IllegalStateException("Value " + name + " already exists in query!");
             }
@@ -1325,7 +1325,7 @@ public class GrugORM {
             return this;
         }
 
-        public GrugQueryBuilder<T> join(String joinSql) {
+        public GrugQuery<T> join(String joinSql) {
             if (!joinSql.toUpperCase().contains("JOIN")) {
                 joinSql = "JOIN " + joinSql;
             }
@@ -1333,21 +1333,21 @@ public class GrugORM {
             return this;
         }
 
-        public GrugQueryBuilder<T> orderBy(String column) {
+        public GrugQuery<T> orderBy(String column) {
             return orderBy(column, null);
         }
 
-        public GrugQueryBuilder<T> orderBy(String column, SortOrder direction) {
+        public GrugQuery<T> orderBy(String column, SortOrder direction) {
             this.orderBys.add(new OrderBy(column, direction));
             return this;
         }
 
-        public GrugQueryBuilder<T> pageSize(int pageSize) {
+        public GrugQuery<T> pageSize(int pageSize) {
             this.pageSize = pageSize;
             return this;
         }
 
-        public GrugQueryBuilder<T> page(int page) {
+        public GrugQuery<T> page(int page) {
             this.page = page;
             return this;
         }
@@ -1360,14 +1360,14 @@ public class GrugORM {
 
     public class GrugClassQuery<T> implements Callable<ResultList<T>> {
 
-        private final GrugQueryBuilder<T> query;
+        private final GrugQuery<T> query;
         private final Class classToFind;
         private Class lastJoinedClass;
 
         public GrugClassQuery(Class<T> classToFind) {
             this.classToFind = classToFind;
             Mapping mappingForClassToFind = getMapping(classToFind);
-            query = new GrugQueryBuilder<>(mappingForClassToFind.getTableName())
+            query = new GrugQuery<>(mappingForClassToFind.getTableName())
                     .withResult(classToFind)
                     .withColumnPrefix(mappingForClassToFind.getTableName())
                     .distinct();
@@ -1480,7 +1480,7 @@ public class GrugORM {
             return this;
         }
 
-        public GrugQueryBuilder<T> asBuilder() {
+        public GrugQuery<T> raw() {
             return query;
         }
 
@@ -1492,6 +1492,15 @@ public class GrugORM {
             this.lastJoinedClass = lastJoinedClass;
         }
 
+        public GrugClassQuery<T> withCols(String... cols) {
+            query.select(cols);
+            return this;
+        }
+
+        public GrugClassQuery<T> withCols(List<String> cols) {
+            query.select(cols);
+            return this;
+        }
 
         public ResultList<T> call() throws Exception {
             return execute();
