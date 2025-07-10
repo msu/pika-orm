@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-@SuppressWarnings({"rawtypes", "UnusedReturnValue", "UnnecessaryLocalVariable"})
+@SuppressWarnings("ALL")
 public class GrugORM {
 
     public static final int INSERT_FAILED = -1;
@@ -39,7 +39,7 @@ public class GrugORM {
     private static GrugORM DEFAULT_ORM = null;
 
     // TODO Do we need a remove() call on this at some point?
-    private static final ThreadLocal<ConnectionInfo> CURRENT_CONNECTION = new ThreadLocal<>();
+    private static final ThreadLocal<ConnectionSession> CURRENT_SESSION = new ThreadLocal<>();
 
     private static final ForceThrower FORCE_THROWER = generateForceThrower();
 
@@ -364,9 +364,9 @@ public class GrugORM {
     // Connection management
     //====================================================================
 
-    private class ConnectionInfo implements SafeAutoCloseable {
+    private class ConnectionSession implements SafeAutoCloseable {
 
-        ConnectionInfo previous;
+        ConnectionSession previous;
         Connection conn;
         int openCount;
         int transactionCount;
@@ -374,8 +374,8 @@ public class GrugORM {
         ArrayList<PreparedStatement> preparedStatements = new ArrayList<>();
         ArrayList<ResultSet> resultSets = new ArrayList<>();
 
-        public ConnectionInfo(Connection connection, ConnectionInfo previousConnection) {
-            this.conn = connection;
+        public ConnectionSession(ConnectionSession previousConnection) {
+            this.conn = getNewRawConnection();
             this.previous = previousConnection;
             this.uuid = UUID.randomUUID();
             this.openCount = 0;
@@ -387,7 +387,6 @@ public class GrugORM {
             logger.log(GrugLogger.Level.DEBUG, "Incremented open count on connection {}: {}", uuid, "*".repeat(openCount));
         }
 
-
         public void close() {
             openCount--;
             logger.log(GrugLogger.Level.DEBUG, "Decremented open count on connection {}: {}", uuid, "*".repeat(openCount));
@@ -396,14 +395,14 @@ public class GrugORM {
                 try {
                     for (var rs : resultSets) {
                         try {
-                            if(!rs.isClosed()){
+                            if (!rs.isClosed()) {
                                 rs.close();
                             }
                         } catch (SQLException e) { /* swallow */ }
                     }
                     for (var ps : preparedStatements) {
                         try {
-                            if(!ps.isClosed()){
+                            if (!ps.isClosed()) {
                                 ps.close();
                             }
                         } catch (SQLException e) { /* swallow */ }
@@ -413,7 +412,7 @@ public class GrugORM {
                     try {
                         safely(() -> conn.close());
                     } finally {
-                        CURRENT_CONNECTION.set(this.previous);
+                        CURRENT_SESSION.set(this.previous);
                     }
                 }
             }
@@ -442,7 +441,7 @@ public class GrugORM {
                 } else {
                     logger.log(GrugLogger.Level.INFO, "Nested transaction detected for connection {}, deferring commit", uuid);
                 }
-                close(); // TODO should this be here?
+                close();
             } else {
                 logger.log(GrugLogger.Level.ERROR, "No current transaction for connection {}", uuid);
             }
@@ -491,36 +490,35 @@ public class GrugORM {
 
     }
 
-    private Connection createConnection() {
+    public Connection getNewRawConnection() {
         return safely(connectionSource);
     }
 
-    private ConnectionInfo getOrCreateConnectionInfo() {
-        ConnectionInfo connectionInfo = getCurrentConnection();
-        if (connectionInfo == null) {
-            connectionInfo = pushNewConnection();
+    private ConnectionSession getOrCreateSession() {
+        ConnectionSession connectionSession = getCurrentSession();
+        if (connectionSession == null) {
+            connectionSession = pushNewSession();
         }
-        connectionInfo.incrementOpenCount();
-        return connectionInfo;
+        connectionSession.incrementOpenCount();
+        return connectionSession;
     }
 
-    private static ConnectionInfo getCurrentConnection() {
-        return CURRENT_CONNECTION.get();
+    private static ConnectionSession getCurrentSession() {
+        return CURRENT_SESSION.get();
     }
 
     public SafeAutoCloseable establishConnection() {
-        ConnectionInfo connectionInfo = pushNewConnection();
-        connectionInfo.incrementOpenCount();
-        return connectionInfo;
+        ConnectionSession connectionSession = pushNewSession();
+        connectionSession.incrementOpenCount();
+        return connectionSession;
     }
 
-    private ConnectionInfo pushNewConnection() {
-        ConnectionInfo previousConnection = getCurrentConnection();
-        Connection connection = createConnection();
-        ConnectionInfo newConnectionInfo = new ConnectionInfo(connection, previousConnection);
-        logger.log(GrugLogger.Level.INFO, "Created a new connection for Thread {} w/ID {}", Thread.currentThread().getName(), newConnectionInfo.uuid);
-        CURRENT_CONNECTION.set(newConnectionInfo);
-        return newConnectionInfo;
+    private ConnectionSession pushNewSession() {
+        ConnectionSession currentSession = getCurrentSession();
+        ConnectionSession newSession = new ConnectionSession(currentSession);
+        logger.log(GrugLogger.Level.INFO, "Created a new connection for Thread {} w/ID {}", Thread.currentThread().getName(), newSession.uuid);
+        CURRENT_SESSION.set(newSession);
+        return newSession;
     }
 
     //====================================================================
@@ -551,32 +549,32 @@ public class GrugORM {
     }
 
     public void startTransaction() {
-        ConnectionInfo connectionInfo = getOrCreateConnectionInfo();
-        connectionInfo.startTransaction();
+        ConnectionSession connectionSession = getOrCreateSession();
+        connectionSession.startTransaction();
     }
 
     public void maybeCommitTransaction() {
-        ConnectionInfo connectionInfo = getCurrentConnection();
-        if (connectionInfo.isInTransaction()) {
-            connectionInfo.finishTransaction();
+        ConnectionSession connectionSession = getCurrentSession();
+        if (connectionSession.isInTransaction()) {
+            connectionSession.finishTransaction();
         }
     }
 
     public void commitTransaction() {
-        ConnectionInfo connectionInfo = getCurrentConnection();
-        if (connectionInfo == null) {
+        ConnectionSession connectionSession = getCurrentSession();
+        if (connectionSession == null) {
             logger.log(GrugLogger.Level.ERROR, "No current connection for transaction.");
         } else {
-            connectionInfo.finishTransaction();
+            connectionSession.finishTransaction();
         }
     }
 
     public void rollBackTransaction() {
-        ConnectionInfo connectionInfo = getCurrentConnection();
-        if (connectionInfo == null) {
+        ConnectionSession connectionSession = getCurrentSession();
+        if (connectionSession == null) {
             logger.log(GrugLogger.Level.ERROR, "No current connection for transaction.");
         } else {
-            connectionInfo.rollBackTransaction();
+            connectionSession.rollBackTransaction();
         }
     }
 
@@ -613,9 +611,9 @@ public class GrugORM {
         ArrayList<Object> vals = new ArrayList<>();
         String updatedSql = updateSqlVars(sql, args, vals);
         logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
-        try (var ci = getOrCreateConnectionInfo();
-             var ps = ci.prepareStatement(updatedSql, vals);
-             var resultSet = ci.execute(ps)) {
+        try (var session = getOrCreateSession();
+             var ps = session.prepareStatement(updatedSql, vals);
+             var resultSet = session.execute(ps)) {
             ResultList<T> resultList = new ResultList<>();
             while (resultSet.next()) {
                 T result = mapping.newObjectFromResult(resultSet, columnSpec);
@@ -629,7 +627,6 @@ public class GrugORM {
             throw handleSelectException(sql, args, e);
         }
     }
-
 
     public Stream<ResultMap> stream(String sql) {
         return stream(sql, Map.of(), ResultMap.class);
@@ -656,8 +653,8 @@ public class GrugORM {
     }
 
     private <T> Stream<T> stream(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec) {
-        ConnectionInfo ci = getCurrentConnection();
-        if (ci == null) {
+        var session = getCurrentSession();
+        if (session == null) {
             throw new IllegalStateException("You must manually establish a connection with establishConnection() and manage closing the connection yourself before streaming results");
         }
         Mapping mapping = getMapping(resultClass);
@@ -665,10 +662,9 @@ public class GrugORM {
         String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
         logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
         try {
-            PreparedStatement ps = ci.prepareStatement(updatedSql, vals);
-            ResultSet rs = ci.execute(ps);
+            PreparedStatement ps = session.prepareStatement(updatedSql, vals);
+            ResultSet rs = session.execute(ps);
             return StreamSupport.stream(new Spliterators.AbstractSpliterator<>(Long.MAX_VALUE, Spliterator.ORDERED) {
-                @Override
                 public boolean tryAdvance(Consumer<? super T> action) {
                     try {
                         if (rs.next()) {
@@ -770,10 +766,10 @@ public class GrugORM {
         String insertString = sb.toString();
         Collection<Object> queryValues = values.values();
         logger.log(getQueryLogLevel(), "INSERT SQL: {}\n  Args:{}", insertString, queryValues);
-        try (ConnectionInfo ci = getOrCreateConnectionInfo();
-             PreparedStatement preparedStatement = ci.prepareStatement(insertString, queryValues, keyCols)) {
-            time(preparedStatement::executeUpdate);
-            ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+        try (var session = getOrCreateSession();
+             var ps = session.prepareStatement(insertString, queryValues, keyCols)) {
+            time(ps::executeUpdate);
+            ResultSet generatedKeys = ps.getGeneratedKeys();
             if (generatedKeys.next()) {
                 return generatedKeys.getLong(1);
             } else {
@@ -836,13 +832,13 @@ public class GrugORM {
         // construct final values collection
         ArrayList<Object> finalValues = new ArrayList<>(values.values());
         finalValues.add(keyVal);
-        if(versionCol != null) {
+        if (versionCol != null) {
             finalValues.add(versionVal);
         }
 
-        try (ConnectionInfo ci = getOrCreateConnectionInfo();
-             var preparedStatement = ci.prepareStatement(updateSQL, finalValues)) {
-            int i = time(preparedStatement::executeUpdate);
+        try (var session = getOrCreateSession();
+             var ps = session.prepareStatement(updateSQL, finalValues)) {
+            int i = time(ps::executeUpdate);
             return i == 1;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & args {}: {}", updateSQL, values.values(), e.getMessage());
@@ -870,9 +866,9 @@ public class GrugORM {
     private boolean delete(String tableName, String keyCol, Object keyVal) {
         String deleteSQL = "DELETE FROM " + tableName + " WHERE " + keyCol + "=?";
         logger.log(getQueryLogLevel(), "DELETE SQL: {}\n  Args:{}", deleteSQL, List.of(keyVal));
-        try (ConnectionInfo ci = getOrCreateConnectionInfo();
-             var preparedStatement = ci.prepareStatement(deleteSQL, List.of(keyVal))) {
-            int i = time(preparedStatement::executeUpdate);
+        try (var session = getOrCreateSession();
+             var ps = session.prepareStatement(deleteSQL, List.of(keyVal))) {
+            int i = time(ps::executeUpdate);
             return i == 1;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
@@ -892,10 +888,10 @@ public class GrugORM {
             logger.log(GrugLogger.Level.WARN, "SQL is blank, will not be executed!");
             return false;
         }
-        try (ConnectionInfo ci = getOrCreateConnectionInfo();
-             var preparedStatement = ci.prepareStatement(sql, List.of())) {
-            logger.log(getQueryLogLevel(), "EXECUTING RAW SQL: {}\n", sql);
-            boolean result = time(preparedStatement::execute);
+        logger.log(getQueryLogLevel(), "EXECUTING RAW SQL: {}\n", sql);
+        try (var session = getOrCreateSession();
+             var ps = session.prepareStatement(sql, List.of())) {
+            boolean result = time(ps::execute);
             return result;
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in exec() with SQL {}: {}", sql, e.getMessage());
@@ -1081,7 +1077,7 @@ public class GrugORM {
         }
 
         interface SafeAutoCloseable extends AutoCloseable {
-            @Override
+
             void close();
         }
     }
@@ -1095,7 +1091,7 @@ public class GrugORM {
         }
 
         public boolean hasErrors() {
-            return!errors.isEmpty();
+            return !errors.isEmpty();
         }
 
         public void clearErrors() {
@@ -1124,7 +1120,7 @@ public class GrugORM {
             return errors.computeIfAbsent(key, _ -> new ArrayList<>());
         }
 
-        @Override
+
         public final boolean validate() {
             clearErrors();
             validation();
@@ -1136,7 +1132,6 @@ public class GrugORM {
         }
 
 
-        @Override
         public void afterSelect() {
             this.persisted = true;
         }
@@ -1497,7 +1492,7 @@ public class GrugORM {
             this.lastJoinedClass = lastJoinedClass;
         }
 
-        @Override
+
         public ResultList<T> call() throws Exception {
             return execute();
         }
@@ -1950,6 +1945,7 @@ public class GrugORM {
                         fieldVal = new Date(timestamp.getTime());
                     }
                 } else {
+                    //noinspection unchecked
                     fieldVal = resultSet.getObject(columnName, targetType);
                 }
             } catch (SQLException e) {
@@ -2413,6 +2409,7 @@ public class GrugORM {
     // GrugORM Results Objects
     //========================================================================================
 
+    @SuppressWarnings("NullableProblems")
     public static class ResultMap implements Map<String, Object> {
 
         private Map<String, Object> result = new LinkedHashMap<>();
@@ -2535,117 +2532,104 @@ public class GrugORM {
         // Delegate map ops to the read only version, sure wish java had delegation :/
         //==============================================================================
 
-        @Override
+
         public int size() {
             return readOnlyDelegate.size();
         }
 
-        @Override
+
         public boolean isEmpty() {
             return readOnlyDelegate.isEmpty();
         }
 
-        @Override
+
         public boolean containsKey(Object key) {
             return readOnlyDelegate.containsKey(key);
         }
 
-        @Override
+
         public boolean containsValue(Object value) {
             return readOnlyDelegate.containsValue(value);
         }
 
-        @Override
+
         public Object get(Object key) {
             return readOnlyDelegate.get(key);
         }
 
-        @Override
+
         public Object put(String key, Object value) {
             return readOnlyDelegate.put(key, value);
         }
 
-        @Override
+
         public Object remove(Object key) {
             return readOnlyDelegate.remove(key);
         }
 
-        @Override
+
         public void putAll(Map<? extends String, ?> m) {
             readOnlyDelegate.putAll(m);
         }
 
-        @Override
+
         public void clear() {
             readOnlyDelegate.clear();
         }
 
-        @Override
+
         public Set<String> keySet() {
             return readOnlyDelegate.keySet();
         }
 
-        @Override
         public Collection<Object> values() {
             return readOnlyDelegate.values();
         }
 
-        @Override
         public Set<Entry<String, Object>> entrySet() {
             return readOnlyDelegate.entrySet();
         }
 
-        @Override
         public Object getOrDefault(Object key, Object defaultValue) {
             return readOnlyDelegate.getOrDefault(key, defaultValue);
         }
 
-        @Override
         public void forEach(BiConsumer<? super String, ? super Object> action) {
             readOnlyDelegate.forEach(action);
         }
 
-        @Override
         public void replaceAll(BiFunction<? super String, ? super Object, ?> function) {
             readOnlyDelegate.replaceAll(function);
         }
 
-        @Override
         public Object putIfAbsent(String key, Object value) {
             return readOnlyDelegate.putIfAbsent(key, value);
         }
 
-        @Override
         public boolean remove(Object key, Object value) {
             return readOnlyDelegate.remove(key, value);
         }
 
-        @Override
         public boolean replace(String key, Object oldValue, Object newValue) {
             return readOnlyDelegate.replace(key, oldValue, newValue);
         }
 
-        @Override
         public Object replace(String key, Object value) {
             return readOnlyDelegate.replace(key, value);
         }
 
-        @Override
         public Object computeIfAbsent(String key, Function<? super String, ?> mappingFunction) {
             return readOnlyDelegate.computeIfAbsent(key, mappingFunction);
         }
 
-        @Override
         public Object computeIfPresent(String key, BiFunction<? super String, ? super Object, ?> remappingFunction) {
             return readOnlyDelegate.computeIfPresent(key, remappingFunction);
         }
 
-        @Override
         public Object compute(String key, BiFunction<? super String, ? super Object, ?> remappingFunction) {
             return readOnlyDelegate.compute(key, remappingFunction);
         }
 
-        @Override
         public Object merge(String key, Object value, BiFunction<? super Object, ? super Object, ?> remappingFunction) {
             return readOnlyDelegate.merge(key, value, remappingFunction);
         }
@@ -2816,11 +2800,11 @@ public class GrugORM {
             return readOnlyDelegate.retainAll(c);
         }
 
-        @Override public void replaceAll(UnaryOperator<T> operator) {
+        public void replaceAll(UnaryOperator<T> operator) {
             readOnlyDelegate.replaceAll(operator);
         }
 
-        @Override public void sort(Comparator<? super T> c) {
+        public void sort(Comparator<? super T> c) {
             readOnlyDelegate.sort(c);
         }
 
@@ -2852,75 +2836,75 @@ public class GrugORM {
             return readOnlyDelegate.remove(index);
         }
 
-        @Override public int indexOf(Object o) {
+        public int indexOf(Object o) {
             return readOnlyDelegate.indexOf(o);
         }
 
-        @Override public int lastIndexOf(Object o) {
+        public int lastIndexOf(Object o) {
             return readOnlyDelegate.lastIndexOf(o);
         }
 
-        @Override public ListIterator<T> listIterator() {
+        public ListIterator<T> listIterator() {
             return readOnlyDelegate.listIterator();
         }
 
-        @Override public ListIterator<T> listIterator(int index) {
+        public ListIterator<T> listIterator(int index) {
             return readOnlyDelegate.listIterator(index);
         }
 
-        @Override public List<T> subList(int fromIndex, int toIndex) {
+        public List<T> subList(int fromIndex, int toIndex) {
             return readOnlyDelegate.subList(fromIndex, toIndex);
         }
 
-        @Override public Spliterator<T> spliterator() {
+        public Spliterator<T> spliterator() {
             return readOnlyDelegate.spliterator();
         }
 
-        @Override public void addFirst(T t) {
+        public void addFirst(T t) {
             readOnlyDelegate.addFirst(t);
         }
 
-        @Override public void addLast(T t) {
+        public void addLast(T t) {
             readOnlyDelegate.addLast(t);
         }
 
-        @Override public T getFirst() {
+        public T getFirst() {
             return readOnlyDelegate.getFirst();
         }
 
-        @Override public T getLast() {
+        public T getLast() {
             return readOnlyDelegate.getLast();
         }
 
-        @Override public T removeFirst() {
+        public T removeFirst() {
             return readOnlyDelegate.removeFirst();
         }
 
-        @Override public T removeLast() {
+        public T removeLast() {
             return readOnlyDelegate.removeLast();
         }
 
-        @Override public List<T> reversed() {
+        public List<T> reversed() {
             return readOnlyDelegate.reversed();
         }
 
-        @Override public <T1> T1[] toArray(IntFunction<T1[]> generator) {
+        public <T1> T1[] toArray(IntFunction<T1[]> generator) {
             return readOnlyDelegate.toArray(generator);
         }
 
-        @Override public boolean removeIf(Predicate<? super T> filter) {
+        public boolean removeIf(Predicate<? super T> filter) {
             return readOnlyDelegate.removeIf(filter);
         }
 
-        @Override public Stream<T> stream() {
+        public Stream<T> stream() {
             return readOnlyDelegate.stream();
         }
 
-        @Override public Stream<T> parallelStream() {
+        public Stream<T> parallelStream() {
             return readOnlyDelegate.parallelStream();
         }
 
-        @Override public void forEach(Consumer<? super T> action) {
+        public void forEach(Consumer<? super T> action) {
             readOnlyDelegate.forEach(action);
         }
 
