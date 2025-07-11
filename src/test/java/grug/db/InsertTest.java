@@ -20,4 +20,20 @@ public class InsertTest extends TestBase {
         assertEquals(1, id);
     }
 
+
+    @Test
+    void testInsertAll(){//new test for the bulk insert
+        var orm = initTestDb(SampleModel.DDL);
+        SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel2 = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel3 = new SampleModel("zee", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel4= new SampleModel("hoo", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel5 = new SampleModel("daw", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel6 = new SampleModel("jaw", 10, true, new Date(2021, 1, 1));
+
+        long ids[] = orm.insertAll(sampleModel, sampleModel2, sampleModel3, sampleModel4, sampleModel5, sampleModel6);
+
+        assertEquals(6, ids.length);
+    }
+
 }

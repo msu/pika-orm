@@ -34,6 +34,8 @@ public class GrugORM {
 
     public static final int INSERT_FAILED = -1;
 
+    public static final long[] MASS_INSERT_FAILED = {-1};
+
     public static final String SQL_VARS_PATTERN = "(:[\\w][\\d\\w]*)";
 
     private static GrugORM DEFAULT_ORM = null;
@@ -747,6 +749,35 @@ public class GrugORM {
             count++;
         }
         return ids;
+    }
+
+
+    public long[] insertAll(Collection<Object> items){//find some solution maybe to make both function work with eachother, find a pluggable way to include another way to error bounce with the mass_insert_fail
+        long[] ids = new long[items.size()]; //TODO - we are assuming it is all one table, need to find methods for the class structures
+        HashMap<String, Object[]> tableNames = new HashMap<>();
+        for (Object insertionInstance : items) {
+           if (insertionInstance instanceof GrugRecordLifecycle lifecycle) {
+               if (!lifecycle.validate()) {
+                   return MASS_INSERT_FAILED;
+               }
+           }
+           Class<?> clazz = insertionInstance.getClass();
+           Mapping mapping = getMapping(clazz);
+           //mapping.tableName is the way to grab the table name for mass insertions with multiple classes
+           String keyCol = mapping.getIdColumn();
+           Map<String, Object> values = mapping.toDatabaseMap(insertionInstance);
+           values.remove(keyCol);
+           if (insertionInstance instanceof GrugRecordLifecycle lifecycle) {
+               if (!lifecycle.beforeInsert()) {
+                   return MASS_INSERT_FAILED;
+               }
+           }
+           Object newVersionValue = null;
+           if (mapping.hasVersionColumn()) {
+               newVersionValue = mapping.incrementVersion(values);
+           }
+
+       }
     }
 
     private long insert(String tableName, Map<String, Object> values, String... keyCols) {
