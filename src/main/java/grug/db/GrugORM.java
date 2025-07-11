@@ -206,6 +206,15 @@ public class GrugORM {
     // 1-N & N-1 functionality
     //====================================================================
 
+    public <T> ResultList<T> loadNtoN(Object objectOfN, Class<?> through, Class<T> classOfN) {
+        Mapping mapping = getMapping(objectOfN.getClass());
+        return query(classOfN)
+                .join(through).thenJoin(objectOfN.getClass())
+                .where(mapping.tableName + "." + mapping.getIdColumn() + "=:id")
+                .withVar("id", mapping.getId(objectOfN))
+                .execute();
+    }
+
     public <T> ResultList<T> loadN(Object objectOf1, Class<T> classOfN) {
         Mapping mapping = getMapping(objectOf1.getClass());
         String fkName = mapping.getDefaultForeignKeyColumnName();
@@ -1164,6 +1173,10 @@ public class GrugORM {
             return orm().delete(this);
         }
 
+        protected <T> ResultList<T> loadNtoN(Class<?> through, Class<T> to) {
+            return orm().loadNtoN(this, through, to);
+        }
+
         protected <T> ResultList<T> loadN(Class<T> of) {
             return orm().loadN(this, of);
         }
@@ -1182,6 +1195,28 @@ public class GrugORM {
 
         public void reload() {
             orm().reload(this);
+        }
+
+        @Override
+        public String toString() {
+            var mapping = orm().getMapping(this.getClass());
+            var fieldMappings = mapping.fieldNameToMapping;
+            var sb = new StringBuilder(this.getClass().getSimpleName()).append("{");
+            boolean first = true;
+            fieldMappings.forEach((name, fieldMapping) -> {
+                sb.append(name);
+                sb.append(":");
+                Object fieldValue = fieldMapping.getFieldValue(this);
+                if(fieldValue instanceof String) {
+                    sb.append("\"").append(fieldValue).append("\"");
+                } else {
+                    sb.append(fieldValue);
+                }
+                sb.append(", ");
+            });
+            sb.delete(sb.length() - 2, sb.length());
+            sb.append("}");
+            return sb.toString();
         }
     }
 
@@ -1583,10 +1618,19 @@ public class GrugORM {
         });
     }
 
-    public void withMapping(Class classToMap, Mapping mapping) {
+    public GrugORM withMapping(Class classToMap, Mapping mapping) {
         mapping.setOrm(this);
         mapping.setClass(classToMap);
         mappings.put(classToMap, mapping);
+        return this;
+    }
+
+    public GrugORM withMapping(Class classToMap, String tableName) {
+        return withMapping(classToMap, new Mapping(){
+            public String mapToTable() {
+                return tableName;
+            }
+        });
     }
 
     @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
@@ -2915,6 +2959,11 @@ public class GrugORM {
 
         public void forEach(Consumer<? super T> action) {
             readOnlyDelegate.forEach(action);
+        }
+
+        @Override
+        public String toString() {
+            return readOnlyDelegate.toString();
         }
 
         private void addInternal(T object) {

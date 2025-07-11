@@ -2,6 +2,8 @@ package grug.db.models.chinook.beans;
 
 import grug.db.GrugORM;
 
+import java.util.List;
+
 public class TrackBean extends GrugORM.EnterpriseGrugBean {
 
     Long trackId;
@@ -28,10 +30,6 @@ public class TrackBean extends GrugORM.EnterpriseGrugBean {
 
     public Long getAlbumId() {
         return albumId;
-    }
-
-    public void setAlbumId(Long albumId) {
-        this.albumId = albumId;
     }
 
     public Long getMediaTypeId() {
@@ -81,4 +79,13 @@ public class TrackBean extends GrugORM.EnterpriseGrugBean {
     public void setUnitPrice(Long unitPrice) {
         this.unitPrice = unitPrice;
     }
+
+    public List<PlaylistBean> getPlaylists() {
+        return loadNtoN(PlaylistTrackBean.class, PlaylistBean.class);
+    }
+
+    public static GrugORM.GrugListFinder<TrackBean> find() {
+        return orm().find(TrackBean.class);
+    }
+
 }

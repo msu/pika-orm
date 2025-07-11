@@ -1,16 +1,9 @@
 package grug.db;
 
-import grug.db.models.chinook.beans.AlbumBean;
-import grug.db.models.chinook.beans.ArtistBean;
-import grug.db.models.chinook.beans.EmployeeBean;
-import grug.db.models.chinook.beans.TrackBean;
+import grug.db.models.chinook.beans.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 import static grug.db.GrugORM.Interfaces.GrugLogger.Level.DEBUG;
@@ -109,6 +102,23 @@ public class ChinookBeanTest {
         assertEquals(6, result.size());
     }
 
+    @Test
+    void testNtoNLoad() {
+        var playlist = PlaylistBean.find().byId(3);
+        assertEquals("TV Shows", playlist.getName());
+        var tracks = playlist.getTracks();
+        assertEquals(213, tracks.size());
+    }
+
+    @Test
+    void testNtoNLoadTheOtherWay() {
+        var track = TrackBean.find().byId(3);
+        assertEquals("Fast As a Shark", track.getName());
+        var playlists = track.getPlaylists();
+        System.out.println(playlists);
+        assertEquals(4, playlists.size());
+    }
+
     public static GrugORM configureOrm() {
         copyFileTo("dbs/chinook.original", "test/chinook.db");
         return new GrugORM("jdbc:sqlite:test/chinook.db")
@@ -126,6 +136,7 @@ public class ChinookBeanTest {
                     String plural = TextTools.pluralize(strippedClassName);
                     return TextTools.snakeCase(plural);
                 })
+                .withMapping(PlaylistTrackBean.class, "playlist_track") // for some reason this table isn't plural
                 .makeDefaultORM();
     }
 
