@@ -5,12 +5,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Objects;
 
 import static grug.db.GrugORM.Interfaces.GrugLogger.Level.DEBUG;
 import static grug.db.GrugORM.*;
 import static grug.db.GrugORM.SortOrder.*;
 import static grug.db.TestBase.copyFileTo;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ChinookBeanTest {
 
@@ -117,6 +118,34 @@ public class ChinookBeanTest {
         var playlists = track.getPlaylists();
         System.out.println(playlists);
         assertEquals(4, playlists.size());
+    }
+
+    @Test
+    void testInsertNtoNEntityWithNoPrimaryKey() {
+
+        var playlist = PlaylistBean.find().byId(3);
+        assertEquals("TV Shows", playlist.getName());
+        var tracks = playlist.getTracks();
+        assertFalse(tracks.hasMatch(trackBean -> trackBean.getTrackId() == 3));
+
+        PlaylistTrackBean.associate(playlist, TrackBean.find().byId(3));
+
+        tracks = playlist.getTracks();
+        assertTrue(tracks.hasMatch(trackBean -> trackBean.getTrackId() == 3));
+    }
+
+    @Test
+    void testRemoveNtoNEntityWithNoPrimaryKey() {
+
+        var playlist = PlaylistBean.find().byId(3);
+        assertEquals("TV Shows", playlist.getName());
+        var tracks = playlist.getTracks();
+        var firstTrack = tracks.first();
+
+        PlaylistTrackBean.unassociate(playlist, firstTrack);
+
+        tracks = playlist.getTracks();
+        assertFalse(tracks.hasMatch(trackBean -> Objects.equals(trackBean.getTrackId(), firstTrack.getTrackId())));
     }
 
     public static GrugORM configureOrm() {

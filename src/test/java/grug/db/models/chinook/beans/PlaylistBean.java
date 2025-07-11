@@ -1,6 +1,7 @@
 package grug.db.models.chinook.beans;
 
 import grug.db.GrugORM;
+import grug.db.GrugORM.ResultList;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public class PlaylistBean extends GrugORM.EnterpriseGrugBean {
         this.name = name;
     }
 
-    public List<TrackBean> getTracks() {
+    public ResultList<TrackBean> getTracks() {
         return loadNtoN(PlaylistTrackBean.class, TrackBean.class);
     }
 

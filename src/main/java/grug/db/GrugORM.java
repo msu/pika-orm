@@ -893,13 +893,19 @@ public class GrugORM {
     }
 
     public boolean exec(String sql) {
+        return exec(sql, Map.of());
+    }
+
+    public boolean exec(String sql, Map<String, Object> args) {
+        ArrayList<Object> vals = new ArrayList<>();
+        String updatedSql = updateSqlVars(sql, args, vals);
         if (sql.isBlank()) {
             logger.log(GrugLogger.Level.WARN, "SQL is blank, will not be executed!");
             return false;
         }
-        logger.log(getQueryLogLevel(), "EXECUTING RAW SQL: {}\n", sql);
+        logger.log(getQueryLogLevel(), "EXECUTING RAW SQL: {} with args {}\n", sql, args);
         try (var session = getOrCreateSession();
-             var ps = session.prepareStatement(sql, List.of())) {
+             var ps = session.prepareStatement(sql, vals)) {
             boolean result = time(ps::execute);
             return result;
         } catch (Exception e) {
@@ -1911,6 +1917,10 @@ public class GrugORM {
 
         public boolean hasColumn(String columnName) {
             return columnToMapping.containsKey(columnName);
+        }
+
+        public boolean hasIdColumn() {
+            return idMapping != null;
         }
     }
 
@@ -2968,6 +2978,15 @@ public class GrugORM {
 
         private void addInternal(T object) {
             results.add(object);
+        }
+
+        public boolean hasMatch(Predicate<? super T> predicate) {
+            for (T result : results) {
+                if (predicate.test(result)) {
+                    return true;
+                }
+            };
+            return false;
         }
     }
 
