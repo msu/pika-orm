@@ -21,14 +21,6 @@ public class PlaylistTrackBean extends GrugORM.EnterpriseGrugBean {
     // no constructor
     private PlaylistTrackBean(){};
 
-    public void setTrackId(int trackId) {
-        this.trackId = trackId;
-    }
-
-    public void setPlaylistId(int playlistId) {
-        this.playlistId = playlistId;
-    }
-
     public static void associate(PlaylistBean playlistBean, TrackBean track){
         orm().exec("INSERT INTO playlist_track(PlaylistId, TrackId) VALUES (:playlistId, :trackId)",
                 Map.of("playlistId", playlistBean.getPlaylistId(), "trackId", track.getTrackId()));
