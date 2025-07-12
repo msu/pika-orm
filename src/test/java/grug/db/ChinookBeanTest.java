@@ -148,6 +148,29 @@ public class ChinookBeanTest {
         assertFalse(tracks.hasMatch(trackBean -> Objects.equals(trackBean.getTrackId(), firstTrack.getTrackId())));
     }
 
+    @Test
+    void testAddNtoN() {
+        TrackBean existingTrack = TrackBean.find().byId(10);
+
+        TrackBean newTrack = new TrackBean();
+        newTrack.setName("My Sexy Track");
+        newTrack.setBytes(existingTrack.getBytes());
+        newTrack.setUnitPrice(existingTrack.getUnitPrice());
+        newTrack.setGenreId(existingTrack.getGenreId());
+        newTrack.setComposer(existingTrack.getComposer());
+        newTrack.setMilliseconds(existingTrack.getMilliseconds());
+        newTrack.setMediaTypeId(existingTrack.getMediaTypeId());
+
+        PlaylistBean playlist = PlaylistBean.find().byId(1);
+        playlist.addTrack(newTrack);
+
+        TrackBean newTrackLoaded = TrackBean.find().byKey("name", newTrack.getName());
+        assertNotNull(newTrackLoaded);
+
+        newTrackLoaded = playlist.getTracks().firstWhere(el -> el.getTrackId().equals(newTrack.getTrackId()));
+        assertEquals(newTrack.getTrackId(), newTrackLoaded.getTrackId());
+    }
+
     public static GrugORM configureOrm() {
         copyFileTo("dbs/chinook.original", "test/chinook.db");
         return new GrugORM("jdbc:sqlite:test/chinook.db")

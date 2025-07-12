@@ -1203,6 +1203,10 @@ public class GrugORM {
             orm().reload(this);
         }
 
+        public boolean isNew() {
+            return !persisted;
+        }
+
         @Override
         public String toString() {
             var mapping = orm().getMapping(this.getClass());
