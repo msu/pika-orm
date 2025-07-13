@@ -741,42 +741,39 @@ public class GrugORM {
         return insertAll(List.of(items));
     }
 
-    public long[] insertAll(Collection<Object> items) { // TODO - look into the setID as i was having some issues and weirdness with it
-        long[] ids = new long[items.size()];// TODO - change to the actual bulk insert stuff!
-        int count = 0;
-        for (Object o : items) {
-            ids[count] = insert(o);
-            count++;
-        }
-        return ids;
-    }
+
 
 
     public long[] insertAll(Collection<Object> items){//find some solution maybe to make both function work with eachother, find a pluggable way to include another way to error bounce with the mass_insert_fail
         long[] ids = new long[items.size()]; //TODO - we are assuming it is all one table, need to find methods for the class structures
-        HashMap<String, Object[]> tableNames = new HashMap<>();
         for (Object insertionInstance : items) {
-           if (insertionInstance instanceof GrugRecordLifecycle lifecycle) {
-               if (!lifecycle.validate()) {
-                   return MASS_INSERT_FAILED;
-               }
-           }
-           Class<?> clazz = insertionInstance.getClass();
-           Mapping mapping = getMapping(clazz);
-           //mapping.tableName is the way to grab the table name for mass insertions with multiple classes
-           String keyCol = mapping.getIdColumn();
-           Map<String, Object> values = mapping.toDatabaseMap(insertionInstance);
-           values.remove(keyCol);
-           if (insertionInstance instanceof GrugRecordLifecycle lifecycle) {
-               if (!lifecycle.beforeInsert()) {
-                   return MASS_INSERT_FAILED;
-               }
-           }
-           Object newVersionValue = null;
-           if (mapping.hasVersionColumn()) {
-               newVersionValue = mapping.incrementVersion(values);
-           }
-
+            if (insertionInstance instanceof GrugRecordLifecycle lifecycle && !lifecycle.validate()) {
+                return MASS_INSERT_FAILED;
+            }
+            Class<?> clazz = insertionInstance.getClass();
+            Mapping mapping = getMapping(clazz);
+            String keyCol = mapping.getIdColumn();
+            Map<String, Object> values = mapping.toDatabaseMap(insertionInstance);
+            values.remove(keyCol);
+            if (insertionInstance instanceof GrugRecordLifecycle lifecycle && !lifecycle.beforeInsert()) {
+                return MASS_INSERT_FAILED;//need to find the solution for resolving the mass insert throw, don't forget to make a logger item
+            }
+            Object newVersionValue = null;
+            // TODO - remove this?  It's an insert...
+            if (mapping.hasVersionColumn()) {
+                newVersionValue = mapping.incrementVersion(values);
+            }//ok, before this I need to validate that the class is the same for all the insertions or I throw an error, then I need to append value to the large statement, return it, and get back ids
+            long id = insert(mapping.getTableName(), values, keyCol);
+            if (mapping.hasVersionColumn() && ids != MASS_INSERT_FAILED) {
+                mapping.updateVersionValue(insertionInstance, newVersionValue);
+            }
+            if (!mapping.isReadOnly() && ids != MASS_INSERT_FAILED) {
+                mapping.setId(insertionInstance, id);
+            }
+            if (insertionInstance instanceof GrugRecordLifecycle lifecycle) {
+                lifecycle.afterInsert();
+            }
+            return ids;
        }
     }
 
@@ -851,7 +848,7 @@ public class GrugORM {
         }
         return update;
     }
-
+    //reference for bulk UPDATEALL
     private boolean update(String tableName, String keyCol, Object keyVal, String versionCol, Object versionVal, Map<String, Object> values) {
         if (!(values instanceof TreeMap<String, Object>)) {
             values = new TreeMap<>(values);
@@ -902,7 +899,7 @@ public class GrugORM {
         }
         return delete;
     }
-
+    //reference for DELETEALL
     private boolean delete(String tableName, String keyCol, Object keyVal) {
         String deleteSQL = "DELETE FROM " + tableName + " WHERE " + keyCol + "=?";
         logger.log(getQueryLogLevel(), "DELETE SQL: {}\n  Args:{}", deleteSQL, List.of(keyVal));

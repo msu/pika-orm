@@ -34,6 +34,7 @@ public class InsertTest extends TestBase {
         long ids[] = orm.insertAll(sampleModel, sampleModel2, sampleModel3, sampleModel4, sampleModel5, sampleModel6);
 
         assertEquals(6, ids.length);
+        assertEquals(sampleModel.getId(), ids[0]);
     }
 
 }
