@@ -1224,6 +1224,10 @@ public class GrugORM {
             sb.append("}");
             return sb.toString();
         }
+
+        protected static <T> GrugListFinder<T> find(Class<T> c) {
+            return orm().find(c);
+        }
     }
 
     public enum SortOrder {

@@ -47,4 +47,7 @@ public class InvoiceItemBean extends GrugORM.EnterpriseGrugBean {
         this.quantity = quantity;
     }
 
+    public static GrugORM.GrugListFinder<InvoiceItemBean> find() {
+        return find(InvoiceItemBean.class);
+    }
 }

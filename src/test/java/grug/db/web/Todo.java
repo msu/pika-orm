@@ -57,7 +57,7 @@ public class Todo extends EnterpriseGrugBean {
     }
 
     public static GrugListFinder<Todo> find() {
-        return orm().find(Todo.class);
+        return find(Todo.class);
     }
 
 }
