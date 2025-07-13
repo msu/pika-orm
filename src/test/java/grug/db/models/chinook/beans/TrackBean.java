@@ -82,7 +82,7 @@ public class TrackBean extends GrugORM.EnterpriseGrugBean {
     }
 
     public List<PlaylistBean> getPlaylists() {
-        return loadNtoN(PlaylistTrackBean.class, PlaylistBean.class);
+        return loadManyThrough(PlaylistTrackBean.class, PlaylistBean.class);
     }
 
     public static GrugListFinder<TrackBean> find() {

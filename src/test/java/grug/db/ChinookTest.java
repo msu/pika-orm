@@ -26,7 +26,7 @@ public class ChinookTest {
         GrugORM grugORM = configureOrm();
         var acDc = grugORM.find(Artist.class).byId(1);
         assertEquals("AC/DC", acDc.getName());
-        var acDcAlbums = grugORM.loadN(acDc, Album.class);
+        var acDcAlbums = grugORM.loadMany(acDc, Album.class);
         assertEquals(2, acDcAlbums.size());
     }
 

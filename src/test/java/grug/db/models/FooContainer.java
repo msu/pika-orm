@@ -14,7 +14,7 @@ public class FooContainer {
     private long id;
 
     public List<Foo> getFoos() {
-        return GrugORM.get().loadN(this, Foo.class);
+        return GrugORM.get().loadMany(this, Foo.class);
     }
 
     public long getId() {

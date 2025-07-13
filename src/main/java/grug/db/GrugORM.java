@@ -203,40 +203,40 @@ public class GrugORM {
     }
 
     //====================================================================
-    // 1-N & N-1 functionality
+    // One to Many & Many to One & Many to Many functionality
     //====================================================================
 
-    public <T> ResultList<T> loadNtoN(Object objectOfN, Class<?> through, Class<T> classOfN) {
-        Mapping mapping = getMapping(objectOfN.getClass());
-        return query(classOfN)
-                .join(through).thenJoin(objectOfN.getClass())
+    public <T> ResultList<T> loadManyThrough(Object initialObject, Class<?> joinClass, Class<T> classOfMany) {
+        Mapping mapping = getMapping(initialObject.getClass());
+        return query(classOfMany)
+                .join(joinClass).thenJoin(initialObject.getClass())
                 .where(mapping.tableName + "." + mapping.getIdColumn() + "=:id")
-                .withVar("id", mapping.getId(objectOfN))
+                .withVar("id", mapping.getId(initialObject))
                 .execute();
     }
 
-    public <T> ResultList<T> loadN(Object objectOf1, Class<T> classOfN) {
-        Mapping mapping = getMapping(objectOf1.getClass());
+    public <T> ResultList<T> loadMany(Object objectOfOne, Class<T> classOfMany) {
+        Mapping mapping = getMapping(objectOfOne.getClass());
         String fkName = mapping.getDefaultForeignKeyColumnName();
-        return loadN(objectOf1, classOfN, fkName);
+        return loadMany(objectOfOne, classOfMany, fkName);
     }
 
-    public <T> ResultList<T> loadN(Object objectOf1, Class<T> classOfN, String foreignKeyColumnOnN) {
-        Mapping mapping = getMapping(objectOf1.getClass());
-        Object ownerPkValue = mapping.getId(objectOf1);
-        return find(classOfN).allBy(foreignKeyColumnOnN, ownerPkValue);
+    public <T> ResultList<T> loadMany(Object objectOfOne, Class<T> classOfMany, String foreignKeyColumnOnMany) {
+        Mapping mapping = getMapping(objectOfOne.getClass());
+        Object ownerPkValue = mapping.getId(objectOfOne);
+        return find(classOfMany).allBy(foreignKeyColumnOnMany, ownerPkValue);
     }
 
-    public <T> T load1(Object objectOfN, Class<T> classOf1) {
-        Mapping mapping = getMapping(classOf1);
+    public <T> T load(Object objectWithFk, Class<T> classToLoad) {
+        Mapping mapping = getMapping(classToLoad);
         String fkName = mapping.getDefaultForeignKeyColumnName();
-        return load1(objectOfN, classOf1, fkName);
+        return load(objectWithFk, classToLoad, fkName);
     }
 
-    public <T> T load1(Object objectOfN, Class<T> classOf1, String foreignKeyColumn) {
-        Mapping metaData = getMapping(objectOfN.getClass());
-        Object parentPkValue = metaData.getValueForColumn(objectOfN, foreignKeyColumn);
-        return find(classOf1).byId(parentPkValue);
+    public <T> T load(Object objectWithFk, Class<T> classToLoad, String foreignKeyColumn) {
+        Mapping metaData = getMapping(objectWithFk.getClass());
+        Object parentPkValue = metaData.getValueForColumn(objectWithFk, foreignKeyColumn);
+        return find(classToLoad).byId(parentPkValue);
     }
 
     //====================================================================
@@ -1179,24 +1179,24 @@ public class GrugORM {
             return orm().delete(this);
         }
 
-        protected <T> ResultList<T> loadNtoN(Class<?> through, Class<T> to) {
-            return orm().loadNtoN(this, through, to);
+        protected <T> ResultList<T> loadManyThrough(Class<?> through, Class<T> to) {
+            return orm().loadManyThrough(this, through, to);
         }
 
-        protected <T> ResultList<T> loadN(Class<T> of) {
-            return orm().loadN(this, of);
+        protected <T> ResultList<T> loadMany(Class<T> of) {
+            return orm().loadMany(this, of);
         }
 
-        protected <T> ResultList<T> loadN(Class<T> of, String fkColumn) {
-            return orm().loadN(this, of, fkColumn);
+        protected <T> ResultList<T> loadMany(Class<T> of, String fkColumn) {
+            return orm().loadMany(this, of, fkColumn);
         }
 
-        protected <T> T load1(Class<T> of) {
-            return orm().load1(this, of);
+        protected <T> T load(Class<T> of) {
+            return orm().load(this, of);
         }
 
-        protected <T> T load1(Class<T> of, String fkColumn) {
-            return orm().load1(this, of, fkColumn);
+        protected <T> T load(Class<T> of, String fkColumn) {
+            return orm().load(this, of, fkColumn);
         }
 
         public void reload() {

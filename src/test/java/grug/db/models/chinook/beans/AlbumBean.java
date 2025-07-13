@@ -1,6 +1,5 @@
 package grug.db.models.chinook.beans;
 
-import grug.db.GrugORM;
 import grug.db.GrugORM.EnterpriseGrugBean;
 import grug.db.GrugORM.GrugListFinder;
 
@@ -22,7 +21,7 @@ public class AlbumBean extends EnterpriseGrugBean {
     }
 
     public ArtistBean getArtist() {
-        return load1(ArtistBean.class);
+        return load(ArtistBean.class);
     }
 
     public static GrugListFinder<AlbumBean> find() {
