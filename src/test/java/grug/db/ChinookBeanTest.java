@@ -58,7 +58,7 @@ public class ChinookBeanTest {
         var query = AlbumBean.find().byQuery()
                 .pageSize(20)
                 .page(2);
-        QueryResult<AlbumBean> multiPageQuery = query.execute();
+        var multiPageQuery = query.execute();
         assertEquals("Prenda Minha",multiPageQuery.first().getTitle());
     }
 
@@ -70,7 +70,7 @@ public class ChinookBeanTest {
                 .where("artists.name IN :artists")
                 .withVar("artists", List.of("AC/DC", "Santana"))
                 .orderBy("AlbumId");
-        QueryResult<AlbumBean> acDcAlbums = query.execute();
+        var acDcAlbums = query.execute();
         assertEquals("For Those About To Rock We Salute You", acDcAlbums.first().getTitle());
     }
 
@@ -81,7 +81,7 @@ public class ChinookBeanTest {
                 .where("artists.name IN :artists")
                 .withVar("artists", List.of("AC/DC", "Santana"))
                 .orderBy("AlbumId", DESC);
-        QueryResult<AlbumBean> acDcAlbums = query.execute();
+        var acDcAlbums = query.execute();
         assertEquals("Santana Live", acDcAlbums.first().getTitle());
     }
 

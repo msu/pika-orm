@@ -10,10 +10,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.URL;
 import java.sql.*;
 import java.text.MessageFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -29,12 +29,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-@SuppressWarnings("ALL")
 public class GrugORM {
 
     public static final int INSERT_FAILED = -1;
 
-    public static final String SQL_VARS_PATTERN = "(:[\\w][\\d\\w]*)";
+    public static final String SQL_VARS_PATTERN = "(:[\\w][\\w]*)";
 
     private static GrugORM DEFAULT_ORM = null;
 
@@ -52,6 +51,10 @@ public class GrugORM {
 
     // Mapping stuff
     private final ConcurrentHashMap<Class, Mapping> mappings = new ConcurrentHashMap<>();
+
+    // Coercions
+    public static final Object NULL_SENTINEL = new Object();
+    List<BiFunction<Class, Object, Object>> coercers = new ArrayList<>();
 
     // Default mapping logic
     private Function<Class, String> defaultClassToTableMapping = aClass -> {
@@ -168,6 +171,11 @@ public class GrugORM {
         return this;
     }
 
+    public GrugORM withCoercion(BiFunction<Class, Object, Object> coercion) {
+        coercers.add(coercion);
+        return this;
+    }
+
     public GrugORM logQueries() {
         this.logQueries = true;
         return this;
@@ -200,6 +208,90 @@ public class GrugORM {
 
     public static void setDefaultORM(GrugORM orm) {
         DEFAULT_ORM = orm;
+    }
+
+    //====================================================================
+    // Coercion System
+    //====================================================================
+
+    public <T> T coerce(Class<T> targetClass, Object value) {
+        for (BiFunction<Class, Object, Object> coercer : coercers) {
+            Object result = coercer.apply(targetClass, value);
+            if (result != null) {
+                if (result == NULL_SENTINEL) {
+                    result = null;
+                }
+                return targetClass.cast(result);
+            }
+        }
+        Object result;
+        result = defaultCoercions(targetClass, value);
+        if(result == null) {
+            throw new IllegalArgumentException("No coercions found from object of type " +
+                    value.getClass().getSimpleName() + " with value " + value + " to class " +
+                    targetClass.getSimpleName());
+        }
+        return targetClass.cast(result);
+    }
+
+    private <T> T sloppyCoerce(Class<T> targetClass, Object value) {
+        try {
+            return coerce(targetClass, value);
+        } catch (Exception e) {
+            if (!(value instanceof String)) {
+                try {
+                    // return as string
+                    return coerce(targetClass, String.valueOf(value));
+                } catch (Exception _) {
+                    // ignore, rethrow original exception
+                }
+            }
+            throw rethrow(e);
+        }
+    }
+
+    private Object defaultCoercions(Class targetType, Object value) {
+        if(targetType.isInstance(value)) {
+            return value;
+        } else if (targetType.isEnum()) {
+            return Enum.valueOf(targetType, String.valueOf(value));
+        } else if (targetType == String.class) {
+            return String.valueOf(value);
+        } else if (targetType == Short.class && value instanceof String s) {
+            return Short.valueOf(s);
+        } else if (targetType == Integer.class && value instanceof String s) {
+            return Integer.valueOf(s);
+        } else if (targetType == Long.class && value instanceof String s) {
+            return Long.valueOf(s);
+        } else if (targetType == Float.class && value instanceof String s) {
+            return Float.valueOf(s);
+        } else if (targetType == Double.class && value instanceof String s) {
+            return Double.valueOf(s);
+        } else if (targetType == BigInteger.class && value instanceof String s) {
+            return new BigInteger(s);
+        } else if (targetType == BigDecimal.class && value instanceof String s) {
+            return new BigDecimal(s);
+        } else if (targetType == Date.class && value instanceof String s) {
+            try {
+                return new Date(Long.parseLong(s));
+            } catch (NumberFormatException _) {
+                // if the value is not a long, try to parse it as a date string
+                return safely(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(s));
+            }
+        } else if (targetType == Boolean.class) {
+            if (value == null) {
+                return false;
+            } else if (Boolean.FALSE.equals(value)) {
+                return false;
+            } else if (value instanceof String s) {
+                return !"false".equalsIgnoreCase(s);
+            } else if (value instanceof Number n && n.intValue() == 0) {
+                return false;
+            } else {
+                return true;
+            }
+        }
+        return null;
     }
 
     //====================================================================
@@ -631,7 +723,7 @@ public class GrugORM {
              var ps = session.prepareStatement(updatedSql, vals);
              var resultSet = session.execute(ps)) {
             while (resultSet.next()) {
-                T result = mapping.newObjectFromResult(resultSet, columnSpec);
+                T result = mapping.newObjectFromResult(this, resultSet, columnSpec);
                 if (result instanceof GrugRecordLifecycle lifecycle) {
                     lifecycle.afterSelect();
                 }
@@ -682,7 +774,7 @@ public class GrugORM {
                 public boolean tryAdvance(Consumer<? super T> action) {
                     try {
                         if (rs.next()) {
-                            T result = mapping.newObjectFromResult(rs, columnSpec);
+                            T result = mapping.newObjectFromResult(GrugORM.this, rs, columnSpec);
                             if (result instanceof GrugRecordLifecycle lifecycle) {
                                 lifecycle.afterSelect();
                             }
@@ -1241,38 +1333,6 @@ public class GrugORM {
 
     public static class EnterpriseGrugBean implements GrugRecordLifecycle {
 
-        //====================================================================
-        // String Coercions
-        //====================================================================
-        // String coercions
-        private static Map<Class, Function<String, Object>> stringCoercions = new ConcurrentHashMap<>();
-
-        public static <T> void addStringCoercion(Class<T> targetClass, Function<String, T> func) {
-            stringCoercions.put(targetClass, (Function) func);
-        }
-
-        private void initDefaultCoercions() {
-            addStringCoercion(Short.class, s -> Short.parseShort(s));
-            addStringCoercion(Integer.class, s -> Integer.parseInt(s));
-            addStringCoercion(Long.class, s -> Long.parseLong(s));
-        }
-
-        private Object coerceToType(Class targetType, String strValue) {
-            if(strValue == null) {
-                return null;
-            }
-            if (targetType.isEnum()) {
-                Enum.valueOf(targetType, strValue);
-            }
-            Function<String, Object> coercer = stringCoercions.get(targetType);
-            if(coercer == null) {
-                throw new IllegalArgumentException("No coercer found for type '" + targetType + "', you can add one with .withStringCoercionTo(Class<T>, Function<String, T>)");
-            } else {
-                return coercer.apply(strValue);
-            }
-        }
-
-
         private transient boolean persisted;
         private final transient Map<String, List<String>> errors = new LinkedHashMap<>();
 
@@ -1374,11 +1434,11 @@ public class GrugORM {
             orm().reload(this);
         }
 
-        public void loadFromMap(Map<String, String> map, String... cols) {
-            loadFrom(map::get, cols);
+        public void setFields(Map<String, String> map, String... cols) {
+            setFields(map::get, cols);
         }
 
-        public void loadFrom(Function<String, String> supplier, String... cols) {
+        public void setFields(Function<String, String> supplier, String... cols) {
             for (String col : cols) {
                 String str = supplier.apply(col);
                 setValueFromString(col, str);
@@ -1392,7 +1452,7 @@ public class GrugORM {
                 throw new IllegalArgumentException("No field '" + str + "' found on " + this.getClass().getSimpleName());
             }
             Class fieldType = fieldMapping.getType();
-            fieldMapping.setFieldValue(this, coerceToType(fieldType, str));
+            fieldMapping.setFieldValue(this, orm().coerce(fieldType, str));
         }
 
         @Override
@@ -1997,7 +2057,7 @@ public class GrugORM {
         }
 
         @SuppressWarnings({"unchecked"})
-        private <T> T newObjectFromResult(ResultSet resultSet, ColumnsSpec columnSpec) throws Exception {
+        private <T> T newObjectFromResult(GrugORM orm, ResultSet resultSet, ColumnsSpec columnSpec) throws Exception {
             if (classForTable == ResultMap.class) {
                 ResultSetMetaData metaData = resultSet.getMetaData();
                 int i = metaData.getColumnCount();
@@ -2010,7 +2070,7 @@ public class GrugORM {
                         rawMap.put(columnName, value);
                     }
                 }
-                ResultMap resultMap = new ResultMap(rawMap);
+                ResultMap resultMap = new ResultMap(orm, rawMap);
                 return (T) resultMap;
             } else {
                 T object;
@@ -2694,9 +2754,11 @@ public class GrugORM {
 
     @SuppressWarnings("NullableProblems")
     public static class ResultMap implements Map<String, Object> {
+        private final GrugORM orm;
         private Map<String, Object> result;
         
-        public ResultMap(Map<String, Object> backingMap) {
+        public ResultMap(GrugORM orm, Map<String, Object> backingMap) {
+            this.orm = orm;
             result = Collections.unmodifiableMap(backingMap);            
         }
 
@@ -2745,64 +2807,46 @@ public class GrugORM {
         // the 'as' methods will attempt to coerce a value to the given type
 
         public String asString(String key) {
-            return String.valueOf(this.get(key));
+            return orm.sloppyCoerce(String.class, get(key));
         }
 
         public Short asShort(String key) {
-            return Short.valueOf(asString(key));
+            return orm.sloppyCoerce(Short.class, get(key));
         }
 
         public Integer asInteger(String key) {
-            return Integer.valueOf(asString(key));
+            return orm.sloppyCoerce(Integer.class, get(key));
         }
 
         public Long asLong(String key) {
-            return Long.valueOf(asString(key));
+            return orm.sloppyCoerce(Long.class, get(key));
         }
 
         public Float asFloat(String key) {
-            return Float.valueOf(asString(key));
+            return orm.sloppyCoerce(Float.class, get(key));
         }
 
         public Double asDouble(String key) {
-            return Double.valueOf(asString(key));
+            return orm.sloppyCoerce(Double.class, get(key));
         }
 
         public BigDecimal asBigDecimal(String key) {
-            return new BigDecimal(asString(key));
+            return orm.sloppyCoerce(BigDecimal.class, get(key));
         }
 
         public Date asDate(String key) {
-            try {
-                return new Date(Long.parseLong(asString(key)));
-            } catch (NumberFormatException _) {
-                // if the value is not a long, try to parse it as a date string
-                try {
-                    return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(asString(key));
-                } catch (ParseException parseException) {
-                    throw new IllegalArgumentException("Could not parse date from value: " + asString(key), parseException);
-                }
-            }
+            return orm.sloppyCoerce(Date.class, get(key));
         }
 
         public Boolean asBoolean(String key) {
-            Object o = get(key);
-            if (o == null) {
-                return false;
-            } else if (Boolean.FALSE.equals(o)) {
-                return false;
-            } else if (o instanceof Number n && n.intValue() == 0) {
-                return false;
-            } else {
-                return true;
-            }
+            return orm.sloppyCoerce(Boolean.class, get(key));
         }
 
         // create a case-insensitive version of the results, some dbs are ugly w/ the cases
         public ResultMap toCaseInsensitiveMap() {
             TreeMap<String, Object> caseInsensitiveMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
             caseInsensitiveMap.putAll(this);
-            return new ResultMap(caseInsensitiveMap);
+            return new ResultMap(orm, caseInsensitiveMap);
         }
 
         public int size() {
@@ -2885,7 +2929,7 @@ public class GrugORM {
         }
     }
 
-    public static class QueryResult<T> implements Interfaces.BetterIterable<T> {
+    public class QueryResult<T> implements Interfaces.BetterIterable<T> {
 
         // query specification
         private final String sql;
@@ -2913,7 +2957,7 @@ public class GrugORM {
         public void reload() {
             results = new BetterList<>();
             readOnlyResults = Collections.unmodifiableList(results);
-            GrugORM.get().select(sql, args, resultClass, columnSpec, results);
+            select(sql, args, resultClass, columnSpec, results);
         }
 
         public BetterList<T> getRawList() {
