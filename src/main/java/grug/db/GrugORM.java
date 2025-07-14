@@ -402,8 +402,8 @@ public class GrugORM {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
             String selectClause = "SELECT * FROM " + tableName + " WHERE ";
-            String sql = selectClause + whereClause;
-            return selectFirst(sql, args, classToFind);
+            String sql = selectClause + whereClause + " " + MessageFormat.format(limitOffsetClause, 1, 0);
+            return select(sql, args, classToFind).first();
         }
 
         public QueryResult<T> bySQL(String sql, Map<String, Object> args) {
@@ -707,10 +707,6 @@ public class GrugORM {
         return select(sql, args, resultClass, (List<String>) null);
     }
 
-    public <T> T selectFirst(String sql, Map<String, Object> args, Class<T> resultClass) {
-        return selectFirst(sql, args, resultClass, (List<String>) null);
-    }
-
     public <T> QueryResult<T> select(String sql, Map<String, Object> args, Class<T> resultClass, String... colsToMap) {
         return select(sql, args, resultClass, Arrays.asList(colsToMap));
     }
@@ -719,22 +715,11 @@ public class GrugORM {
         return select(sql, args, resultClass, new ColumnsSpec(colsToMap));
     }
 
-    public <T> T selectFirst(String sql, Map<String, Object> args, Class<T> resultClass, List<String> colsToMap) {
-        return selectFirst(sql, args, resultClass, new ColumnsSpec(colsToMap));
-    }
-
     private <T> QueryResult<T> select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec) {
         BetterList<T> resultList = new BetterList<>();
-        QueryResult<T> queryResult = new QueryResult<>(sql, args, resultClass, columnSpec, resultList);
+        QueryResult<T> queryResult = new QueryResult<>(this, sql, args, resultClass, columnSpec, resultList);
         select(sql, args, resultClass, columnSpec, resultList);
         return queryResult;
-    }
-
-    private <T> T selectFirst(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec) {
-        BetterList<T> resultList = new BetterList<>();
-        QueryResult<T> queryResult = new QueryResult<>(sql, args, resultClass, columnSpec, resultList);
-        selectFirst(sql, args, resultClass, columnSpec, resultList);
-        return queryResult.first();
     }
 
     private <T> void select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, BetterList<T> results) {
@@ -747,27 +732,6 @@ public class GrugORM {
              var resultSet = session.execute(ps)) {
             while (resultSet.next()) {
                 T result = mapping.newObjectFromResult(this, resultSet, columnSpec);
-                if (result instanceof GrugRecordLifecycle lifecycle) {
-                    lifecycle.afterSelect();
-                }
-                results.add(result);
-            }
-        } catch (Exception e) {
-            throw handleSelectException(sql, args, e);
-        }
-    }
-
-    private <T> void selectFirst(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, BetterList<T> results) {
-        Mapping mapping = getMapping(resultClass);
-        ArrayList<Object> vals = new ArrayList<>();
-        String updatedSql = updateSqlVars(sql, args, vals);
-        updatedSql += MessageFormat.format(limitOffsetClause, 1, 0); // ensure we only get one result
-        logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
-        try (var session = getOrCreateSession();
-             var ps = session.prepareStatement(updatedSql, vals);
-             var resultSet = session.execute(ps)) {
-            while (resultSet.next()) {
-                T result = mapping.newObjectFromResult(resultSet, columnSpec);
                 if (result instanceof GrugRecordLifecycle lifecycle) {
                     lifecycle.afterSelect();
                 }
@@ -1619,8 +1583,8 @@ public class GrugORM {
         }
 
         public T fetchFirst() {
-            String sql = generateSQL();
-            return GrugORM.this.selectFirst(sql, valMap, resultClass, columns);
+            String sql = generateSQLNoLimit() + " " + MessageFormat.format(limitOffsetClause, 1, 0);
+            return GrugORM.this.select(sql, valMap, resultClass, columns).first();
         }
 
         public Stream<T> stream() {
@@ -1629,16 +1593,7 @@ public class GrugORM {
         }
 
         private String generateSQL() {
-            String sql = generateSelectClause();
-            if (!joins.isEmpty()) {
-                sql += "\n" + String.join("\n", joins);
-            }
-            if (!whereClause.isEmpty()) {
-                sql += "\nWHERE " + whereClause;
-            }
-            if (!orderBys.isEmpty()) {
-                sql += "\nORDER BY " + String.join(", ", orderBys.stream().map(OrderBy::toString).toList());
-            }
+            String sql = generateSQLNoLimit();
             if (page != -1) {
                 int limit;
                 if (pageSize == -1) {
@@ -1652,6 +1607,20 @@ public class GrugORM {
                 int offset = 0;
                 int limit = pageSize;
                 sql += "\n" + MessageFormat.format(limitOffsetClause, limit, offset);
+            }
+            return sql;
+        }
+
+        private String generateSQLNoLimit() {
+            String sql = generateSelectClause();
+            if (!joins.isEmpty()) {
+                sql += "\n" + String.join("\n", joins);
+            }
+            if (!whereClause.isEmpty()) {
+                sql += "\nWHERE " + whereClause;
+            }
+            if (!orderBys.isEmpty()) {
+                sql += "\nORDER BY " + String.join(", ", orderBys.stream().map(OrderBy::toString).toList());
             }
             return sql;
         }
@@ -2986,7 +2955,9 @@ public class GrugORM {
         }
     }
 
-    public class QueryResult<T> implements Interfaces.BetterIterable<T> {
+    public static class QueryResult<T> implements Interfaces.BetterIterable<T> {
+
+        private final GrugORM orm;
 
         // query specification
         private final String sql;
@@ -2998,7 +2969,8 @@ public class GrugORM {
         private BetterList<T> results;
         private List<T> readOnlyResults;
 
-        public QueryResult(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, BetterList<T> resultList) {
+        private QueryResult(GrugORM orm, String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, BetterList<T> resultList) {
+            this.orm = orm;
             this.sql = sql;
             this.args = args;
             this.resultClass = resultClass;
@@ -3008,13 +2980,13 @@ public class GrugORM {
         }
 
         public QueryResult<T> copy() {
-            return new QueryResult<>(sql, args, resultClass, columnSpec, results.copy());
+            return new QueryResult<>(orm, sql, args, resultClass, columnSpec, results.copy());
         }
 
         public void reload() {
             results = new BetterList<>();
             readOnlyResults = Collections.unmodifiableList(results);
-            select(sql, args, resultClass, columnSpec, results);
+            orm.select(sql, args, resultClass, columnSpec, results);
         }
 
         public BetterList<T> getRawList() {

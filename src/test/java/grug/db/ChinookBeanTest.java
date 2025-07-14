@@ -58,7 +58,7 @@ public class ChinookBeanTest {
         var query = AlbumBean.find().byQuery()
                 .pageSize(20)
                 .page(2);
-        QueryResult<AlbumBean> multiPageQuery = query.fetch();
+        var multiPageQuery = query.fetch();
         assertEquals("Prenda Minha",multiPageQuery.first().getTitle());
     }
 
