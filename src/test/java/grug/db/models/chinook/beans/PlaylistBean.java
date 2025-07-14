@@ -35,7 +35,7 @@ public class PlaylistBean extends GrugORM.EnterpriseGrugBean {
             throw new IllegalArgumentException("Track cannot be null");
         }
 
-        if (track.isNew()) {
+        if (!track.isPersisted()) {
             track.insert();
         }
 

@@ -33,6 +33,17 @@ public class FindTest extends TestBase{
     }
 
     @Test
+    void testFindFirst() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
+        SampleModel sampleModel2 = new SampleModel("bar", 11, true, new Date());
+        orm.insertAll(sampleModel, sampleModel2);
+
+        SampleModel result = orm.find(SampleModel.class).firstWhere("str_val=:val", Map.of("val", "bar"));
+        assertEquals(sampleModel.getIntVal(), result.getIntVal());
+    }
+
+    @Test
     void testFindAll() {
         var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
         for (int i = 0; i < 10 ; i++) {
@@ -70,7 +81,7 @@ public class FindTest extends TestBase{
         var results = orm.find(SampleModel.class).where(//we are looking to create the query something like this, select * in sample model where str_val in (?) and (?) (for foo and bar)
                 "str_val in :strs",
                 Map.of("strs", List.of("foo", "bar")))
-                .toList();//we can safely assume that when there is a map with collection inside of it we need to iterate over the list and create arguements and insertions for all parameters
+                .toList();//we can safely assume that when there is a map with collection inside of it we need to iterate over the list and create arguments and insertions for all parameters
                 //TODO - should this test account for multiple of these collections? say there are 2 maps with different collections, we would possibly want to create question marks for all?
         assertEquals(2, results.size());
     }
@@ -127,7 +138,7 @@ public class FindTest extends TestBase{
 
         assertEquals(2, results.size());
 
-        SampleModelGroupByQuery first = results.get(0);
+        SampleModelGroupByQuery first = results.getFirst();
         assertEquals("bar", first.strVal());
         assertEquals(10, first.sum());
 

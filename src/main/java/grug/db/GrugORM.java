@@ -306,6 +306,14 @@ public class GrugORM {
             return select(sql, args, classToFind);
         }
 
+        public T firstWhere(String whereClause, Map<String, Object> args) {
+            Mapping metaData = getMapping(classToFind);
+            String tableName = metaData.getTableName();
+            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
+            String sql = selectClause + whereClause;
+            return selectFirst(sql, args, classToFind);
+        }
+
         public QueryResult<T> bySQL(String sql, Map<String, Object> args) {
             return get().select(sql, args, classToFind);
         }
@@ -607,12 +615,20 @@ public class GrugORM {
         return select(sql, args, resultClass, (List<String>) null);
     }
 
+    public <T> T selectFirst(String sql, Map<String, Object> args, Class<T> resultClass) {
+        return selectFirst(sql, args, resultClass, (List<String>) null);
+    }
+
     public <T> QueryResult<T> select(String sql, Map<String, Object> args, Class<T> resultClass, String... colsToMap) {
         return select(sql, args, resultClass, Arrays.asList(colsToMap));
     }
 
     public <T> QueryResult<T> select(String sql, Map<String, Object> args, Class<T> resultClass, List<String> colsToMap) {
         return select(sql, args, resultClass, new ColumnsSpec(colsToMap));
+    }
+
+    public <T> T selectFirst(String sql, Map<String, Object> args, Class<T> resultClass, List<String> colsToMap) {
+        return selectFirst(sql, args, resultClass, new ColumnsSpec(colsToMap));
     }
 
     private <T> QueryResult<T> select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec) {
@@ -622,10 +638,38 @@ public class GrugORM {
         return queryResult;
     }
 
+    private <T> T selectFirst(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec) {
+        BetterList<T> resultList = new BetterList<>();
+        QueryResult<T> queryResult = new QueryResult<>(sql, args, resultClass, columnSpec, resultList);
+        selectFirst(sql, args, resultClass, columnSpec, resultList);
+        return queryResult.first();
+    }
+
     private <T> void select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, BetterList<T> results) {
         Mapping mapping = getMapping(resultClass);
         ArrayList<Object> vals = new ArrayList<>();
         String updatedSql = updateSqlVars(sql, args, vals);
+        logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
+        try (var session = getOrCreateSession();
+             var ps = session.prepareStatement(updatedSql, vals);
+             var resultSet = session.execute(ps)) {
+            while (resultSet.next()) {
+                T result = mapping.newObjectFromResult(resultSet, columnSpec);
+                if (result instanceof GrugRecordLifecycle lifecycle) {
+                    lifecycle.afterSelect();
+                }
+                results.add(result);
+            }
+        } catch (Exception e) {
+            throw handleSelectException(sql, args, e);
+        }
+    }
+
+    private <T> void selectFirst(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, BetterList<T> results) {
+        Mapping mapping = getMapping(resultClass);
+        ArrayList<Object> vals = new ArrayList<>();
+        String updatedSql = updateSqlVars(sql, args, vals);
+        updatedSql += MessageFormat.format(limitOffsetClause, 1, 0); // ensure we only get one result
         logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
         try (var session = getOrCreateSession();
              var ps = session.prepareStatement(updatedSql, vals);
@@ -1378,7 +1422,7 @@ public class GrugORM {
             loadFrom(map::get, cols);
         }
 
-        public void loadFrom(Function<String, String> supplier, String... cols) {
+        public void loadFrom(UnaryOperator<String> supplier, String... cols) {
             for (String col : cols) {
                 String str = supplier.apply(col);
                 setValueFromString(col, str);
@@ -1395,8 +1439,8 @@ public class GrugORM {
             fieldMapping.setFieldValue(this, coerceToType(fieldType, str));
         }
 
-        public boolean isNew() {
-            return !persisted;
+        public boolean isPersisted() {
+            return persisted;
         }
 
         @Override
