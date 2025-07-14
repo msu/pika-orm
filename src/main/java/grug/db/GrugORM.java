@@ -1547,15 +1547,20 @@ public class GrugORM {
             return (GrugQuery<Q>) this;
         }
 
-        public QueryResult<T> execute() {
+        public QueryResult<T> fetch() {
             String sql = generateSQL();
             return GrugORM.this.select(sql, valMap, resultClass, columns);
         }
 
-        public BetterList<T> executeAsList() {
+        public BetterList<T> fetchAsList() {
             String sql = generateSQL();
             QueryResult<T> select = GrugORM.this.select(sql, valMap, resultClass, columns);
             return select.getRawList();
+        }
+
+        public T fetchFirst() {
+            String sql = generateSQL();
+            return GrugORM.this.selectFirst(sql, valMap, resultClass, columns);
         }
 
         public Stream<T> stream() {
@@ -1734,11 +1739,15 @@ public class GrugORM {
         }
 
         public QueryResult<T> execute() {
-            return query.execute();
+            return query.fetch();
         }
 
         public BetterList<T> executeAsList() {
-            return query.execute().getRawList();
+            return query.fetch().getRawList();
+        }
+
+        public T executeAsSingleResult() {
+            return query.fetchFirst();
         }
 
         public Stream<T> stream() {
