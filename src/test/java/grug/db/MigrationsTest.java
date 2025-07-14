@@ -41,7 +41,7 @@ public class MigrationsTest extends TestBase {
         orm.withMigrations(migrations);
         migrations.applyAll();
 
-        var migrationsInDb = orm.find(GrugMigration.class).all();
+        var migrationsInDb = orm.find(GrugMigration.class).all().toList();
 
         assertEquals(1, migrationsInDb.size());
         assertEquals(MigrationStatus.APPLIED, migrationsInDb.getFirst().getStatus());
@@ -55,7 +55,7 @@ public class MigrationsTest extends TestBase {
         orm.withMigrations(migrations);
         migrations.applyAll();
 
-        var demoModel = orm.find(MigrationDemoModel.class).all();
+        var demoModel = orm.find(MigrationDemoModel.class).all().toList();
 
         assertEquals(1, demoModel.size());
         assertEquals("foo", demoModel.getFirst().getStrVal());

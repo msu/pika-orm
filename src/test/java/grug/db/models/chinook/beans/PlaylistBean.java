@@ -2,7 +2,7 @@ package grug.db.models.chinook.beans;
 
 import grug.db.GrugORM;
 import grug.db.GrugORM.GrugListFinder;
-import grug.db.GrugORM.ResultList;
+import grug.db.GrugORM.QueryResult;
 
 public class PlaylistBean extends GrugORM.EnterpriseGrugBean {
 
@@ -22,7 +22,7 @@ public class PlaylistBean extends GrugORM.EnterpriseGrugBean {
         this.name = name;
     }
 
-    public ResultList<TrackBean> getTracks() {
+    public QueryResult<TrackBean> getTracks() {
         return loadManyThrough(PlaylistTrackBean.class, TrackBean.class);
     }
 

@@ -19,7 +19,7 @@ public class ArtistBean extends EnterpriseGrugBean {
         this.name = name;
     }
 
-    public ResultList<AlbumBean> getAlbums() {
+    public QueryResult<AlbumBean> getAlbums() {
         return loadMany(AlbumBean.class);
     }
 

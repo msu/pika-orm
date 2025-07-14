@@ -2,7 +2,7 @@ package grug.db.models.chinook.beans;
 
 import grug.db.GrugORM.EnterpriseGrugBean;
 import grug.db.GrugORM.GrugListFinder;
-import grug.db.GrugORM.ResultList;
+import grug.db.GrugORM.QueryResult;
 
 import java.util.Date;
 
@@ -140,7 +140,7 @@ public class EmployeeBean extends EnterpriseGrugBean {
         this.email = email;
     }
 
-    public ResultList<EmployeeBean> getReports() {
+    public QueryResult<EmployeeBean> getReports() {
         return loadMany(EmployeeBean.class, "ReportsTo");
     }
 

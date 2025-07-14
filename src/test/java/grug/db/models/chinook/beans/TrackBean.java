@@ -81,7 +81,7 @@ public class TrackBean extends GrugORM.EnterpriseGrugBean {
         this.unitPrice = unitPrice;
     }
 
-    public List<PlaylistBean> getPlaylists() {
+    public GrugORM.QueryResult<PlaylistBean> getPlaylists() {
         return loadManyThrough(PlaylistTrackBean.class, PlaylistBean.class);
     }
 

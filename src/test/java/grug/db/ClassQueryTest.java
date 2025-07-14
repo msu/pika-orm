@@ -31,7 +31,7 @@ public class ClassQueryTest extends TestBase {
                 .where("date_val < :val")
                 .withVar("val", new Date(2050, 1, 1));
 
-        List<SampleModel> results = query.execute();
+        List<SampleModel> results = query.executeAsList();
 
         assertEquals(10, results.size());
 
@@ -50,7 +50,7 @@ public class ClassQueryTest extends TestBase {
                 .where("date_val < :val")
                 .withVar("val", new Date(2050, 1, 1));
 
-        List<SampleEgb> results = query.execute();
+        List<SampleEgb> results = query.executeAsList();
 
         assertEquals(10, results.size());
     }
@@ -70,7 +70,7 @@ public class ClassQueryTest extends TestBase {
                 .where("date_val > :val2")
                 .withVar("val2", new Date(20, 1, 1));
 
-        List<SampleModel> results = query.execute();//this problem is 100% isolated within the run query as everything is building correctly
+        List<SampleModel> results = query.executeAsList();//this problem is 100% isolated within the run query as everything is building correctly
 
         assertEquals(10, results.size());
 
