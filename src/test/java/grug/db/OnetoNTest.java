@@ -24,7 +24,7 @@ public class OnetoNTest extends TestBase {
             orm.insert(newFoo);
         }
 
-        List<Foo> foos = fooContainer.getFoos();
+        List<Foo> foos = fooContainer.getFoos().toList();
         assertEquals(10, foos.size());
     }
 

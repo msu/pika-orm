@@ -19,4 +19,9 @@ public class MediaTypeBean extends GrugORM.EnterpriseGrugBean {
     public void setName(String name) {
         this.name = name;
     }
+
+    public static GrugORM.GrugListFinder<MediaTypeBean> find() {
+        return find(MediaTypeBean.class);
+    }
+
 }

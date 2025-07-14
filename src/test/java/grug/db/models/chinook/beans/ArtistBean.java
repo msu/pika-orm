@@ -19,11 +19,11 @@ public class ArtistBean extends EnterpriseGrugBean {
         this.name = name;
     }
 
-    public ResultList<AlbumBean> getAlbums() {
-        return loadN(AlbumBean.class);
+    public QueryResult<AlbumBean> getAlbums() {
+        return loadMany(AlbumBean.class);
     }
 
     public static GrugListFinder<ArtistBean> find() {
-        return orm().find(ArtistBean.class);
+        return find(ArtistBean.class);
     }
 }

@@ -17,11 +17,11 @@ public class DeleteTest extends TestBase {
         SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
         orm.insert(sampleModel);
 
-        assertEquals(1, orm.find(SampleModel.class).all().size());
+        assertEquals(1, orm.find(SampleModel.class).all().toList().size());
 
         orm.delete(sampleModel);
 
-        assertEquals(0, orm.find(SampleModel.class).all().size());
+        assertEquals(0, orm.find(SampleModel.class).all().toList().size());
 
     }
 

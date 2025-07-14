@@ -18,7 +18,7 @@ public class GrugQueryBuilderTest {
                 .where("Title LIKE '%A%'")
                 .withResult(Album.class);
 
-        var results = query.execute();
+        var results = query.executeAsList();
         assertEquals(264, results.size());
 
         assertEquals("For Those About To Rock We Salute You", results.first().getTitle());
@@ -33,7 +33,7 @@ public class GrugQueryBuilderTest {
                 .select("Title")
                 .where("Title LIKE '%A%'");
 
-        var results = query.execute();
+        var results = query.executeAsList();
         assertEquals(264, results.size());
 
         assertEquals("For Those About To Rock We Salute You", results.first().get("Title"));
@@ -47,7 +47,7 @@ public class GrugQueryBuilderTest {
                 .select("Title as AlbumTitle")
                 .where("Title LIKE '%A%'");
 
-        var results = query.execute();
+        var results = query.executeAsList();
         assertEquals(264, results.size());
 
 
@@ -62,7 +62,7 @@ public class GrugQueryBuilderTest {
                 .select("Albums.Title as AlbumTitle")
                 .where("Title LIKE '%A%'");
 
-        var results = query.execute();
+        var results = query.executeAsList();
         assertEquals(264, results.size());
 
 
@@ -78,7 +78,7 @@ public class GrugQueryBuilderTest {
                 .join("Tracks on albums.AlbumId = tracks.TrackId")
                 .where("Title LIKE '%A%'");
 
-        var results = query.execute();
+        var results = query.executeAsList();
         assertEquals(264, results.size());
 
         assertEquals(4, results.first().size());
@@ -95,7 +95,7 @@ public class GrugQueryBuilderTest {
                 .where("albums.Title LIKE '%A%'")
                 .withResult(Album.class);
 
-        var results = query.execute();
+        var results = query.executeAsList();
         assertEquals(264, results.size());
 
         assertEquals("For Those About To Rock (We Salute You)", results.first().getTitle());
@@ -110,7 +110,7 @@ public class GrugQueryBuilderTest {
                 .join("Artists on artists.artistId = albums.artistId")
                 .where("artists.Name LIKE '%AC/DC%'");
 
-        var results = query.execute();
+        var results = query.executeAsList();
         assertEquals(2, results.size());
 
         System.out.println(results);//LinkedHashMaps Generic!
@@ -127,7 +127,7 @@ public class GrugQueryBuilderTest {
                 .where("artists.Name LIKE '%AC/DC%'")
                 .withResult(Album.class);
 
-        ResultList<Album> results = query.execute();
+        var results = query.executeAsList();
         assertEquals(2, results.size());
 
         System.out.println(results);//Album Objects
@@ -145,7 +145,7 @@ public class GrugQueryBuilderTest {
                 .where("artistname LIKE '%Led Zeppelin%'")
                 .orderBy("Title", SortOrder.DESC);
 
-        var results = query.execute();
+        var results = query.executeAsList();
 
         assertEquals(14, results.size());
         assertEquals("Led Zeppelin", results.first().getString("artistname"));
