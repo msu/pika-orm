@@ -212,7 +212,7 @@ public class GrugORM {
                 .join(joinClass).thenJoin(initialObject.getClass())
                 .where(mapping.tableName + "." + mapping.getIdColumn() + "=:id")
                 .withVar("id", mapping.getId(initialObject))
-                .execute();
+                .fetch();
     }
 
     public <T> QueryResult<T> loadMany(Object objectOfOne, Class<T> classOfMany) {
@@ -1738,15 +1738,15 @@ public class GrugORM {
             return this;
         }
 
-        public QueryResult<T> execute() {
+        public QueryResult<T> fetch() {
             return query.fetch();
         }
 
-        public BetterList<T> executeAsList() {
+        public BetterList<T> fetchAsList() {
             return query.fetch().getRawList();
         }
 
-        public T executeAsSingleResult() {
+        public T fetchFirst() {
             return query.fetchFirst();
         }
 
@@ -1812,7 +1812,7 @@ public class GrugORM {
         }
 
         public QueryResult<T> call() throws Exception {
-            return execute();
+            return fetch();
         }
     }
 

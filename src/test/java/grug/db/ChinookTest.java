@@ -36,7 +36,7 @@ public class ChinookTest {
         var query = grugORM.query(Album.class)
                 .join(Artist.class)
                 .where("artists.name = 'AC/DC'");
-        var acDcAlbums = query.executeAsList();
+        var acDcAlbums = query.fetchAsList();
         assertEquals(2, acDcAlbums.size());
     }
 
@@ -46,7 +46,7 @@ public class ChinookTest {
         var query = grugORM.query(Artist.class)
                 .join(Album.class)
                 .where("albums.Title LIKE 'A%'");
-        var acDcAlbums = query.executeAsList();
+        var acDcAlbums = query.fetchAsList();
         assertEquals(25, acDcAlbums.size());
     }
 
@@ -56,7 +56,7 @@ public class ChinookTest {
         var query = grugORM.query(Employee.class)
                 .join("employees AS boss ON employees.ReportsTo = boss.EmployeeID")
                 .where("boss.Email = :email").withVar("email", "andrew@chinookcorp.com");
-        var andrewsEmployees = query.executeAsList();
+        var andrewsEmployees = query.fetchAsList();
         assertEquals(2, andrewsEmployees.size());
     }
 
@@ -67,12 +67,12 @@ public class ChinookTest {
         // default inner join should produce 204 artists w/albums
         var query = grugORM.query(Artist.class)
                 .join(Album.class);
-        assertEquals(204, query.executeAsList().size());
+        assertEquals(204, query.fetchAsList().size());
 
         // left join should produce all 275 artists
         var query2 = grugORM.query(Artist.class)
                 .join(LEFT, Album.class);
-        assertEquals(275, query2.executeAsList().size());
+        assertEquals(275, query2.fetchAsList().size());
     }
 
     @Test
@@ -85,7 +85,7 @@ public class ChinookTest {
                 .thenJoin(Track.class)
                 .where("tracks.Name LIKE 'A%'");
 
-        assertEquals(85, query.executeAsList().size());
+        assertEquals(85, query.fetchAsList().size());
     }
 
 

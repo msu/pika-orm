@@ -40,7 +40,7 @@ public class ChinookBeanTest {
                 .join(ArtistBean.class)
                 .where("artists.name IN :artists")
                 .withVar("artists", List.of("AC/DC", "Santana"));
-        var acDcAlbums = query.execute().toList();
+        var acDcAlbums = query.fetch().toList();
         assertEquals(5, acDcAlbums.size());
     }
 
@@ -48,7 +48,7 @@ public class ChinookBeanTest {
     void testPaging() {
         var query = AlbumBean.find().byQuery()
                 .pageSize(20);
-        var firstTwentyAlbums = query.execute().toList();
+        var firstTwentyAlbums = query.fetch().toList();
         assertEquals(20, firstTwentyAlbums.size());
     }
 
@@ -58,7 +58,7 @@ public class ChinookBeanTest {
         var query = AlbumBean.find().byQuery()
                 .pageSize(20)
                 .page(2);
-        QueryResult<AlbumBean> multiPageQuery = query.execute();
+        QueryResult<AlbumBean> multiPageQuery = query.fetch();
         assertEquals("Prenda Minha",multiPageQuery.first().getTitle());
     }
 
@@ -70,7 +70,7 @@ public class ChinookBeanTest {
                 .where("artists.name IN :artists")
                 .withVar("artists", List.of("AC/DC", "Santana"))
                 .orderBy("AlbumId");
-        QueryResult<AlbumBean> acDcAlbums = query.execute();
+        QueryResult<AlbumBean> acDcAlbums = query.fetch();
         assertEquals("For Those About To Rock We Salute You", acDcAlbums.first().getTitle());
     }
 
@@ -81,7 +81,7 @@ public class ChinookBeanTest {
                 .where("artists.name IN :artists")
                 .withVar("artists", List.of("AC/DC", "Santana"))
                 .orderBy("AlbumId", DESC);
-        QueryResult<AlbumBean> acDcAlbums = query.execute();
+        QueryResult<AlbumBean> acDcAlbums = query.fetch();
         assertEquals("Santana Live", acDcAlbums.first().getTitle());
     }
 
@@ -98,7 +98,7 @@ public class ChinookBeanTest {
                 .join(TrackBean.class)
                 .join(ArtistBean.class)
                 .where("tracks.Name LIKE 'A%' AND artists.Name LIKE 'A%'")
-                        .executeAsList();
+                        .fetchAsList();
 
         assertEquals(6, result.size());
     }
