@@ -29,4 +29,16 @@ public class PlaylistBean extends GrugORM.EnterpriseGrugBean {
     public static GrugListFinder<PlaylistBean> find() {
         return find(PlaylistBean.class);
     }
+
+    public void addTrack(TrackBean track) {
+        if (track == null) {
+            throw new IllegalArgumentException("Track cannot be null");
+        }
+
+        if (!track.isPersisted()) {
+            track.insert();
+        }
+
+        PlaylistTrackBean.associate(this, track);
+    }
 }

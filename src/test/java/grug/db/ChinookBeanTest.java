@@ -40,7 +40,7 @@ public class ChinookBeanTest {
                 .join(ArtistBean.class)
                 .where("artists.name IN :artists")
                 .withVar("artists", List.of("AC/DC", "Santana"));
-        var acDcAlbums = query.execute().toList();
+        var acDcAlbums = query.fetch().toList();
         assertEquals(5, acDcAlbums.size());
     }
 
@@ -48,7 +48,7 @@ public class ChinookBeanTest {
     void testPaging() {
         var query = AlbumBean.find().byQuery()
                 .pageSize(20);
-        var firstTwentyAlbums = query.execute().toList();
+        var firstTwentyAlbums = query.fetch().toList();
         assertEquals(20, firstTwentyAlbums.size());
     }
 
@@ -58,7 +58,7 @@ public class ChinookBeanTest {
         var query = AlbumBean.find().byQuery()
                 .pageSize(20)
                 .page(2);
-        var multiPageQuery = query.execute();
+        QueryResult<AlbumBean> multiPageQuery = query.fetch();
         assertEquals("Prenda Minha",multiPageQuery.first().getTitle());
     }
 
@@ -70,7 +70,7 @@ public class ChinookBeanTest {
                 .where("artists.name IN :artists")
                 .withVar("artists", List.of("AC/DC", "Santana"))
                 .orderBy("AlbumId");
-        var acDcAlbums = query.execute();
+        QueryResult<AlbumBean> acDcAlbums = query.fetch();
         assertEquals("For Those About To Rock We Salute You", acDcAlbums.first().getTitle());
     }
 
@@ -81,7 +81,7 @@ public class ChinookBeanTest {
                 .where("artists.name IN :artists")
                 .withVar("artists", List.of("AC/DC", "Santana"))
                 .orderBy("AlbumId", DESC);
-        var acDcAlbums = query.execute();
+        QueryResult<AlbumBean> acDcAlbums = query.fetch();
         assertEquals("Santana Live", acDcAlbums.first().getTitle());
     }
 
@@ -98,7 +98,7 @@ public class ChinookBeanTest {
                 .join(TrackBean.class)
                 .join(ArtistBean.class)
                 .where("tracks.Name LIKE 'A%' AND artists.Name LIKE 'A%'")
-                        .executeAsList();
+                        .fetchAsList();
 
         assertEquals(6, result.size());
     }
@@ -146,6 +146,29 @@ public class ChinookBeanTest {
 
         tracks = playlist.getTracks();
         assertFalse(tracks.hasMatch(trackBean -> Objects.equals(trackBean.getTrackId(), firstTrack.getTrackId())));
+    }
+
+    @Test
+    void testAddNtoN() {
+        TrackBean existingTrack = TrackBean.find().byId(10);
+
+        TrackBean newTrack = new TrackBean();
+        newTrack.setName("My Sexy Track");
+        newTrack.setBytes(existingTrack.getBytes());
+        newTrack.setUnitPrice(existingTrack.getUnitPrice());
+        newTrack.setGenreId(existingTrack.getGenreId());
+        newTrack.setComposer(existingTrack.getComposer());
+        newTrack.setMilliseconds(existingTrack.getMilliseconds());
+        newTrack.setMediaTypeId(existingTrack.getMediaTypeId());
+
+        PlaylistBean playlist = PlaylistBean.find().byId(1);
+        playlist.addTrack(newTrack);
+
+        TrackBean newTrackLoaded = TrackBean.find().byKey("name", newTrack.getName());
+        assertNotNull(newTrackLoaded);
+
+        newTrackLoaded = playlist.getTracks().firstWhere(el -> el.getTrackId().equals(newTrack.getTrackId()));
+        assertEquals(newTrack.getTrackId(), newTrackLoaded.getTrackId());
     }
 
     public static GrugORM configureOrm() {

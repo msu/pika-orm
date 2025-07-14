@@ -18,12 +18,26 @@ public class GrugQueryBuilderTest {
                 .where("Title LIKE '%A%'")
                 .withResult(Album.class);
 
-        var results = query.executeAsList();
+        var results = query.fetchAsList();
         assertEquals(264, results.size());
 
         assertEquals("For Those About To Rock We Salute You", results.first().getTitle());
         assertNull(results.first().getAlbumId());
         assertNull(results.first().getArtistId());
+    }
+
+    @Test
+    void testRawQueryBuilderCanSelectColumnsWithSingleResultObject() {
+        var orm = configureOrm();
+        var result = orm.queryBuilder("Albums")
+                .select("Title")
+                .where("Title = 'For Those About To Rock We Salute You'")
+                .withResult(Album.class)
+                .fetchFirst();
+
+        assertEquals("For Those About To Rock We Salute You", result.getTitle());
+        assertNull(result.getAlbumId());
+        assertNull(result.getArtistId());
     }
 
     @Test
@@ -33,7 +47,7 @@ public class GrugQueryBuilderTest {
                 .select("Title")
                 .where("Title LIKE '%A%'");
 
-        var results = query.executeAsList();
+        var results = query.fetchAsList();
         assertEquals(264, results.size());
 
         assertEquals("For Those About To Rock We Salute You", results.first().get("Title"));
@@ -47,7 +61,7 @@ public class GrugQueryBuilderTest {
                 .select("Title as AlbumTitle")
                 .where("Title LIKE '%A%'");
 
-        var results = query.executeAsList();
+        var results = query.fetchAsList();
         assertEquals(264, results.size());
 
 
@@ -62,7 +76,7 @@ public class GrugQueryBuilderTest {
                 .select("Albums.Title as AlbumTitle")
                 .where("Title LIKE '%A%'");
 
-        var results = query.executeAsList();
+        var results = query.fetchAsList();
         assertEquals(264, results.size());
 
 
@@ -78,7 +92,7 @@ public class GrugQueryBuilderTest {
                 .join("Tracks on albums.AlbumId = tracks.TrackId")
                 .where("Title LIKE '%A%'");
 
-        var results = query.executeAsList();
+        var results = query.fetchAsList();
         assertEquals(264, results.size());
 
         assertEquals(4, results.first().size());
@@ -95,7 +109,7 @@ public class GrugQueryBuilderTest {
                 .where("albums.Title LIKE '%A%'")
                 .withResult(Album.class);
 
-        var results = query.executeAsList();
+        var results = query.fetchAsList();
         assertEquals(264, results.size());
 
         assertEquals("For Those About To Rock (We Salute You)", results.first().getTitle());
@@ -110,7 +124,7 @@ public class GrugQueryBuilderTest {
                 .join("Artists on artists.artistId = albums.artistId")
                 .where("artists.Name LIKE '%AC/DC%'");
 
-        var results = query.executeAsList();
+        var results = query.fetchAsList();
         assertEquals(2, results.size());
 
         System.out.println(results);//LinkedHashMaps Generic!
@@ -120,14 +134,14 @@ public class GrugQueryBuilderTest {
     }
 
     @Test
-    void testRawQueryBuilderJoinWithResultClass() {//This has a result map which will be mapped to Albums, we have more spesific access to class methods now and are working with objects
+    void testRawQueryBuilderJoinWithResultClass() {//This has a result map which will be mapped to Albums, we have more specific access to class methods now and are working with objects
         var orm = configureOrm();
         var query = orm.queryBuilder("Albums")
                 .join("Artists on artists.artistId = albums.artistId")
                 .where("artists.Name LIKE '%AC/DC%'")
                 .withResult(Album.class);
 
-        var results = query.executeAsList();
+        var results = query.fetchAsList();
         assertEquals(2, results.size());
 
         System.out.println(results);//Album Objects
@@ -137,7 +151,7 @@ public class GrugQueryBuilderTest {
     }
 
     @Test
-    void testRawQueryBuilderOrderByPagingWithResultClass() {//This has a result map which will be mapped to Albums, we have more spesific access to class methods now and are working with objects
+    void testRawQueryBuilderOrderByPagingWithResultClass() {//This has a result map which will be mapped to Albums, we have more specific access to class methods now and are working with objects
         var orm = configureOrm();
         var query = orm.queryBuilder("Albums")
                 .select("Title", "Artists.Name as artistname")
@@ -145,7 +159,7 @@ public class GrugQueryBuilderTest {
                 .where("artistname LIKE '%Led Zeppelin%'")
                 .orderBy("Title", SortOrder.DESC);
 
-        var results = query.executeAsList();
+        var results = query.fetchAsList();
 
         assertEquals(14, results.size());
         assertEquals("Led Zeppelin", results.first().getString("artistname"));

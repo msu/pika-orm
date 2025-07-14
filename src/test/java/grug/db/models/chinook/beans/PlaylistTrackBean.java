@@ -19,7 +19,7 @@ public class PlaylistTrackBean extends GrugORM.EnterpriseGrugBean {
     }
 
     // no constructor
-    private PlaylistTrackBean(){};
+    private PlaylistTrackBean(){}
 
     public static void associate(PlaylistBean playlistBean, TrackBean track){
         orm().exec("INSERT INTO playlist_track(PlaylistId, TrackId) VALUES (:playlistId, :trackId)",
