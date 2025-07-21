@@ -5,10 +5,7 @@ import grug.db.GrugORM.Interfaces.GrugRecordLifecycle;
 import grug.db.GrugORM.Interfaces.SafeAutoCloseable;
 
 import java.io.Console;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.RecordComponent;
+import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URL;
@@ -1915,6 +1912,17 @@ public class GrugORM {
     private Mapping getMapping(Class<?> clazz) {
         return mappings.computeIfAbsent(clazz, aClass -> {
             Mapping mapping = new Mapping();
+            try {
+                Method mappingMethod = aClass.getMethod("mapping");
+                if (Modifier.isStatic(mappingMethod.getModifiers())) {
+                    try {
+                        mapping = (Mapping) mappingMethod.invoke(null);
+                    } catch (Exception e) {
+                        throw rethrow(e);
+                    }
+                }
+            } catch (NoSuchMethodException e) {
+            }
             mapping.setOrm(this);
             mapping.setClass(aClass);
             return mapping;
