@@ -37,7 +37,7 @@ public class GrugORM {
     // TODO Do we need a remove() call on this at some point?
     private static final ThreadLocal<ConnectionSession> CURRENT_SESSION = new ThreadLocal<>();
 
-    private static final ForceThrower FORCE_THROWER = generateForceThrower();
+    private static final Consumer<Exception> FORCE_THROWER = generateForceThrower();
 
     private final Callable<Connection> connectionSource;
 
@@ -3031,28 +3031,24 @@ public class GrugORM {
     }
 
     private static RuntimeException rethrow(Exception e) {
-        FORCE_THROWER.throwException(e);
+        FORCE_THROWER.accept(e);
         return new RuntimeException(e); // never hit
-    }
-
-    public interface ForceThrower {
-        void throwException(Throwable throwable);
     }
 
     public interface RunnableWithException {
         void run() throws Exception;
     }
 
-    private static ForceThrower generateForceThrower() {
+    private static Consumer<Exception> generateForceThrower() {
         var tmpClass = new ClassLoader(GrugORM.class.getClassLoader()) {
             public Class defineClass() {
-                byte[] bytes = Base64.getDecoder().decode("yv66vgAAADQAEAEAGGdydWcvZGIvRm9yY2VUaHJvd2VySW1wbAcAAQEAEGphdmEvbGFuZy9PYmplY3QHAAMBABxncnVnL2RiL0dydWdPUk0kRm9yY2VUaHJvd2VyBwAFAQAVRm9yY2VUaHJvd2VySW1wbC5qYXZhAQAGPGluaXQ+AQADKClWDAAIAAkKAAQACgEADnRocm93RXhjZXB0aW9uAQAYKExqYXZhL2xhbmcvVGhyb3dhYmxlOylWAQAEQ29kZQEAClNvdXJjZUZpbGUAIQACAAQAAQAGAAAAAgABAAgACQABAA4AAAARAAEAAQAAAAUqtwALsQAAAAAAAQAMAA0AAQAOAAAADgABAAIAAAACK78AAAAAAAEADwAAAAIABw==");
+                byte[] bytes = Base64.getDecoder().decode("yv66vgAAADQAEgEAGGdydWcvZGIvRm9yY2VUaHJvd2VySW1wbAcAAQEAEGphdmEvbGFuZy9PYmplY3QHAAMBABtqYXZhL3V0aWwvZnVuY3Rpb24vQ29uc3VtZXIHAAUBABVGb3JjZVRocm93ZXJJbXBsLmphdmEBAAY8aW5pdD4BAAMoKVYMAAgACQoABAAKAQAGYWNjZXB0AQAVKExqYXZhL2xhbmcvT2JqZWN0OylWAQATamF2YS9sYW5nL1Rocm93YWJsZQcADgEABENvZGUBAApTb3VyY2VGaWxlACEAAgAEAAEABgAAAAIAAQAIAAkAAQAQAAAAEQABAAEAAAAFKrcAC7EAAAAAAAEADAANAAEAEAAAABEAAQACAAAABSvAAA+/AAAAAAABABEAAAACAAc=");
                 return defineClass("grug.db.ForceThrowerImpl", bytes, 0, bytes.length);
             }
         }.defineClass();
         try {
             //noinspection
-            return (ForceThrower) tmpClass.getDeclaredConstructor().newInstance();
+            return (Consumer) tmpClass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
