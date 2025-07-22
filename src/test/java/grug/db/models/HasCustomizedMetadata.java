@@ -1,7 +1,7 @@
 package grug.db.models;
 
 import com.google.gson.Gson;
-import grug.db.GrugORM;
+import grug.db.GrugORM.*;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -15,15 +15,15 @@ public class HasCustomizedMetadata {
             );
             """;
 
-    public static GrugORM.Mapping mapping() {
+    public static Mapping mapping() {
         Gson gson = new Gson();
-        return new GrugORM.Mapping() {
+        return new Mapping() {
             @Override
             public String mapToTable() {
                 return "foos";
             }
             @Override
-            public GrugORM.FieldMapping mapField(Field field) {
+            public FieldMapping mapField(Field field) {
                 return switch (field.getName()) {
                     case "ignoreMe" -> ignore(field);
                     case "myId" -> map(field).toColumn("id").asId();
