@@ -34,8 +34,6 @@ public class GrugORM {
 
     public static final int INSERT_FAILED = -1;
 
-    public static final long[] MASS_INSERT_FAILED = {-1};
-
     public static final String SQL_VARS_PATTERN = "(:[\\w][\\d\\w]*)";
 
     private static GrugORM DEFAULT_ORM = null;
@@ -737,15 +735,14 @@ public class GrugORM {
         return id;
     }
 
-    public long[] insertAll(Object... items) {
-        return insertAll(List.of(items));
+    public void insertAll(Object... items) {
+        insertAll(List.of(items));
     }
 
 
 
 
-    public long[] insertAll(Collection<Object> items){//find some solution maybe to make both function work with eachother, find a pluggable way to include another way to error bounce with the mass_insert_fail
-        ArrayList<Long> ids = new ArrayList<>(); //TODO - we are assuming it is all one table, need to find methods for the class structures
+    public void insertAll(Collection<Object> items){//philosophy here is is that we aren't promising anything, and if you want ID's out of your inserts that you can do a loop. This is just a simple helper and you can write your own sql if you want a better solution
         Class<?> prevClass = null; //this little pointer system allows us to check after each object if the last object was the same class, and if not we throw a logger arror
         Mapping mappingClass = null;
         String tableName = null;
@@ -754,38 +751,28 @@ public class GrugORM {
         ArrayList<Object> queryValues = new ArrayList<>();
         StringBuilder sb = new StringBuilder("INSERT INTO ");
         for (Object insertionInstance : items) {
-            if (insertionInstance instanceof GrugRecordLifecycle lifecycle && !lifecycle.validate()) {
-                return MASS_INSERT_FAILED;
-            }
-
-
             Class<?> clazz = insertionInstance.getClass();
             if(prevClass != null && !prevClass.equals(clazz)){//easy check for not all same class mass insertions
                 logger.log(GrugLogger.Level.ERROR, "Exception in insertAll() during mass insertion, not all Classes are the same");
                 throw new java.lang.RuntimeException("insertAll Class type failed");
             }
-
             if(prevClass == null){//first pass
                 prevClass = clazz;
                 mappingClass = getMapping(clazz);
                 tableName = mappingClass.tableName;
                 keyCol[0] = mappingClass.getIdColumn();
-                values = mappingClass.toDatabaseMap(insertionInstance);//TODO -- biggest problem right now is if they don't have autoincrement ids on and have there own system, then that gets weird with the values section here
+                values = mappingClass.toDatabaseMap(insertionInstance);
                 values.remove(keyCol[0]);
                 sb.append(tableName);
                 sb.append(" (");
                 sb.append(String.join(", ", values.keySet()));
-                if(sqlLiteQuirks) {
-                    sb.append(") DEFAULT VALUES");
-                } else{
-                    sb.append(") VALUES ");
-                }
+                sb.append(") VALUES ");//this is where pluggable work will be done if needed.
             }
             if(values == null){
                 values = mappingClass.toDatabaseMap(insertionInstance);
                 values.remove(keyCol[0]);
             }
-            if (values.isEmpty()) {
+            if (values.isEmpty()) { //need to look at case when one of the objects doesnt have all the values....
                     sb.append(" (");//fix the bitstream .toArray function and check that its the same output, this value should produce the right output
                     sb.append(Arrays.stream(values.keySet().toArray(new String[0])).map(_ -> "DEFAULT").collect(Collectors.joining(", ")));
                     sb.append(")");
@@ -793,18 +780,9 @@ public class GrugORM {
                     sb.append(" (");
                     sb.append(values.keySet().stream().map(_ -> "?").collect(Collectors.joining(", ")));//sets each new row with the insertionInstance values from field
                     sb.append(")");
+                    queryValues.addAll(values.values());
             }
             sb.append(", ");
-            queryValues.addAll(values.values());
-
-            if (insertionInstance instanceof GrugRecordLifecycle lifecycle && !lifecycle.beforeInsert()) {
-                return MASS_INSERT_FAILED;
-            }
-            Object newVersionValue = null;
-            // TODO - remove this?  It's an insert...
-            if (mappingClass.hasVersionColumn()) {
-            newVersionValue = mappingClass.incrementVersion(values);//hmmmm
-        }
             values = null;//just to clean up variable to trigger that if statement, this stops repeating computations
         }
         String insertString = sb.toString();
@@ -814,19 +792,10 @@ public class GrugORM {
         try (var session = getOrCreateSession();
              var ps = session.prepareStatement(insertString, queryValuesCollection, keyCol)) {
             time(ps::executeUpdate);
-            ResultSet generatedKeys = ps.getGeneratedKeys();
-            if (generatedKeys.next()) {
-                ids.add(generatedKeys.getLong(1));//could also just have an accumulator which might be cleaner
-            } else {
-                return MASS_INSERT_FAILED;
-            }
         } catch (Exception e) {
             logger.log(GrugLogger.Level.ERROR, "Exception in insertAll() with SQL {} & args {}: {}", insertString, queryValues, e.getMessage());
             throw rethrow(e);
         }
-        //TODO -- prepared statement
-        //after I don't know how to track mapping cycles after the mass insertion
-            return ids.stream().mapToLong(Long::longValue).toArray();
        }
 
     private long insert(String tableName, Map<String, Object> values, String... keyCols) {
@@ -950,7 +919,7 @@ public class GrugORM {
         }
         return delete;
     }
-    //reference for DELETEALL
+
     private boolean delete(String tableName, String keyCol, Object keyVal) {
         String deleteSQL = "DELETE FROM " + tableName + " WHERE " + keyCol + "=?";
         logger.log(getQueryLogLevel(), "DELETE SQL: {}\n  Args:{}", deleteSQL, List.of(keyVal));
@@ -959,7 +928,7 @@ public class GrugORM {
             int i = time(ps::executeUpdate);
             return i == 1;
         } catch (Exception e) {
-            logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
+            logger.log(GrugLogger.Level.ERROR, "Exception in delete() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
             throw rethrow(e);
         }
     }
