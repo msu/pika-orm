@@ -9,9 +9,9 @@
   * ~~Migrations tests~~
   * ~~Allow multiple statements in up/down~~
 * Improve error handling w/precise error messages
-* Bulk insert, rework to use single `INSERT` statement
-* Bulk delete
-* Bulk update
+* ~~Bulk insert, rework to use single `INSERT` statement~~
+* ~~Bulk delete~~
+* ~~Bulk update~~
 * ~~ForeignKey-based Lists~~
 * ~~Pluggable Limit/Offset~~
 * ~~QueryBuilder API~~

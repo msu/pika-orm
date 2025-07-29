@@ -845,19 +845,68 @@ public class GrugORM {
         return id;
     }
 
-    public long[] insertAll(Object... items) {
-        return insertAll(List.of(items));
+    public void insertAll(Object... items) {
+        insertAll(List.of(items));
     }
 
-    public long[] insertAll(Collection<Object> items) { // TODO - look into the setID as i was having some issues and weirdness with it
-        long[] ids = new long[items.size()];// TODO - change to the actual bulk insert stuff!
-        int count = 0;
-        for (Object o : items) {
-            ids[count] = insert(o);
-            count++;
+
+
+
+    public void insertAll(Collection<Object> items){//philosophy here is is that we aren't promising anything, and if you want ID's out of your inserts that you can do a loop. This is just a simple helper and you can write your own sql if you want a better solution
+        Class<?> prevClass = null; //this little pointer system allows us to check after each object if the last object was the same class, and if not we throw a logger arror
+        Mapping mappingClass = null;
+        String tableName = null;
+        String[] keyCol = new String[1];
+        Map<String, Object> values = null;//not sure if this is standard practice, as this gets traded hands a lot in this function
+        ArrayList<Object> queryValues = new ArrayList<>();
+        StringBuilder sb = new StringBuilder("INSERT INTO ");
+        for (Object insertionInstance : items) {
+            Class<?> clazz = insertionInstance.getClass();
+            if(prevClass != null && !prevClass.equals(clazz)){//easy check for not all same class mass insertions
+                logger.log(GrugLogger.Level.ERROR, "Exception in insertAll() during mass insertion, not all Classes are the same");
+                throw new java.lang.RuntimeException("insertAll Class type failed");
+            }
+            if(prevClass == null){//first pass
+                prevClass = clazz;
+                mappingClass = getMapping(clazz);
+                tableName = mappingClass.tableName;
+                keyCol[0] = mappingClass.getIdColumn();
+                values = mappingClass.toDatabaseMap(insertionInstance);
+                values.remove(keyCol[0]);
+                sb.append(tableName);
+                sb.append(" (");
+                sb.append(String.join(", ", values.keySet()));
+                sb.append(") VALUES ");//this is where pluggable work will be done if needed.
+            }
+            if(values == null){
+                values = mappingClass.toDatabaseMap(insertionInstance);
+                values.remove(keyCol[0]);
+            }
+            if (values.isEmpty()) { //need to look at case when one of the objects doesnt have all the values....
+                    sb.append(" (");//fix the bitstream .toArray function and check that its the same output, this value should produce the right output
+                    sb.append(Arrays.stream(values.keySet().toArray(new String[0])).map(_ -> "DEFAULT").collect(Collectors.joining(", ")));
+                    sb.append(")");
+                } else {
+                    sb.append(" (");
+                    sb.append(values.keySet().stream().map(_ -> "?").collect(Collectors.joining(", ")));//sets each new row with the insertionInstance values from field
+                    sb.append(")");
+                    queryValues.addAll(values.values());
+            }
+            sb.append(", ");
+            values = null;//just to clean up variable to trigger that if statement, this stops repeating computations
         }
-        return ids;
-    }
+        String insertString = sb.toString();
+        insertString = insertString.substring(0, insertString.length() - 2);//could use an edge case here
+        Collection<Object> queryValuesCollection = queryValues;
+        logger.log(getQueryLogLevel(), "MASS INSERT SQL: {}\n  Args:{}", insertString, queryValuesCollection);
+        try (var session = getOrCreateSession();
+             var ps = session.prepareStatement(insertString, queryValuesCollection, keyCol)) {
+            time(ps::executeUpdate);
+        } catch (Exception e) {
+            logger.log(GrugLogger.Level.ERROR, "Exception in insertAll() with SQL {} & args {}: {}", insertString, queryValues, e.getMessage());
+            throw rethrow(e);
+        }
+       }
 
     private long insert(String tableName, Map<String, Object> values, String... keyCols) {
         if (!(values instanceof LinkedHashMap<String, Object>)) {
@@ -899,7 +948,6 @@ public class GrugORM {
             throw rethrow(e);
         }
     }
-
     public boolean update(Object object) {
         if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.validate()) {
             return false;
@@ -930,7 +978,7 @@ public class GrugORM {
         }
         return update;
     }
-
+    //reference for bulk UPDATEALL
     private boolean update(String tableName, String keyCol, Object keyVal, String versionCol, Object versionVal, Map<String, Object> values) {
         if (!(values instanceof TreeMap<String, Object>)) {
             values = new TreeMap<>(values);
@@ -990,7 +1038,7 @@ public class GrugORM {
             int i = time(ps::executeUpdate);
             return i == 1;
         } catch (Exception e) {
-            logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
+            logger.log(GrugLogger.Level.ERROR, "Exception in delete() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
             throw rethrow(e);
         }
     }

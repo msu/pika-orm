@@ -5,6 +5,7 @@ import grug.db.models.SampleEgb;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Date;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -24,5 +25,7 @@ public class DeleteTest extends TestBase {
         assertEquals(0, orm.find(SampleModel.class).all().toList().size());
 
     }
+
+
 
 }
