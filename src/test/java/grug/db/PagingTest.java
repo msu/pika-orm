@@ -70,6 +70,28 @@ public class PagingTest  extends TestBase {
     }
 
     @Test
+    void testFirstAndLastPageWorksOnLastPageWithQuery(){
+        var orm = initTestDb(SampleModel.DDL);
+        for (int i = 0; i < 100; i++) {
+            SampleModel sampleModel = new SampleModel();
+            sampleModel.setStrVal("sample " + i);
+            sampleModel.setBoolVal(true);
+            sampleModel.setDateVal(new Date());
+            sampleModel.setIntVal(i);
+            orm.insert(sampleModel);
+        }
+
+        // first page
+        var sampleModels = orm.find(SampleModel.class).byQuery()
+                .where("str_val LIKE :s")
+                .withVar("s", "sample%") // should match all
+                .page(10).pageSize(10).orderBy("id");
+
+        assertFalse(sampleModels.isFirstPage());
+        assertTrue(sampleModels.isLastPage());
+    }
+
+    @Test
     void testFirstAndLastPageWorksOnLastPageHalfFull(){
         var orm = initTestDb(SampleModel.DDL);
         for (int i = 0; i < 105; i++) {

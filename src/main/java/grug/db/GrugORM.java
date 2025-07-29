@@ -1774,7 +1774,7 @@ public class GrugORM {
 
         public long totalCount() {
             String sql = "SELECT COUNT(*) as TOTAL FROM ("  + generateSQLNoLimit() + ") T1";
-            var result = GrugORM.this.select(sql).first();
+            var result = GrugORM.this.select(sql, valMap).first();
             return result.asLong("TOTAL");
         }
     }
