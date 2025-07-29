@@ -42,8 +42,8 @@ public class InsertTest extends TestBase {
         var query = orm.query(SampleModel.class)
                 .where("date_val = :val")
                 .withVar("val", new Date(2021, 1, 1));
-        GrugORM.ResultList<SampleModel> result = query.execute();
-        assertEquals(6, result.size());
+        GrugORM.QueryResult<SampleModel> result = query.fetch();
+        assertEquals(6, result.toList().size());
     }
 
     @Test//check with error stuff
