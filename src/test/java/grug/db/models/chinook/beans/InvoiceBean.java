@@ -87,4 +87,7 @@ public class InvoiceBean extends GrugORM.EnterpriseGrugBean {
         this.total = total;
     }
 
+    public static GrugORM.GrugListFinder<InvoiceBean> find() {
+        return find(InvoiceBean.class);
+    }
 }

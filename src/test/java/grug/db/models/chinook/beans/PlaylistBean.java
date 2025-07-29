@@ -1,9 +1,8 @@
 package grug.db.models.chinook.beans;
 
 import grug.db.GrugORM;
-import grug.db.GrugORM.ResultList;
-
-import java.util.List;
+import grug.db.GrugORM.GrugListFinder;
+import grug.db.GrugORM.QueryResult;
 
 public class PlaylistBean extends GrugORM.EnterpriseGrugBean {
 
@@ -23,11 +22,23 @@ public class PlaylistBean extends GrugORM.EnterpriseGrugBean {
         this.name = name;
     }
 
-    public ResultList<TrackBean> getTracks() {
-        return loadNtoN(PlaylistTrackBean.class, TrackBean.class);
+    public QueryResult<TrackBean> getTracks() {
+        return loadManyThrough(PlaylistTrackBean.class, TrackBean.class);
     }
 
-    public static GrugORM.GrugListFinder<PlaylistBean> find() {
-        return orm().find(PlaylistBean.class);
+    public static GrugListFinder<PlaylistBean> find() {
+        return find(PlaylistBean.class);
+    }
+
+    public void addTrack(TrackBean track) {
+        if (track == null) {
+            throw new IllegalArgumentException("Track cannot be null");
+        }
+
+        if (!track.isPersisted()) {
+            track.insert();
+        }
+
+        PlaylistTrackBean.associate(this, track);
     }
 }

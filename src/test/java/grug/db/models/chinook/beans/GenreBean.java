@@ -19,4 +19,8 @@ public class GenreBean extends GrugORM.EnterpriseGrugBean {
     public void setName(String name) {
         this.name = name;
     }
+
+    public static GrugORM.GrugListFinder<GenreBean> find() {
+        return find(GenreBean.class);
+    }
 }

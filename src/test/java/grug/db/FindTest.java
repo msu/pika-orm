@@ -1,6 +1,6 @@
 package grug.db;
 
-import grug.db.GrugORM.ResultList;
+import grug.db.GrugORM.QueryResult;
 import grug.db.models.SampleModel;
 import grug.db.models.SampleEgb;
 import org.junit.jupiter.api.Test;
@@ -33,6 +33,17 @@ public class FindTest extends TestBase{
     }
 
     @Test
+    void testFindFirst() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
+        SampleModel sampleModel2 = new SampleModel("bar", 11, true, new Date());
+        orm.insertAll(sampleModel, sampleModel2);
+
+        SampleModel result = orm.find(SampleModel.class).firstWhere("str_val=:val", Map.of("val", "bar"));
+        assertEquals(sampleModel.getIntVal(), result.getIntVal());
+    }
+
+    @Test
     void testFindAll() {
         var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
         for (int i = 0; i < 10 ; i++) {
@@ -43,18 +54,18 @@ public class FindTest extends TestBase{
 
         List<SampleModel> results =
                 orm.find(SampleModel.class)
-                        .where("int_val=:val", Map.of("val", 10));
+                        .where("int_val=:val", Map.of("val", 10)).toList();
 
         assertEquals(10, results.size());
 
-        results = orm.find(SampleModel.class).where("date_val > :val", Map.of("val", new Date(2050, 1, 1)));
+        results = orm.find(SampleModel.class).where("date_val > :val", Map.of("val", new Date(2050, 1, 1))).toList();
 
         assertEquals(0, results.size());
 
-        results = orm.find(SampleModel.class).where("str_val like :val", Map.of("val", "%b%"));
+        results = orm.find(SampleModel.class).where("str_val like :val", Map.of("val", "%b%")).toList();
         assertEquals(10, results.size());
 
-        results = orm.find(SampleModel.class).all();
+        results = orm.find(SampleModel.class).all().toList();
         assertEquals(10, results.size());
     }
 
@@ -69,7 +80,8 @@ public class FindTest extends TestBase{
         orm.insertAll(sampleModels);
         var results = orm.find(SampleModel.class).where(//we are looking to create the query something like this, select * in sample model where str_val in (?) and (?) (for foo and bar)
                 "str_val in :strs",
-                Map.of("strs", List.of("foo", "bar")));//we can safely assume that when there is a map with collection inside of it we need to iterate over the list and create arguements and insertions for all parameters
+                Map.of("strs", List.of("foo", "bar")))
+                .toList();//we can safely assume that when there is a map with collection inside of it we need to iterate over the list and create arguments and insertions for all parameters
                 //TODO - should this test account for multiple of these collections? say there are 2 maps with different collections, we would possibly want to create question marks for all?
         assertEquals(2, results.size());
     }
@@ -83,7 +95,7 @@ public class FindTest extends TestBase{
 
         SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
         orm.insertAll(sampleModels);
-        var results = orm.select("SELECT * FROM sample_models WHERE int_val=:x ORDER BY id", Map.of("x", 10));
+        var results = orm.select("SELECT * FROM sample_models WHERE int_val=:x ORDER BY id", Map.of("x", 10)).toList();
 
         System.out.println(results);
 
@@ -91,7 +103,7 @@ public class FindTest extends TestBase{
         GrugORM.ResultMap first = results.getFirst();
 
 
-        GrugORM.ResultMap insensitive = first.caseInsensitive();
+        GrugORM.ResultMap insensitive = first.toCaseInsensitiveMap();
         assertEquals("foo", insensitive.get("str_val"));
         assertEquals(10, insensitive.get("int_val"));
         assertEquals(true, insensitive.asBoolean("bool_val"));
@@ -100,7 +112,7 @@ public class FindTest extends TestBase{
     }
 
     record SampleModelGroupByQuery(String strVal, Long sum) {
-        public static ResultList<SampleModelGroupByQuery> exec() {
+        public static QueryResult<SampleModelGroupByQuery> exec() {
             return GrugORM.get().select("""
                             SELECT str_val, sum(int_val) as sum
                             FROM sample_models
@@ -120,13 +132,13 @@ public class FindTest extends TestBase{
         SampleModel[] sampleModels = new SampleModel[] {m1, m2, m3};
         orm.insertAll(sampleModels);
 
-        var results = SampleModelGroupByQuery.exec();
+        var results = SampleModelGroupByQuery.exec().toList();
 
         System.out.println(results);
 
         assertEquals(2, results.size());
 
-        SampleModelGroupByQuery first = results.get(0);
+        SampleModelGroupByQuery first = results.getFirst();
         assertEquals("bar", first.strVal());
         assertEquals(10, first.sum());
 
