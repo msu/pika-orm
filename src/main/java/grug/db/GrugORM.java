@@ -211,7 +211,7 @@ public class GrugORM {
     // Coercion System
     //====================================================================
 
-    public <T> T coerce(Class<T> targetClass, Object value) {
+    public Object coerce(Class targetClass, Object value) {
         for (BiFunction<Class, Object, Object> coercer : coercers) {
             Object result = coercer.apply(targetClass, value);
             if (result != null) {
@@ -228,10 +228,10 @@ public class GrugORM {
                     value.getClass().getSimpleName() + " with value " + value + " to class " +
                     targetClass.getSimpleName());
         }
-        return targetClass.cast(result);
+        return result;
     }
 
-    private <T> T sloppyCoerce(Class<T> targetClass, Object value) {
+    private Object sloppyCoerce(Class targetClass, Object value) {
         try {
             return coerce(targetClass, value);
         } catch (Exception e) {
@@ -254,15 +254,15 @@ public class GrugORM {
             return Enum.valueOf(targetType, String.valueOf(value));
         } else if (targetType == String.class) {
             return String.valueOf(value);
-        } else if (targetType == Short.class && value instanceof String s) {
+        } else if ((targetType == Short.class || targetType == short.class) && value instanceof String s) {
             return Short.valueOf(s);
-        } else if (targetType == Integer.class && value instanceof String s) {
+        } else if ((targetType == Integer.class || targetType == int.class) && value instanceof String s) {
             return Integer.valueOf(s);
-        } else if (targetType == Long.class && value instanceof String s) {
+        } else if ((targetType == Long.class || targetType == long.class) && value instanceof String s) {
             return Long.valueOf(s);
-        } else if (targetType == Float.class && value instanceof String s) {
+        } else if ((targetType == Float.class || targetType == float.class) && value instanceof String s) {
             return Float.valueOf(s);
-        } else if (targetType == Double.class && value instanceof String s) {
+        } else if ((targetType == Double.class || targetType == double.class) && value instanceof String s) {
             return Double.valueOf(s);
         } else if (targetType == BigInteger.class && value instanceof String s) {
             return new BigInteger(s);
@@ -1439,12 +1439,12 @@ public class GrugORM {
             orm().reload(this);
         }
 
-        public void setFields(Map<String, String> map, String... cols) {
-            setFields(map::get, cols);
+        public void setFieldsFrom(Map<String, String> map, String... fields) {
+            setFieldsFrom(map::get, fields);
         }
 
-        public void setFields(UnaryOperator<String> supplier, String... cols) {
-            for (String col : cols) {
+        public void setFieldsFrom(UnaryOperator<String> supplier, String... fields) {
+            for (String col : fields) {
                 String str = supplier.apply(col);
                 setValueFromString(col, str);
             }
@@ -1452,7 +1452,7 @@ public class GrugORM {
 
         private void setValueFromString(String col, String str) {
             Mapping mapping = orm().getMapping(this.getClass());
-            FieldMapping fieldMapping = mapping.getFieldMapping(str);
+            FieldMapping fieldMapping = mapping.getFieldMapping(col);
             if(fieldMapping == null) {
                 throw new IllegalArgumentException("No field '" + str + "' found on " + this.getClass().getSimpleName());
             }
@@ -2790,10 +2790,10 @@ public class GrugORM {
     public static class ResultMap implements Map<String, Object> {
         private final GrugORM orm;
         private Map<String, Object> result;
-        
+
         public ResultMap(GrugORM orm, Map<String, Object> backingMap) {
             this.orm = orm;
-            result = Collections.unmodifiableMap(backingMap);            
+            result = Collections.unmodifiableMap(backingMap);
         }
 
         // automatic down-casting helpers
@@ -2841,39 +2841,39 @@ public class GrugORM {
         // the 'as' methods will attempt to coerce a value to the given type
 
         public String asString(String key) {
-            return orm.sloppyCoerce(String.class, get(key));
+            return (String) orm.sloppyCoerce(String.class, get(key));
         }
 
         public Short asShort(String key) {
-            return orm.sloppyCoerce(Short.class, get(key));
+            return (Short) orm.sloppyCoerce(Short.class, get(key));
         }
 
         public Integer asInteger(String key) {
-            return orm.sloppyCoerce(Integer.class, get(key));
+            return (Integer) orm.sloppyCoerce(Integer.class, get(key));
         }
 
         public Long asLong(String key) {
-            return orm.sloppyCoerce(Long.class, get(key));
+            return (Long) orm.sloppyCoerce(Long.class, get(key));
         }
 
         public Float asFloat(String key) {
-            return orm.sloppyCoerce(Float.class, get(key));
+            return (Float) orm.sloppyCoerce(Float.class, get(key));
         }
 
         public Double asDouble(String key) {
-            return orm.sloppyCoerce(Double.class, get(key));
+            return (Double) orm.sloppyCoerce(Double.class, get(key));
         }
 
         public BigDecimal asBigDecimal(String key) {
-            return orm.sloppyCoerce(BigDecimal.class, get(key));
+            return (BigDecimal) orm.sloppyCoerce(BigDecimal.class, get(key));
         }
 
         public Date asDate(String key) {
-            return orm.sloppyCoerce(Date.class, get(key));
+            return (Date) orm.sloppyCoerce(Date.class, get(key));
         }
 
         public Boolean asBoolean(String key) {
-            return orm.sloppyCoerce(Boolean.class, get(key));
+            return (Boolean) orm.sloppyCoerce(Boolean.class, get(key));
         }
 
         // create a case-insensitive version of the results, some dbs are ugly w/ the cases
