@@ -745,37 +745,89 @@ public class GrugORM {
 
 
     public long[] insertAll(Collection<Object> items){//find some solution maybe to make both function work with eachother, find a pluggable way to include another way to error bounce with the mass_insert_fail
-        long[] ids = new long[items.size()]; //TODO - we are assuming it is all one table, need to find methods for the class structures
+        ArrayList<Long> ids = new ArrayList<>(); //TODO - we are assuming it is all one table, need to find methods for the class structures
+        Class<?> prevClass = null; //this little pointer system allows us to check after each object if the last object was the same class, and if not we throw a logger arror
+        Mapping mappingClass = null;
+        String tableName = null;
+        String[] keyCol = new String[1];
+        Map<String, Object> values = null;//not sure if this is standard practice, as this gets traded hands a lot in this function
+        ArrayList<Object> queryValues = new ArrayList<>();
+        StringBuilder sb = new StringBuilder("INSERT INTO ");
         for (Object insertionInstance : items) {
             if (insertionInstance instanceof GrugRecordLifecycle lifecycle && !lifecycle.validate()) {
                 return MASS_INSERT_FAILED;
             }
+
+
             Class<?> clazz = insertionInstance.getClass();
-            Mapping mapping = getMapping(clazz);
-            String keyCol = mapping.getIdColumn();
-            Map<String, Object> values = mapping.toDatabaseMap(insertionInstance);
-            values.remove(keyCol);
+            if(prevClass != null && !prevClass.equals(clazz)){//easy check for not all same class mass insertions
+                logger.log(GrugLogger.Level.ERROR, "Exception in insertAll() during mass insertion, not all Classes are the same");
+                throw new java.lang.RuntimeException("insertAll Class type failed");
+            }
+
+            if(prevClass == null){//first pass
+                prevClass = clazz;
+                mappingClass = getMapping(clazz);
+                tableName = mappingClass.tableName;
+                keyCol[0] = mappingClass.getIdColumn();
+                values = mappingClass.toDatabaseMap(insertionInstance);//TODO -- biggest problem right now is if they don't have autoincrement ids on and have there own system, then that gets weird with the values section here
+                values.remove(keyCol[0]);
+                sb.append(tableName);
+                sb.append(" (");
+                sb.append(String.join(", ", values.keySet()));
+                if(sqlLiteQuirks) {
+                    sb.append(") DEFAULT VALUES");
+                } else{
+                    sb.append(") VALUES ");
+                }
+            }
+            if(values == null){
+                values = mappingClass.toDatabaseMap(insertionInstance);
+                values.remove(keyCol[0]);
+            }
+            if (values.isEmpty()) {
+                    sb.append(" (");//fix the bitstream .toArray function and check that its the same output, this value should produce the right output
+                    sb.append(Arrays.stream(values.keySet().toArray(new String[0])).map(_ -> "DEFAULT").collect(Collectors.joining(", ")));
+                    sb.append(")");
+                } else {
+                    sb.append(" (");
+                    sb.append(values.keySet().stream().map(_ -> "?").collect(Collectors.joining(", ")));//sets each new row with the insertionInstance values from field
+                    sb.append(")");
+            }
+            sb.append(", ");
+            queryValues.addAll(values.values());
+
             if (insertionInstance instanceof GrugRecordLifecycle lifecycle && !lifecycle.beforeInsert()) {
-                return MASS_INSERT_FAILED;//need to find the solution for resolving the mass insert throw, don't forget to make a logger item
+                return MASS_INSERT_FAILED;
             }
             Object newVersionValue = null;
             // TODO - remove this?  It's an insert...
-            if (mapping.hasVersionColumn()) {
-                newVersionValue = mapping.incrementVersion(values);
-            }//ok, before this I need to validate that the class is the same for all the insertions or I throw an error, then I need to append value to the large statement, return it, and get back ids
-            long id = insert(mapping.getTableName(), values, keyCol);
-            if (mapping.hasVersionColumn() && ids != MASS_INSERT_FAILED) {
-                mapping.updateVersionValue(insertionInstance, newVersionValue);
+            if (mappingClass.hasVersionColumn()) {
+            newVersionValue = mappingClass.incrementVersion(values);//hmmmm
+        }
+            values = null;//just to clean up variable to trigger that if statement, this stops repeating computations
+        }
+        String insertString = sb.toString();
+        insertString = insertString.substring(0, insertString.length() - 2);//could use an edge case here
+        Collection<Object> queryValuesCollection = queryValues;
+        logger.log(getQueryLogLevel(), "MASS INSERT SQL: {}\n  Args:{}", insertString, queryValuesCollection);
+        try (var session = getOrCreateSession();
+             var ps = session.prepareStatement(insertString, queryValuesCollection, keyCol)) {
+            time(ps::executeUpdate);
+            ResultSet generatedKeys = ps.getGeneratedKeys();
+            if (generatedKeys.next()) {
+                ids.add(generatedKeys.getLong(1));//could also just have an accumulator which might be cleaner
+            } else {
+                return MASS_INSERT_FAILED;
             }
-            if (!mapping.isReadOnly() && ids != MASS_INSERT_FAILED) {
-                mapping.setId(insertionInstance, id);
-            }
-            if (insertionInstance instanceof GrugRecordLifecycle lifecycle) {
-                lifecycle.afterInsert();
-            }
-            return ids;
+        } catch (Exception e) {
+            logger.log(GrugLogger.Level.ERROR, "Exception in insertAll() with SQL {} & args {}: {}", insertString, queryValues, e.getMessage());
+            throw rethrow(e);
+        }
+        //TODO -- prepared statement
+        //after I don't know how to track mapping cycles after the mass insertion
+            return ids.stream().mapToLong(Long::longValue).toArray();
        }
-    }
 
     private long insert(String tableName, Map<String, Object> values, String... keyCols) {
         if (!(values instanceof LinkedHashMap<String, Object>)) {
@@ -817,7 +869,6 @@ public class GrugORM {
             throw rethrow(e);
         }
     }
-
     public boolean update(Object object) {
         if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.validate()) {
             return false;

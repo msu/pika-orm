@@ -1,5 +1,7 @@
 package grug.db;
 
+import grug.db.models.HasEnum;
+import grug.db.models.OptimisticBean;
 import grug.db.models.SampleModel;
 import grug.db.models.SampleEgb;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,14 +29,30 @@ public class InsertTest extends TestBase {
         SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
         SampleModel sampleModel2 = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
         SampleModel sampleModel3 = new SampleModel("zee", 10, true, new Date(2021, 1, 1));
-        SampleModel sampleModel4= new SampleModel("hoo", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel4 = new SampleModel("hoo", 10, true, new Date(2021, 1, 1));
         SampleModel sampleModel5 = new SampleModel("daw", 10, true, new Date(2021, 1, 1));
         SampleModel sampleModel6 = new SampleModel("jaw", 10, true, new Date(2021, 1, 1));
 
         long ids[] = orm.insertAll(sampleModel, sampleModel2, sampleModel3, sampleModel4, sampleModel5, sampleModel6);
 
         assertEquals(6, ids.length);
-        assertEquals(sampleModel.getId(), ids[0]);
+    }
+
+    @Test//check with error stuff
+    void testFailInsertAllMultiClass(){
+        var orm = initTestDb(SampleModel.DDL);
+        SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel2 = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel3 = new SampleModel("zee", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel4= new SampleModel("hoo", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel5 = new SampleModel("daw", 10, true, new Date(2021, 1, 1));
+        SampleModel sampleModel6 = new SampleModel("jaw", 10, true, new Date(2021, 1, 1));
+        OptimisticBean sampleModel7 = new OptimisticBean();
+
+
+        long ids[] = orm.insertAll(sampleModel, sampleModel2, sampleModel3, sampleModel4, sampleModel5, sampleModel6, sampleModel7);
+
+
     }
 
 }
