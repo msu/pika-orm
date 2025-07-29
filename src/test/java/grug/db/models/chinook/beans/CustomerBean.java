@@ -119,4 +119,8 @@ public class CustomerBean extends GrugORM.EnterpriseGrugBean {
     public void setSupportRepId(int supportRepId) {
         this.supportRepId = supportRepId;
     }
+
+    public static GrugORM.GrugListFinder<CustomerBean> find() {
+        return find(CustomerBean.class);
+    }
 }

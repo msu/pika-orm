@@ -14,7 +14,7 @@ public class Foo {
     private long fooContainerId;
 
     public FooContainer getFooContainer() {
-        return GrugORM.get().load1(this, FooContainer.class);
+        return GrugORM.get().load(this, FooContainer.class);
     }
 
     public void setFooContainerId(long id) {

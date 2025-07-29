@@ -1,6 +1,7 @@
 package grug.db.models.chinook.beans;
 
 import grug.db.GrugORM;
+import grug.db.GrugORM.GrugListFinder;
 
 import java.util.List;
 
@@ -80,12 +81,12 @@ public class TrackBean extends GrugORM.EnterpriseGrugBean {
         this.unitPrice = unitPrice;
     }
 
-    public List<PlaylistBean> getPlaylists() {
-        return loadNtoN(PlaylistTrackBean.class, PlaylistBean.class);
+    public GrugORM.QueryResult<PlaylistBean> getPlaylists() {
+        return loadManyThrough(PlaylistTrackBean.class, PlaylistBean.class);
     }
 
-    public static GrugORM.GrugListFinder<TrackBean> find() {
-        return orm().find(TrackBean.class);
+    public static GrugListFinder<TrackBean> find() {
+        return find(TrackBean.class);
     }
 
 }

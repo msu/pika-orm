@@ -115,7 +115,7 @@ public abstract class TestBase {
             grugORM.withLogLevel(TRACE)
             .makeDefaultORM();
 
-            // execute DDL
+            // fetch DDL
             for (String ddlToRun : ddlAsList) {
                 grugORM.exec(ddlToRun);
             }

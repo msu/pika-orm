@@ -13,8 +13,8 @@ public class FooContainer {
 
     private long id;
 
-    public List<Foo> getFoos() {
-        return GrugORM.get().loadN(this, Foo.class);
+    public GrugORM.QueryResult<Foo> getFoos() {
+        return GrugORM.get().loadMany(this, Foo.class);
     }
 
     public long getId() {

@@ -17,28 +17,6 @@ public class CustomizationTest extends TestBase {
     public void testTableCustomizations() {
         var orm = initTestDb(HasCustomizedMetadata.DDL);
 
-        Gson gson = new Gson();
-
-        orm.withMapping(HasCustomizedMetadata.class,
-                new Mapping(){
-
-                    @Override
-                    public String mapToTable() {
-                        return "foos";
-                    }
-
-                    @Override
-                    public FieldMapping mapField(Field field) {
-                        return switch (field.getName()) {
-                            case "ignoreMe" -> ignore(field);
-                            case "myId" -> map(field).toColumn("id").asId();
-                            case "json" -> map(field).asType(String.class).transformForDB(gson::toJson)
-                                    .transformFromDB(val -> gson.fromJson(String.valueOf(val), Map.class));
-                            default -> defaultMapping(field);
-                        };
-                    }
-                });
-
         HasCustomizedMetadata custom = new HasCustomizedMetadata();
         custom.setMap(Map.of("foo", 1.0, "bar", 2.0));
 
