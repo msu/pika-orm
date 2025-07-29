@@ -1952,11 +1952,11 @@ public class GrugORM {
             return this.query.isLastPage();
         }
 
-        private long totalPages() {
+        public long totalPages() {
             return this.query.totalPages();
         }
 
-        private long totalCount() {
+        public long totalCount() {
             return this.query.totalCount();
         }
     }
