@@ -258,12 +258,20 @@ public class GrugORM {
             return Short.valueOf(s);
         } else if ((targetType == Integer.class || targetType == int.class) && value instanceof String s) {
             return Integer.valueOf(s);
+        } else if ((targetType == Integer.class || targetType == int.class) && value instanceof Short s) {
+            return Integer.valueOf(s);
         } else if ((targetType == Long.class || targetType == long.class) && value instanceof String s) {
             return Long.valueOf(s);
+        } else if ((targetType == Long.class || targetType == long.class) && value instanceof Short s) {
+            return Long.valueOf(s);
+        } else if ((targetType == Long.class || targetType == long.class) && value instanceof Integer i) {
+            return Long.valueOf(i);
         } else if ((targetType == Float.class || targetType == float.class) && value instanceof String s) {
             return Float.valueOf(s);
         } else if ((targetType == Double.class || targetType == double.class) && value instanceof String s) {
             return Double.valueOf(s);
+        } else if ((targetType == Double.class || targetType == double.class) && value instanceof Float f) {
+            return Double.valueOf(f);
         } else if (targetType == BigInteger.class && value instanceof String s) {
             return new BigInteger(s);
         } else if (targetType == BigDecimal.class && value instanceof String s) {
@@ -1683,9 +1691,47 @@ public class GrugORM {
             return generateSQL() + "\nVals:" + this.valMap;
         }
 
+        public int getPage() {
+            return page;
+        }
+
+        public boolean isFirstPage() {
+            if (page > 0) {
+                return page == 1;
+            } else {
+                return false;
+            }
+        }
+
+        public boolean isLastPage() {
+            if(page > 0) {
+                return page == totalPages();
+            } else {
+                return false;
+            }
+        }
+
+        public long totalPages() {
+            if (page > 0) {
+                long totalCount = totalCount();
+                long finalPageSize = pageSize;
+                if (finalPageSize == -1) {
+                    finalPageSize = defaultPageSize;
+                }
+                return Math.ceilDiv(totalCount, finalPageSize);
+            } else {
+                return 1;
+            }
+        }
+
+        public long totalCount() {
+            String sql = "SELECT COUNT(*) as TOTAL FROM ("  + generateSQLNoLimit() + ") T1";
+            var result = GrugORM.this.select(sql).first();
+            return result.asLong("TOTAL");
+        }
     }
 
-    public class GrugClassQuery<T> implements Callable<QueryResult<T>> {
+    public class GrugClassQuery<T> implements Callable<QueryResult<T>>, Iterable<T> {
 
         private final GrugQuery<T> query;
         private final Class classToFind;
@@ -1839,6 +1885,31 @@ public class GrugORM {
 
         public QueryResult<T> call() throws Exception {
             return fetch();
+        }
+
+        @Override
+        public Iterator<T> iterator() {
+            return fetch().iterator();
+        }
+
+        public int getPage() {
+            return this.query.getPage();
+        }
+
+        public boolean isFirstPage() {
+            return this.query.isFirstPage();
+        }
+
+        public boolean isLastPage() {
+            return this.query.isLastPage();
+        }
+
+        private long totalPages() {
+            return this.query.totalPages();
+        }
+
+        private long totalCount() {
+            return this.query.totalCount();
         }
     }
 
