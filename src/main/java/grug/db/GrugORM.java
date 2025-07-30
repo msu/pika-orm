@@ -972,7 +972,6 @@ public class GrugORM {
         return update;
     }
 
-    //reference for bulk UPDATEALL
     private boolean update(String tableName, String keyCol, Object keyVal, String versionCol, Object versionVal, Map<String, Object> values) {
         if (!(values instanceof TreeMap<String, Object>)) {
             values = new TreeMap<>(values);
