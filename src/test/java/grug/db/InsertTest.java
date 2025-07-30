@@ -42,14 +42,14 @@ public class InsertTest extends TestBase {
         var query = orm.query(SampleModel.class)
                 .where("date_val = :val")
                 .withVar("val", new Date(2021, 1, 1));
-        GrugORM.QueryResult<SampleModel> result = query.fetch();
-        assertEquals(6, result.toList().size());
+
+        var result = query.fetchAsList();
+
+        assertEquals(6, result.size());
     }
 
     @Test//check with error stuff
     void testFailInsertAllMultiClass(){
-
-
         var orm = initTestDb(SampleModel.DDL);
         try {
             SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
@@ -61,13 +61,8 @@ public class InsertTest extends TestBase {
             OptimisticBean sampleModel7 = new OptimisticBean();
             orm.insertAll(sampleModel, sampleModel2, sampleModel3, sampleModel4, sampleModel5, sampleModel6, sampleModel7);
             fail("Should fail as there are more than one class being mass inserted at once");
-        } catch (RuntimeException e){
-            assertEquals("insertAll Class type failed", e.getMessage());
+        } catch (IllegalStateException e){
+            assertEquals("All values passed to insertAll() must be the same type!  Expected SampleModel but found OptimisticBean", e.getMessage());
         }
-
-
-
-
     }
-
 }

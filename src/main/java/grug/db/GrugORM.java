@@ -223,7 +223,7 @@ public class GrugORM {
         }
         Object result;
         result = defaultCoercions(targetClass, value);
-        if(result == null) {
+        if (result == null) {
             throw new IllegalArgumentException("No coercions found from object of type " +
                     value.getClass().getSimpleName() + " with value " + value + " to class " +
                     targetClass.getSimpleName());
@@ -248,7 +248,7 @@ public class GrugORM {
     }
 
     private Object defaultCoercions(Class targetType, Object value) {
-        if(targetType.isInstance(value)) {
+        if (targetType.isInstance(value)) {
             return value;
         } else if (targetType.isEnum()) {
             return Enum.valueOf(targetType, String.valueOf(value));
@@ -849,64 +849,56 @@ public class GrugORM {
         insertAll(List.of(items));
     }
 
-
-
-
-    public void insertAll(Collection<Object> items){//philosophy here is is that we aren't promising anything, and if you want ID's out of your inserts that you can do a loop. This is just a simple helper and you can write your own sql if you want a better solution
-        Class<?> prevClass = null; //this little pointer system allows us to check after each object if the last object was the same class, and if not we throw a logger arror
-        Mapping mappingClass = null;
-        String tableName = null;
-        String[] keyCol = new String[1];
-        Map<String, Object> values = null;//not sure if this is standard practice, as this gets traded hands a lot in this function
-        ArrayList<Object> queryValues = new ArrayList<>();
-        StringBuilder sb = new StringBuilder("INSERT INTO ");
-        for (Object insertionInstance : items) {
-            Class<?> clazz = insertionInstance.getClass();
-            if(prevClass != null && !prevClass.equals(clazz)){//easy check for not all same class mass insertions
-                logger.log(GrugLogger.Level.ERROR, "Exception in insertAll() during mass insertion, not all Classes are the same");
-                throw new java.lang.RuntimeException("insertAll Class type failed");
-            }
-            if(prevClass == null){//first pass
-                prevClass = clazz;
-                mappingClass = getMapping(clazz);
-                tableName = mappingClass.tableName;
-                keyCol[0] = mappingClass.getIdColumn();
-                values = mappingClass.toDatabaseMap(insertionInstance);
-                values.remove(keyCol[0]);
-                sb.append(tableName);
-                sb.append(" (");
-                sb.append(String.join(", ", values.keySet()));
-                sb.append(") VALUES ");//this is where pluggable work will be done if needed.
-            }
-            if(values == null){
-                values = mappingClass.toDatabaseMap(insertionInstance);
-                values.remove(keyCol[0]);
-            }
-            if (values.isEmpty()) { //need to look at case when one of the objects doesnt have all the values....
-                    sb.append(" (");//fix the bitstream .toArray function and check that its the same output, this value should produce the right output
-                    sb.append(Arrays.stream(values.keySet().toArray(new String[0])).map(_ -> "DEFAULT").collect(Collectors.joining(", ")));
-                    sb.append(")");
-                } else {
-                    sb.append(" (");
-                    sb.append(values.keySet().stream().map(_ -> "?").collect(Collectors.joining(", ")));//sets each new row with the insertionInstance values from field
-                    sb.append(")");
-                    queryValues.addAll(values.values());
-            }
-            sb.append(", ");
-            values = null;//just to clean up variable to trigger that if statement, this stops repeating computations
+    public void insertAll(List<Object> items) {
+        if (items.isEmpty()) {
+            return;
         }
+
+        // Metadata
+        Object templateItem = items.getFirst();
+        Class<?> templateClass = templateItem.getClass();
+        Mapping mapping = getMapping(templateClass);
+        Set<String> columns = mapping.toDatabaseMap(templateItem).keySet();
+        String tableName = mapping.getTableName();
+        String idColumn = mapping.getIdColumn();
+        columns.remove(idColumn);
+
+        // Query builder
+        StringBuilder sb = new StringBuilder("INSERT INTO ");
+        sb.append(tableName).append(" (")
+                .append(String.join(", ", columns)).append(") VALUES ");
+
+        // Map to
+        List<Object> values = new ArrayList<>();
+        for (Object item : items) {
+            if(!templateClass.isInstance(item)) {
+                throw new IllegalStateException("All values passed to insertAll() must be the same type!  Expected " +
+                        templateClass.getSimpleName() + " but found " + item.getClass().getSimpleName());
+            }
+
+            Map<String, Object> mapForItem = mapping.toDatabaseMap(item);
+            mapForItem.remove(idColumn);
+
+            Collection<Object> valuesForItem = mapForItem.values();
+            values.addAll(valuesForItem);
+
+            sb.append("(").append("?, ".repeat(valuesForItem.size()));
+            sb.delete(sb.length() - 2, sb.length());
+            sb.append("), ");
+        }
+        sb.delete(sb.length() - 2, sb.length());
+
         String insertString = sb.toString();
-        insertString = insertString.substring(0, insertString.length() - 2);//could use an edge case here
-        Collection<Object> queryValuesCollection = queryValues;
-        logger.log(getQueryLogLevel(), "MASS INSERT SQL: {}\n  Args:{}", insertString, queryValuesCollection);
+
+        logger.log(getQueryLogLevel(), "BULK INSERT SQL: {}\n  Args:{}", insertString, values);
         try (var session = getOrCreateSession();
-             var ps = session.prepareStatement(insertString, queryValuesCollection, keyCol)) {
+             var ps = session.prepareStatement(insertString, values)) {
             time(ps::executeUpdate);
         } catch (Exception e) {
-            logger.log(GrugLogger.Level.ERROR, "Exception in insertAll() with SQL {} & args {}: {}", insertString, queryValues, e.getMessage());
+            logger.log(GrugLogger.Level.ERROR, "Exception in insertAll() with SQL {} & args {}: {}", insertString, values, e.getMessage());
             throw rethrow(e);
         }
-       }
+    }
 
     private long insert(String tableName, Map<String, Object> values, String... keyCols) {
         if (!(values instanceof LinkedHashMap<String, Object>)) {
@@ -948,6 +940,7 @@ public class GrugORM {
             throw rethrow(e);
         }
     }
+
     public boolean update(Object object) {
         if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.validate()) {
             return false;
@@ -978,6 +971,7 @@ public class GrugORM {
         }
         return update;
     }
+
     //reference for bulk UPDATEALL
     private boolean update(String tableName, String keyCol, Object keyVal, String versionCol, Object versionVal, Map<String, Object> values) {
         if (!(values instanceof TreeMap<String, Object>)) {
@@ -1509,7 +1503,7 @@ public class GrugORM {
         private void setValueFromString(String col, String str) {
             Mapping mapping = orm().getMapping(this.getClass());
             FieldMapping fieldMapping = mapping.getFieldMapping(col);
-            if(fieldMapping == null) {
+            if (fieldMapping == null) {
                 throw new IllegalArgumentException("No field '" + str + "' found on " + this.getClass().getSimpleName());
             }
             Class fieldType = fieldMapping.getType();
@@ -1530,7 +1524,7 @@ public class GrugORM {
                 sb.append(name);
                 sb.append(":");
                 Object fieldValue = fieldMapping.getFieldValue(this);
-                if(fieldValue instanceof String) {
+                if (fieldValue instanceof String) {
                     sb.append("\"").append(fieldValue).append("\"");
                 } else {
                     sb.append(fieldValue);
@@ -1752,7 +1746,7 @@ public class GrugORM {
         }
 
         public boolean isLastPage() {
-            if(page > 0) {
+            if (page > 0) {
                 return page == totalPages();
             } else {
                 return false;
@@ -1773,7 +1767,7 @@ public class GrugORM {
         }
 
         public long totalCount() {
-            String sql = "SELECT COUNT(*) as TOTAL FROM ("  + generateSQLNoLimit() + ") T1";
+            String sql = "SELECT COUNT(*) as TOTAL FROM (" + generateSQLNoLimit() + ") T1";
             var result = GrugORM.this.select(sql, valMap).first();
             return result.asLong("TOTAL");
         }
@@ -2056,7 +2050,7 @@ public class GrugORM {
     }
 
     public GrugORM withMapping(Class classToMap, String tableName) {
-        return withMapping(classToMap, new Mapping(){
+        return withMapping(classToMap, new Mapping() {
             public String mapToTable() {
                 return tableName;
             }
