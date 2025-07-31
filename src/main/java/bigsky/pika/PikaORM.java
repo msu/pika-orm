@@ -2765,7 +2765,7 @@ public class PikaORM {
         public static final class PikaMigration {
 
             public static final String DDL = """
-                    CREATE TABLE IF NOT EXISTS grug_migrations (
+                    CREATE TABLE IF NOT EXISTS pika_migrations (
                         id INTEGER PRIMARY KEY,
                         applied_at DATETIME,
                         name VARCHAR UNIQUE NOT NULL,
@@ -3170,8 +3170,8 @@ public class PikaORM {
     private static Consumer<Exception> generateForceThrower() {
         var tmpClass = new ClassLoader(PikaORM.class.getClassLoader()) {
             public Class defineClass() {
-                byte[] bytes = Base64.getDecoder().decode("yv66vgAAADQAEgEAGGdydWcvZGIvRm9yY2VUaHJvd2VySW1wbAcAAQEAEGphdmEvbGFuZy9PYmplY3QHAAMBABtqYXZhL3V0aWwvZnVuY3Rpb24vQ29uc3VtZXIHAAUBABVGb3JjZVRocm93ZXJJbXBsLmphdmEBAAY8aW5pdD4BAAMoKVYMAAgACQoABAAKAQAGYWNjZXB0AQAVKExqYXZhL2xhbmcvT2JqZWN0OylWAQATamF2YS9sYW5nL1Rocm93YWJsZQcADgEABENvZGUBAApTb3VyY2VGaWxlACEAAgAEAAEABgAAAAIAAQAIAAkAAQAQAAAAEQABAAEAAAAFKrcAC7EAAAAAAAEADAANAAEAEAAAABEAAQACAAAABSvAAA+/AAAAAAABABEAAAACAAc=");
-                return defineClass("grug.db.ForceThrowerImpl", bytes, 0, bytes.length);
+                byte[] bytes = Base64.getDecoder().decode("yv66vgAAADQAEgEAHGJpZ3NreS9waWthL0ZvcmNlVGhyb3dlckltcGwHAAEBABBqYXZhL2xhbmcvT2JqZWN0BwADAQAbamF2YS91dGlsL2Z1bmN0aW9uL0NvbnN1bWVyBwAFAQAVRm9yY2VUaHJvd2VySW1wbC5qYXZhAQAGPGluaXQ+AQADKClWDAAIAAkKAAQACgEABmFjY2VwdAEAFShMamF2YS9sYW5nL09iamVjdDspVgEAE2phdmEvbGFuZy9UaHJvd2FibGUHAA4BAARDb2RlAQAKU291cmNlRmlsZQAhAAIABAABAAYAAAACAAEACAAJAAEAEAAAABEAAQABAAAABSq3AAuxAAAAAAABAAwADQABABAAAAARAAEAAgAAAAUrwAAPvwAAAAAAAQARAAAAAgAH");
+                return defineClass("bigsky.pika.ForceThrowerImpl", bytes, 0, bytes.length);
             }
         }.defineClass();
         try {

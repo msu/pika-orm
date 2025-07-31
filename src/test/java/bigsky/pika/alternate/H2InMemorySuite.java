@@ -6,7 +6,7 @@ import org.junit.platform.suite.api.*;
 
 @Suite
 @SuiteDisplayName("H2 In Memory Suite")
-@SelectPackages({"grug.db"})
+@SelectPackages({"bigsky.pika"})
 @ExcludeClassNamePatterns({".*ErrorsTest.*", ".*Chinook.*", ".*MigrationsTest"})
 public class H2InMemorySuite {
 
