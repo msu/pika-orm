@@ -1,15 +1,13 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.models.HasDate;
-import grug.db.models.HasEnum;
-import org.junit.jupiter.api.BeforeEach;
+import bigsky.pika.models.HasDate;
+import bigsky.pika.models.HasEnum;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
-import static grug.db.models.HasEnum.MyEnum.BAR;
+import static bigsky.pika.models.HasEnum.MyEnum.BAR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class DataTypesTest extends TestBase {

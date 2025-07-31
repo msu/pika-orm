@@ -1,7 +1,7 @@
-package grug.db.alternate;
+package bigsky.pika.alternate;
 
 
-import grug.db.TestBase;
+import bigsky.pika.TestBase;
 import org.junit.platform.suite.api.*;
 
 @Suite

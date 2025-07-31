@@ -1,12 +1,12 @@
-package grug.db.models.chinook.beans;
+package bigsky.pika.models.chinook.beans;
 
-import grug.db.GrugORM.EnterpriseGrugBean;
-import grug.db.GrugORM.GrugListFinder;
-import grug.db.GrugORM.QueryResult;
+import bigsky.pika.PikaORM.EnterprisePikaBean;
+import bigsky.pika.PikaORM.PikaListFinder;
+import bigsky.pika.PikaORM.QueryResult;
 
 import java.util.Date;
 
-public class EmployeeBean extends EnterpriseGrugBean {
+public class EmployeeBean extends EnterprisePikaBean {
 
     Long employeeId;
     String lastName;
@@ -148,7 +148,7 @@ public class EmployeeBean extends EnterpriseGrugBean {
         return load(EmployeeBean.class, "ReportsTo");
     }
 
-    public static GrugListFinder<EmployeeBean> find() {
+    public static PikaListFinder<EmployeeBean> find() {
         return find(EmployeeBean.class);
     }
 }

@@ -1,8 +1,8 @@
-package grug.db.models;
+package bigsky.pika.models;
 
-import grug.db.GrugORM.Interfaces.GrugRecordLifecycle;
+import bigsky.pika.PikaORM.Interfaces.PikaRecordLifecycle;
 
-public class TransactionDemo implements GrugRecordLifecycle {
+public class TransactionDemo implements PikaRecordLifecycle {
 
     public static final String DDL = """
             CREATE TABLE IF NOT EXISTS transaction_demos (

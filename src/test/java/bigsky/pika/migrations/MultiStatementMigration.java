@@ -1,15 +1,15 @@
-package grug.db.migrations;
+package bigsky.pika.migrations;
 
-import grug.db.GrugORM;
+import bigsky.pika.PikaORM;
 
-public class MultiStatementMigration extends GrugORM.Migrations {
+public class MultiStatementMigration extends PikaORM.Migrations {
 
     @Override
     public void migrations() {
         add(this::addMigrationDemoTable);
     }
 
-    public GrugMigration addMigrationDemoTable() {
+    public PikaMigration addMigrationDemoTable() {
         return makeMigration("migration1")
                 .up("""
                         CREATE TABLE IF NOT EXISTS migration_demo_models (

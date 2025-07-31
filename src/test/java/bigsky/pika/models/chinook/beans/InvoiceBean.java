@@ -1,12 +1,12 @@
-package grug.db.models.chinook.beans;
+package bigsky.pika.models.chinook.beans;
 
 
-import grug.db.GrugORM;
+import bigsky.pika.PikaORM;
 
 import java.math.BigDecimal;
 import java.util.Date;
 
-public class InvoiceBean extends GrugORM.EnterpriseGrugBean {
+public class InvoiceBean extends PikaORM.EnterprisePikaBean {
 
     int invoiceId;
     int customerId;
@@ -87,7 +87,7 @@ public class InvoiceBean extends GrugORM.EnterpriseGrugBean {
         this.total = total;
     }
 
-    public static GrugORM.GrugListFinder<InvoiceBean> find() {
+    public static PikaORM.PikaListFinder<InvoiceBean> find() {
         return find(InvoiceBean.class);
     }
 }

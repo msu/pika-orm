@@ -1,10 +1,11 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.GrugORM.Migrations.GrugMigration;
-import grug.db.GrugORM.Migrations.MigrationStatus;
-import grug.db.migrations.*;
-import grug.db.migrations.MigrationFileForConsoleTesting;
-import org.junit.jupiter.api.BeforeEach;
+import bigsky.pika.PikaORM.Migrations.PikaMigration;
+import bigsky.pika.PikaORM.Migrations.MigrationStatus;
+import bigsky.pika.migrations.MigrationDemoModel;
+import bigsky.pika.migrations.MigrationsFile1;
+import bigsky.pika.migrations.MultiStatementMigration;
+import bigsky.pika.migrations.MigrationFileForConsoleTesting;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -41,7 +42,7 @@ public class MigrationsTest extends TestBase {
         orm.withMigrations(migrations);
         migrations.applyAll();
 
-        var migrationsInDb = orm.find(GrugMigration.class).all().toList();
+        var migrationsInDb = orm.find(PikaMigration.class).all().toList();
 
         assertEquals(1, migrationsInDb.size());
         assertEquals(MigrationStatus.APPLIED, migrationsInDb.getFirst().getStatus());

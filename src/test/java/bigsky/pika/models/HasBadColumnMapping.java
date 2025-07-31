@@ -1,4 +1,4 @@
-package grug.db.models;
+package bigsky.pika.models;
 
 public class HasBadColumnMapping {
     public static String DDL = """

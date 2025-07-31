@@ -1,9 +1,9 @@
-package grug.db.models.chinook.beans;
+package bigsky.pika.models.chinook.beans;
 
-import grug.db.GrugORM.EnterpriseGrugBean;
-import grug.db.GrugORM.GrugListFinder;
+import bigsky.pika.PikaORM.EnterprisePikaBean;
+import bigsky.pika.PikaORM.PikaListFinder;
 
-public class AlbumBean extends EnterpriseGrugBean {
+public class AlbumBean extends EnterprisePikaBean {
     Long artistId;
     Long albumId;
     String title;
@@ -24,7 +24,7 @@ public class AlbumBean extends EnterpriseGrugBean {
         return load(ArtistBean.class);
     }
 
-    public static GrugListFinder<AlbumBean> find() {
+    public static PikaListFinder<AlbumBean> find() {
         return find(AlbumBean.class);
     }
 }

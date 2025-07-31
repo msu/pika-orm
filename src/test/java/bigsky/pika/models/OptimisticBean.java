@@ -1,8 +1,8 @@
-package grug.db.models;
+package bigsky.pika.models;
 
-import grug.db.GrugORM.EnterpriseGrugBean;
+import bigsky.pika.PikaORM.EnterprisePikaBean;
 
-public class OptimisticBean extends EnterpriseGrugBean {
+public class OptimisticBean extends EnterprisePikaBean {
 
     public static final String DDL = """
             CREATE TABLE IF NOT EXISTS optimistic_beans (

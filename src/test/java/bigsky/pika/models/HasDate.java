@@ -1,4 +1,4 @@
-package grug.db.models;
+package bigsky.pika.models;
 
 import java.util.Date;
 

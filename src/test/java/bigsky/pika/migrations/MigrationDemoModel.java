@@ -1,10 +1,10 @@
-package grug.db.migrations;
+package bigsky.pika.migrations;
 
-import grug.db.GrugORM.Interfaces.GrugRecordLifecycle;
+import bigsky.pika.PikaORM.Interfaces.PikaRecordLifecycle;
 
 import java.util.Date;
 
-public class MigrationDemoModel implements GrugRecordLifecycle {
+public class MigrationDemoModel implements PikaRecordLifecycle {
 
     private Long id;
     private String strVal;

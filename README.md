@@ -1,10 +1,10 @@
-# GrugORM
+# PikaORM
 
 > Ah yes, just what we need: another ORM...
 
-GrugORM is an [object-relational mapping tool](https://en.wikipedia.org/wiki/Object%E2%80%93relational_mapping) for Java.
+PikaORM is an [object-relational mapping tool](https://en.wikipedia.org/wiki/Object%E2%80%93relational_mapping) for Java.
 
-GrugORM is designed differently than most other Java ORM tools:
+PikaORM is designed differently than most other Java ORM tools:
 
 * It does not require any code-generation
 * It works with [POJOs](https://en.wikipedia.org/wiki/Plain_old_Java_object)
@@ -14,7 +14,7 @@ GrugORM is designed differently than most other Java ORM tools:
 
 ## Quick Start
 
-Here is an example of GrugORM in action:
+Here is an example of PikaORM in action:
 
 ```java
 // a POJO model class
@@ -25,11 +25,11 @@ class MyModel {
 
 public static void main(String[] args) {
     // create an ORM with a connection string
-    var orm = new GrugORM("jdbc:sqlite:demo.db");
+    var orm = new PikaORM("jdbc:sqlite:demo.db");
 
     // create a new model object
     var model = new MyModel();
-    model.str = "Hello GrugORM";
+    model.str = "Hello PikaORM";
 
     // save it to the database, get the resulting generated id
     var id = orm.insert(model);
@@ -37,7 +37,7 @@ public static void main(String[] args) {
     // load the model from db by id
     var fromDb = orm.find(MyModel.class).byId(id);
 
-    // print out "Hello GrugORM"
+    // print out "Hello PikaORM"
     System.out.println(fromDb.str);
 }
 ```
@@ -54,7 +54,7 @@ CREATE TABLE my_models (
 );
 ```
 
-## Configuring GrugORM
+## Configuring PikaORM
 
 ### Default Mapping
 
@@ -68,18 +68,18 @@ CREATE TABLE my_models (
 
 ## CRUD with POJOS
 
-## CRUD with EnterpriseGrugBeans
+## CRUD with EnterprisePikaBeans
 
-### Validation in EnterpriseGrugBeans
+### Validation in EnterprisePikaBeans
 
 ## Raw Queries
 
-### GrugQueryBuilder
+### PikaQueryBuilder
 
 ### Defining Custom Query Records
 
-## Transactions In GrugORM
+## Transactions In PikaORM
 
 ## Migrations
 
-## Using GrugORM with a Web Framework
+## Using PikaORM with a Web Framework

@@ -1,6 +1,6 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.models.OptimisticBean;
+import bigsky.pika.models.OptimisticBean;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

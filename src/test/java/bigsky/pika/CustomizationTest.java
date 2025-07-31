@@ -1,12 +1,8 @@
-package grug.db;
+package bigsky.pika;
 
-import com.google.gson.Gson;
-import grug.db.GrugORM.FieldMapping;
-import grug.db.GrugORM.Mapping;
-import grug.db.models.HasCustomizedMetadata;
+import bigsky.pika.models.HasCustomizedMetadata;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

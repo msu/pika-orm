@@ -1,8 +1,8 @@
-package grug.db.models.chinook.beans;
+package bigsky.pika.models.chinook.beans;
 
-import grug.db.GrugORM;
+import bigsky.pika.PikaORM;
 
-public class InvoiceItemBean extends GrugORM.EnterpriseGrugBean {
+public class InvoiceItemBean extends PikaORM.EnterprisePikaBean {
 
     int invoiceItemId;
     int invoiceId;
@@ -47,7 +47,7 @@ public class InvoiceItemBean extends GrugORM.EnterpriseGrugBean {
         this.quantity = quantity;
     }
 
-    public static GrugORM.GrugListFinder<InvoiceItemBean> find() {
+    public static PikaORM.PikaListFinder<InvoiceItemBean> find() {
         return find(InvoiceItemBean.class);
     }
 }

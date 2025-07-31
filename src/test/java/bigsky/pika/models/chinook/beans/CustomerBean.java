@@ -1,9 +1,9 @@
-package grug.db.models.chinook.beans;
+package bigsky.pika.models.chinook.beans;
 
 
-import grug.db.GrugORM;
+import bigsky.pika.PikaORM;
 
-public class CustomerBean extends GrugORM.EnterpriseGrugBean {
+public class CustomerBean extends PikaORM.EnterprisePikaBean {
 
     int customerId;
     String firstName;
@@ -120,7 +120,7 @@ public class CustomerBean extends GrugORM.EnterpriseGrugBean {
         this.supportRepId = supportRepId;
     }
 
-    public static GrugORM.GrugListFinder<CustomerBean> find() {
+    public static PikaORM.PikaListFinder<CustomerBean> find() {
         return find(CustomerBean.class);
     }
 }

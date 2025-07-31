@@ -1,8 +1,8 @@
-package grug.db;
+package bigsky.pika;
 
 import org.junit.jupiter.api.Test;
 
-import static grug.db.GrugORM.TextTools.pluralize;
+import static bigsky.pika.PikaORM.TextTools.pluralize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TextToolTest {

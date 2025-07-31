@@ -1,10 +1,10 @@
-package grug.db.models.chinook.beans;
+package bigsky.pika.models.chinook.beans;
 
-import grug.db.GrugORM;
-import grug.db.GrugORM.GrugListFinder;
-import grug.db.GrugORM.QueryResult;
+import bigsky.pika.PikaORM;
+import bigsky.pika.PikaORM.PikaListFinder;
+import bigsky.pika.PikaORM.QueryResult;
 
-public class PlaylistBean extends GrugORM.EnterpriseGrugBean {
+public class PlaylistBean extends PikaORM.EnterprisePikaBean {
 
     int playlistId;
     String name;
@@ -26,7 +26,7 @@ public class PlaylistBean extends GrugORM.EnterpriseGrugBean {
         return loadManyThrough(PlaylistTrackBean.class, TrackBean.class);
     }
 
-    public static GrugListFinder<PlaylistBean> find() {
+    public static PikaListFinder<PlaylistBean> find() {
         return find(PlaylistBean.class);
     }
 

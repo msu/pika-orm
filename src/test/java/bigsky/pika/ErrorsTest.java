@@ -1,7 +1,7 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.models.HasBadColumnMapping;
-import grug.db.models.HasCustomizedMetadata;
+import bigsky.pika.models.HasBadColumnMapping;
+import bigsky.pika.models.HasCustomizedMetadata;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

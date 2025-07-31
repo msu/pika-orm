@@ -1,8 +1,8 @@
-package grug.db.models.chinook.beans;
+package bigsky.pika.models.chinook.beans;
 
-import grug.db.GrugORM;
+import bigsky.pika.PikaORM;
 
-public class MediaTypeBean extends GrugORM.EnterpriseGrugBean {
+public class MediaTypeBean extends PikaORM.EnterprisePikaBean {
 
     int mediaTypeId;
     String name;
@@ -20,7 +20,7 @@ public class MediaTypeBean extends GrugORM.EnterpriseGrugBean {
         this.name = name;
     }
 
-    public static GrugORM.GrugListFinder<MediaTypeBean> find() {
+    public static PikaORM.PikaListFinder<MediaTypeBean> find() {
         return find(MediaTypeBean.class);
     }
 

@@ -1,8 +1,8 @@
-package grug.db.models.chinook.beans;
+package bigsky.pika.models.chinook.beans;
 
-import grug.db.GrugORM;
+import bigsky.pika.PikaORM;
 
-public class GenreBean extends GrugORM.EnterpriseGrugBean {
+public class GenreBean extends PikaORM.EnterprisePikaBean {
 
     int genreId;
     String name;
@@ -20,7 +20,7 @@ public class GenreBean extends GrugORM.EnterpriseGrugBean {
         this.name = name;
     }
 
-    public static GrugORM.GrugListFinder<GenreBean> find() {
+    public static PikaORM.PikaListFinder<GenreBean> find() {
         return find(GenreBean.class);
     }
 }

@@ -1,39 +1,39 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.models.chinook.pojos.Album;
-import grug.db.models.chinook.pojos.Artist;
-import grug.db.models.chinook.pojos.Employee;
-import grug.db.models.chinook.pojos.Track;
+import bigsky.pika.models.chinook.pojos.Album;
+import bigsky.pika.models.chinook.pojos.Artist;
+import bigsky.pika.models.chinook.pojos.Employee;
+import bigsky.pika.models.chinook.pojos.Track;
 import org.junit.jupiter.api.Test;
 
-import static grug.db.GrugORM.*;
-import static grug.db.GrugORM.Interfaces.GrugLogger.Level.DEBUG;
-import static grug.db.GrugORM.JoinType.LEFT;
-import static grug.db.TestBase.copyFileTo;
+import static bigsky.pika.PikaORM.*;
+import static bigsky.pika.PikaORM.Interfaces.PikaLogger.Level.DEBUG;
+import static bigsky.pika.PikaORM.JoinType.LEFT;
+import static bigsky.pika.TestBase.copyFileTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ChinookTest {
 
     @Test
     void bootstrapTest() {
-        GrugORM grugORM = configureOrm();
-        var artists = grugORM.find(Artist.class).all().toList();
+        PikaORM pikaORM = configureOrm();
+        var artists = pikaORM.find(Artist.class).all().toList();
         assertEquals(275, artists.size());
     }
 
     @Test
     void testJoin() {
-        GrugORM grugORM = configureOrm();
-        var acDc = grugORM.find(Artist.class).byId(1);
+        PikaORM pikaORM = configureOrm();
+        var acDc = pikaORM.find(Artist.class).byId(1);
         assertEquals("AC/DC", acDc.getName());
-        var acDcAlbums = grugORM.loadMany(acDc, Album.class).toList();
+        var acDcAlbums = pikaORM.loadMany(acDc, Album.class).toList();
         assertEquals(2, acDcAlbums.size());
     }
 
     @Test
     void testQueryJoinTo() {
-        GrugORM grugORM = configureOrm();
-        var query = grugORM.query(Album.class)
+        PikaORM pikaORM = configureOrm();
+        var query = pikaORM.query(Album.class)
                 .join(Artist.class)
                 .where("artists.name = 'AC/DC'");
         var acDcAlbums = query.fetchAsList();
@@ -42,8 +42,8 @@ public class ChinookTest {
 
     @Test
     void testQueryJoinFrom() {
-        GrugORM grugORM = configureOrm();
-        var query = grugORM.query(Artist.class)
+        PikaORM pikaORM = configureOrm();
+        var query = pikaORM.query(Artist.class)
                 .join(Album.class)
                 .where("albums.Title LIKE 'A%'");
         var acDcAlbums = query.fetchAsList();
@@ -52,8 +52,8 @@ public class ChinookTest {
 
     @Test
     void testQuerySelfJoinUsingRawString() {
-        GrugORM grugORM = configureOrm();
-        var query = grugORM.query(Employee.class)
+        PikaORM pikaORM = configureOrm();
+        var query = pikaORM.query(Employee.class)
                 .join("employees AS boss ON employees.ReportsTo = boss.EmployeeID")
                 .where("boss.Email = :email").withVar("email", "andrew@chinookcorp.com");
         var andrewsEmployees = query.fetchAsList();
@@ -62,25 +62,25 @@ public class ChinookTest {
 
     @Test
     void testQueryLeftJoin() {
-        GrugORM grugORM = configureOrm();
+        PikaORM pikaORM = configureOrm();
 
         // default inner join should produce 204 artists w/albums
-        var query = grugORM.query(Artist.class)
+        var query = pikaORM.query(Artist.class)
                 .join(Album.class);
         assertEquals(204, query.fetchAsList().size());
 
         // left join should produce all 275 artists
-        var query2 = grugORM.query(Artist.class)
+        var query2 = pikaORM.query(Artist.class)
                 .join(LEFT, Album.class);
         assertEquals(275, query2.fetchAsList().size());
     }
 
     @Test
     void testMultiTableJoin() {
-        GrugORM grugORM = configureOrm();
+        PikaORM pikaORM = configureOrm();
 
         // inner join should produce 85 artists w/albums w/tracks that start with an A
-        var query = grugORM.query(Artist.class)
+        var query = pikaORM.query(Artist.class)
                 .join(Album.class)
                 .thenJoin(Track.class)
                 .where("tracks.Name LIKE 'A%'");
@@ -89,9 +89,9 @@ public class ChinookTest {
     }
 
 
-    public static GrugORM configureOrm() {
+    public static PikaORM configureOrm() {
         copyFileTo("dbs/chinook.original", "test/chinook.db");
-        return new GrugORM("jdbc:sqlite:test/chinook.db")
+        return new PikaORM("jdbc:sqlite:test/chinook.db")
                 .withLogLevel(DEBUG)
                 .withDefaultColumnMapping(field -> TextTools.capitalize(field.getName()))
                 .withDefaultFkColumn(aClass -> aClass.getSimpleName() + "Id")

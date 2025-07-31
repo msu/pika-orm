@@ -1,16 +1,16 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.models.chinook.beans.*;
+import bigsky.pika.models.chinook.beans.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Objects;
 
-import static grug.db.GrugORM.Interfaces.GrugLogger.Level.DEBUG;
-import static grug.db.GrugORM.*;
-import static grug.db.GrugORM.SortOrder.*;
-import static grug.db.TestBase.copyFileTo;
+import static bigsky.pika.PikaORM.Interfaces.PikaLogger.Level.DEBUG;
+import static bigsky.pika.PikaORM.*;
+import static bigsky.pika.PikaORM.SortOrder.*;
+import static bigsky.pika.TestBase.copyFileTo;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ChinookBeanTest {
@@ -171,9 +171,9 @@ public class ChinookBeanTest {
         assertEquals(newTrack.getTrackId(), newTrackLoaded.getTrackId());
     }
 
-    public static GrugORM configureOrm() {
+    public static PikaORM configureOrm() {
         copyFileTo("dbs/chinook.original", "test/chinook.db");
-        return new GrugORM("jdbc:sqlite:test/chinook.db")
+        return new PikaORM("jdbc:sqlite:test/chinook.db")
                 .withLogLevel(DEBUG)
                 .withDefaultFkColumn(aClass -> removeBeanSuffix(aClass.getSimpleName()) + "Id")
                 .withDefaultIdField(aClass -> {

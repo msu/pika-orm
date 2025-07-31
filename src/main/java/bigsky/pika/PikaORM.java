@@ -1,8 +1,8 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.GrugORM.Interfaces.GrugLogger;
-import grug.db.GrugORM.Interfaces.GrugRecordLifecycle;
-import grug.db.GrugORM.Interfaces.SafeAutoCloseable;
+import bigsky.pika.PikaORM.Interfaces.PikaLogger;
+import bigsky.pika.PikaORM.Interfaces.PikaRecordLifecycle;
+import bigsky.pika.PikaORM.Interfaces.SafeAutoCloseable;
 
 import java.io.Console;
 import java.lang.reflect.*;
@@ -26,13 +26,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public class GrugORM {
+public class PikaORM {
 
     public static final int INSERT_FAILED = -1;
 
     public static final String SQL_VARS_PATTERN = "(:[\\w][\\w]*)";
 
-    private static GrugORM DEFAULT_ORM = null;
+    private static PikaORM DEFAULT_ORM = null;
 
     // TODO Do we need a remove() call on this at some point?
     private static final ThreadLocal<ConnectionSession> CURRENT_SESSION = new ThreadLocal<>();
@@ -42,8 +42,8 @@ public class GrugORM {
     private final Callable<Connection> connectionSource;
 
     // Logger stuff
-    private GrugLogger.Level internalLoggerLevel = GrugLogger.Level.INFO;
-    private GrugLogger logger = new DefaultLogger();
+    private PikaLogger.Level internalLoggerLevel = PikaLogger.Level.INFO;
+    private PikaLogger logger = new DefaultLogger();
     private boolean logQueries = false;
 
     // Mapping stuff
@@ -85,105 +85,105 @@ public class GrugORM {
     // constructors & builders
     //====================================================================
 
-    public GrugORM(Callable<Connection> connectionSource) {
+    public PikaORM(Callable<Connection> connectionSource) {
         this.connectionSource = connectionSource;
     }
 
-    public GrugORM(String connectionString) {
+    public PikaORM(String connectionString) {
         this(() -> DriverManager.getConnection(connectionString));
     }
 
-    public GrugORM withLogger(GrugLogger logger) {
+    public PikaORM withLogger(PikaLogger logger) {
         this.logger = logger;
         // custom loggers get everything by default
-        this.withLogLevel(GrugLogger.Level.TRACE);
+        this.withLogLevel(PikaLogger.Level.TRACE);
         return this;
     }
 
-    public GrugORM withLogLevel(Object level) {
-        internalLoggerLevel = GrugLogger.Level.valueOf(String.valueOf(level));
+    public PikaORM withLogLevel(Object level) {
+        internalLoggerLevel = PikaLogger.Level.valueOf(String.valueOf(level));
         return this;
     }
 
-    public GrugORM withMigrations(Migrations migrations) {
+    public PikaORM withMigrations(Migrations migrations) {
         migrations.setORM(this);
         this.migrations = migrations;
         return this;
     }
 
-    public GrugORM applyMigrations() {
+    public PikaORM applyMigrations() {
         if (migrations != null) {
             migrations.applyAll();
         }
         return this;
     }
 
-    public GrugORM withDefaultTableMapping(Function<Class, String> val) {
+    public PikaORM withDefaultTableMapping(Function<Class, String> val) {
         defaultClassToTableMapping = val;
         return this;
     }
 
-    public GrugORM withDefaultColumnMapping(Function<Field, String> val) {
+    public PikaORM withDefaultColumnMapping(Function<Field, String> val) {
         defaultFieldToColumnMapping = val;
         return this;
     }
 
-    public GrugORM withDefaultIdField(Function<Class, String> val) {
+    public PikaORM withDefaultIdField(Function<Class, String> val) {
         defaultIdFieldName = val;
         return this;
     }
 
-    public GrugORM withDefaultFkColumn(Function<Class, String> val) {
+    public PikaORM withDefaultFkColumn(Function<Class, String> val) {
         defaultFkColumnName = val;
         return this;
     }
 
-    public GrugORM withDefaultVersionColumnName(Function<Class, String> val) {
+    public PikaORM withDefaultVersionColumnName(Function<Class, String> val) {
         defaultVersionFieldName = val;
         return this;
     }
 
-    public GrugORM withDefaultVersionIncrementer(Function<Class, Function<Object, Object>> val) {
+    public PikaORM withDefaultVersionIncrementer(Function<Class, Function<Object, Object>> val) {
         defaultVersionIncrementer = val;
         return this;
     }
 
-    public GrugORM withNoDefaultVersionColumn() {
+    public PikaORM withNoDefaultVersionColumn() {
         defaultVersionFieldName = _ -> null;
         return this;
     }
 
-    public GrugORM withDefaultPageSize(int pageSize) {
+    public PikaORM withDefaultPageSize(int pageSize) {
         this.defaultPageSize = pageSize;
         return this;
     }
 
-    public GrugORM withOffsetClause(String offsetClause) {
+    public PikaORM withOffsetClause(String offsetClause) {
         this.limitOffsetClause = offsetClause;
         return this;
     }
 
-    public GrugORM withSQLiteQuirks() {
+    public PikaORM withSQLiteQuirks() {
         this.sqlLiteQuirks = true;
         return this;
     }
 
-    public GrugORM withCoercion(BiFunction<Class, Object, Object> coercion) {
+    public PikaORM withCoercion(BiFunction<Class, Object, Object> coercion) {
         coercers.add(coercion);
         return this;
     }
 
-    public GrugORM logQueries() {
+    public PikaORM logQueries() {
         this.logQueries = true;
         return this;
     }
 
-    public GrugORM makeDefaultORM() {
+    public PikaORM makeDefaultORM() {
         setDefaultORM(this);
         return this;
     }
 
-    private GrugLogger getLogger() {
+    private PikaLogger getLogger() {
         return logger;
     }
 
@@ -191,19 +191,19 @@ public class GrugORM {
     // default orm management
     //====================================================================
 
-    public static GrugORM get() {
-        GrugORM defaultORM = getDefault();
+    public static PikaORM get() {
+        PikaORM defaultORM = getDefault();
         if (defaultORM == null) {
-            throw new IllegalStateException("No default GrugORM found");
+            throw new IllegalStateException("No default PikaORM found");
         }
         return defaultORM;
     }
 
-    private static GrugORM getDefault() {
+    private static PikaORM getDefault() {
         return DEFAULT_ORM;
     }
 
-    public static void setDefaultORM(GrugORM orm) {
+    public static void setDefaultORM(PikaORM orm) {
         DEFAULT_ORM = orm;
     }
 
@@ -340,26 +340,26 @@ public class GrugORM {
     // Main entrypoints into the query layer
     //====================================================================
 
-    public <T> GrugListFinder<T> find(Class<T> classToFind) {
-        return new GrugListFinder<>(classToFind);
+    public <T> PikaListFinder<T> find(Class<T> classToFind) {
+        return new PikaListFinder<>(classToFind);
     }
 
-    public <T> GrugStreamFinder<T> stream(Class<T> classToFind) {
-        return new GrugStreamFinder<>(classToFind);
+    public <T> PikaStreamFinder<T> stream(Class<T> classToFind) {
+        return new PikaStreamFinder<>(classToFind);
     }
 
-    public <T> GrugClassQuery<T> query(Class<T> baseClass) {
-        return new GrugClassQuery<>(baseClass);
+    public <T> PikaClassQuery<T> query(Class<T> baseClass) {
+        return new PikaClassQuery<>(baseClass);
     }
 
-    public GrugQuery<ResultMap> queryBuilder(String baseTable) {
-        return new GrugQuery<>(baseTable);
+    public PikaQuery<ResultMap> queryBuilder(String baseTable) {
+        return new PikaQuery<>(baseTable);
     }
 
-    public class GrugListFinder<T> {
+    public class PikaListFinder<T> {
         Class<T> classToFind;
 
-        public GrugListFinder(Class<T> classToFind) {
+        public PikaListFinder(Class<T> classToFind) {
             this.classToFind = classToFind;
         }
 
@@ -415,15 +415,15 @@ public class GrugORM {
             return get().select(sql, args, classToFind);
         }
 
-        public GrugClassQuery<T> byQuery() {
+        public PikaClassQuery<T> byQuery() {
             return query(classToFind);
         }
     }
 
-    public class GrugStreamFinder<T> {
+    public class PikaStreamFinder<T> {
         Class<T> classToFind;
 
-        public GrugStreamFinder(Class<T> classToFind) {
+        public PikaStreamFinder(Class<T> classToFind) {
             this.classToFind = classToFind;
         }
 
@@ -469,7 +469,7 @@ public class GrugORM {
             return stream(sql, args, classToFind);
         }
 
-        public GrugClassQuery<T> byQuery() {
+        public PikaClassQuery<T> byQuery() {
             return query(classToFind);
         }
     }
@@ -498,14 +498,14 @@ public class GrugORM {
 
         public void incrementOpenCount() {
             openCount++;
-            logger.log(GrugLogger.Level.DEBUG, "Incremented open count on connection {}: {}", uuid, "*".repeat(openCount));
+            logger.log(PikaLogger.Level.DEBUG, "Incremented open count on connection {}: {}", uuid, "*".repeat(openCount));
         }
 
         public void close() {
             openCount--;
-            logger.log(GrugLogger.Level.DEBUG, "Decremented open count on connection {}: {}", uuid, "*".repeat(openCount));
+            logger.log(PikaLogger.Level.DEBUG, "Decremented open count on connection {}: {}", uuid, "*".repeat(openCount));
             if (openCount == 0) { // if we are back at the top level of the connection count we close the connection
-                logger.log(GrugLogger.Level.INFO, "Closing connection {} on Thread {}", uuid, Thread.currentThread().getName());
+                logger.log(PikaLogger.Level.INFO, "Closing connection {} on Thread {}", uuid, Thread.currentThread().getName());
                 try {
                     for (var rs : resultSets) {
                         try {
@@ -539,9 +539,9 @@ public class GrugORM {
         public void startTransaction() {
             if (transactionCount == 0) {
                 safely(() -> conn.setAutoCommit(false));
-                logger.log(GrugLogger.Level.INFO, "Starting new transaction for connection {}", uuid);
+                logger.log(PikaLogger.Level.INFO, "Starting new transaction for connection {}", uuid);
             } else {
-                logger.log(GrugLogger.Level.INFO, "Existing transaction for connection {}, joining it", uuid);
+                logger.log(PikaLogger.Level.INFO, "Existing transaction for connection {}, joining it", uuid);
             }
             transactionCount++;
         }
@@ -550,29 +550,29 @@ public class GrugORM {
             if (isInTransaction()) {
                 transactionCount--;
                 if (transactionCount == 0) {
-                    logger.log(GrugLogger.Level.INFO, "Transaction for connection {} completed, committing", uuid);
+                    logger.log(PikaLogger.Level.INFO, "Transaction for connection {} completed, committing", uuid);
                     safely(() -> conn.commit());
                 } else {
-                    logger.log(GrugLogger.Level.INFO, "Nested transaction detected for connection {}, deferring commit", uuid);
+                    logger.log(PikaLogger.Level.INFO, "Nested transaction detected for connection {}, deferring commit", uuid);
                 }
                 close();
             } else {
-                logger.log(GrugLogger.Level.ERROR, "No current transaction for connection {}", uuid);
+                logger.log(PikaLogger.Level.ERROR, "No current transaction for connection {}", uuid);
             }
         }
 
         public void rollBackTransaction() {
             if (isInTransaction()) {
-                logger.log(GrugLogger.Level.INFO, "Rolling back transaction for connection {}", uuid);
+                logger.log(PikaLogger.Level.INFO, "Rolling back transaction for connection {}", uuid);
                 safely(() -> conn.rollback());
                 transactionCount--;
                 if (transactionCount == 0) { // restore autocommit on last transaction scope
-                    logger.log(GrugLogger.Level.INFO, "Restoring autoCommit for connection {}", uuid);
+                    logger.log(PikaLogger.Level.INFO, "Restoring autoCommit for connection {}", uuid);
                     safely(() -> conn.setAutoCommit(true));
                 }
                 close();
             } else {
-                logger.log(GrugLogger.Level.ERROR, "No current transaction for connection {}", uuid);
+                logger.log(PikaLogger.Level.ERROR, "No current transaction for connection {}", uuid);
             }
         }
 
@@ -630,7 +630,7 @@ public class GrugORM {
     private ConnectionSession pushNewSession() {
         ConnectionSession currentSession = getCurrentSession();
         ConnectionSession newSession = new ConnectionSession(currentSession);
-        logger.log(GrugLogger.Level.INFO, "Created a new connection for Thread {} w/ID {}", Thread.currentThread().getName(), newSession.uuid);
+        logger.log(PikaLogger.Level.INFO, "Created a new connection for Thread {} w/ID {}", Thread.currentThread().getName(), newSession.uuid);
         CURRENT_SESSION.set(newSession);
         return newSession;
     }
@@ -677,7 +677,7 @@ public class GrugORM {
     public void commitTransaction() {
         ConnectionSession connectionSession = getCurrentSession();
         if (connectionSession == null) {
-            logger.log(GrugLogger.Level.ERROR, "No current connection for transaction.");
+            logger.log(PikaLogger.Level.ERROR, "No current connection for transaction.");
         } else {
             connectionSession.finishTransaction();
         }
@@ -686,7 +686,7 @@ public class GrugORM {
     public void rollBackTransaction() {
         ConnectionSession connectionSession = getCurrentSession();
         if (connectionSession == null) {
-            logger.log(GrugLogger.Level.ERROR, "No current connection for transaction.");
+            logger.log(PikaLogger.Level.ERROR, "No current connection for transaction.");
         } else {
             connectionSession.rollBackTransaction();
         }
@@ -737,7 +737,7 @@ public class GrugORM {
              var resultSet = session.execute(ps)) {
             while (resultSet.next()) {
                 T result = mapping.newObjectFromResult(this, resultSet, columnSpec);
-                if (result instanceof GrugRecordLifecycle lifecycle) {
+                if (result instanceof PikaRecordLifecycle lifecycle) {
                     lifecycle.afterSelect();
                 }
                 results.add(result);
@@ -787,8 +787,8 @@ public class GrugORM {
                 public boolean tryAdvance(Consumer<? super T> action) {
                     try {
                         if (rs.next()) {
-                            T result = mapping.newObjectFromResult(GrugORM.this, rs, columnSpec);
-                            if (result instanceof GrugRecordLifecycle lifecycle) {
+                            T result = mapping.newObjectFromResult(PikaORM.this, rs, columnSpec);
+                            if (result instanceof PikaRecordLifecycle lifecycle) {
                                 lifecycle.afterSelect();
                             }
                             action.accept(result);
@@ -808,7 +808,7 @@ public class GrugORM {
     }
 
     private RuntimeException handleSelectException(String sql, Map args, Exception e) {
-        logger.log(GrugLogger.Level.ERROR, """
+        logger.log(PikaLogger.Level.ERROR, """
                 Exception in select() with SQL
                 {}\s
                 with args {}: {}""", TextTools.indent(2, sql), args, e.getMessage());
@@ -816,7 +816,7 @@ public class GrugORM {
     }
 
     public long insert(Object object) {
-        if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.validate()) {
+        if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.validate()) {
             return INSERT_FAILED;
         }
         Class<?> clazz = object.getClass();
@@ -824,7 +824,7 @@ public class GrugORM {
         String keyCol = mapping.getIdColumn();
         Map<String, Object> values = mapping.toDatabaseMap(object);
         values.remove(keyCol);
-        if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.beforeInsert()) {
+        if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.beforeInsert()) {
             return INSERT_FAILED;
         }
         Object newVersionValue = null;
@@ -839,7 +839,7 @@ public class GrugORM {
         if (!mapping.isReadOnly() && id != INSERT_FAILED) {
             mapping.setId(object, id);
         }
-        if (object instanceof GrugRecordLifecycle lifecycle) {
+        if (object instanceof PikaRecordLifecycle lifecycle) {
             lifecycle.afterInsert();
         }
         return id;
@@ -895,7 +895,7 @@ public class GrugORM {
              var ps = session.prepareStatement(insertString, values)) {
             time(ps::executeUpdate);
         } catch (Exception e) {
-            logger.log(GrugLogger.Level.ERROR, "Exception in insertAll() with SQL {} & args {}: {}", insertString, values, e.getMessage());
+            logger.log(PikaLogger.Level.ERROR, "Exception in insertAll() with SQL {} & args {}: {}", insertString, values, e.getMessage());
             throw rethrow(e);
         }
     }
@@ -936,13 +936,13 @@ public class GrugORM {
                 return INSERT_FAILED;
             }
         } catch (Exception e) {
-            logger.log(GrugLogger.Level.ERROR, "Exception in insert() with SQL {} & args {}: {}", insertString, queryValues, e.getMessage());
+            logger.log(PikaLogger.Level.ERROR, "Exception in insert() with SQL {} & args {}: {}", insertString, queryValues, e.getMessage());
             throw rethrow(e);
         }
     }
 
     public boolean update(Object object) {
-        if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.validate()) {
+        if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.validate()) {
             return false;
         }
         Class<?> clazz = object.getClass();
@@ -951,7 +951,7 @@ public class GrugORM {
         String keyCol = mapping.getIdColumn();
         Map<String, Object> valuesToUpdate = mapping.toDatabaseMap(object);
         Object keyVal = valuesToUpdate.remove(keyCol); // remove the key
-        if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.beforeUpdate()) {
+        if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.beforeUpdate()) {
             return false;
         }
         String versionColumn = null;
@@ -966,7 +966,7 @@ public class GrugORM {
         if (mapping.hasVersionColumn() && update) {
             mapping.updateVersionValue(object, nextVersionValue);
         }
-        if (object instanceof GrugRecordLifecycle lifecycle) {
+        if (object instanceof PikaRecordLifecycle lifecycle) {
             lifecycle.afterUpdate();
         }
         return update;
@@ -1001,7 +1001,7 @@ public class GrugORM {
             int i = time(ps::executeUpdate);
             return i == 1;
         } catch (Exception e) {
-            logger.log(GrugLogger.Level.ERROR, "Exception in update() with SQL {} & args {}: {}", updateSQL, values.values(), e.getMessage());
+            logger.log(PikaLogger.Level.ERROR, "Exception in update() with SQL {} & args {}: {}", updateSQL, values.values(), e.getMessage());
             throw rethrow(e);
         }
     }
@@ -1013,11 +1013,11 @@ public class GrugORM {
         String keyCol = mapping.getIdColumn();
         Map<String, Object> valuesToUpdate = mapping.toDatabaseMap(object);
         Object keyVal = valuesToUpdate.get(keyCol);
-        if (object instanceof GrugRecordLifecycle lifecycle && !lifecycle.beforeDelete()) {
+        if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.beforeDelete()) {
             return false;
         }
         boolean delete = delete(tableName, keyCol, keyVal);
-        if (object instanceof GrugRecordLifecycle lifecycle) {
+        if (object instanceof PikaRecordLifecycle lifecycle) {
             lifecycle.afterDelete();
         }
         return delete;
@@ -1031,7 +1031,7 @@ public class GrugORM {
             int i = time(ps::executeUpdate);
             return i == 1;
         } catch (Exception e) {
-            logger.log(GrugLogger.Level.ERROR, "Exception in delete() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
+            logger.log(PikaLogger.Level.ERROR, "Exception in delete() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
             throw rethrow(e);
         }
     }
@@ -1051,7 +1051,7 @@ public class GrugORM {
         ArrayList<Object> vals = new ArrayList<>();
         String updatedSql = updateSqlVars(sql, args, vals);
         if (sql.isBlank()) {
-            logger.log(GrugLogger.Level.WARN, "SQL is blank, will not be executed!");
+            logger.log(PikaLogger.Level.WARN, "SQL is blank, will not be executed!");
             return false;
         }
         logger.log(getQueryLogLevel(), "EXECUTING RAW SQL: {} with args {}\n", sql, args);
@@ -1060,7 +1060,7 @@ public class GrugORM {
             boolean result = time(ps::execute);
             return result;
         } catch (Exception e) {
-            logger.log(GrugLogger.Level.ERROR, "Exception in exec() with SQL {}: {}", sql, e.getMessage());
+            logger.log(PikaLogger.Level.ERROR, "Exception in exec() with SQL {}: {}", sql, e.getMessage());
             throw rethrow(e);
         }
     }
@@ -1080,11 +1080,11 @@ public class GrugORM {
         }
     }
 
-    private GrugLogger.Level getQueryLogLevel() {
+    private PikaLogger.Level getQueryLogLevel() {
         if (logQueries) {
-            return GrugLogger.Level.INFO;
+            return PikaLogger.Level.INFO;
         } else {
-            return GrugLogger.Level.DEBUG;
+            return PikaLogger.Level.DEBUG;
         }
     }
 
@@ -1203,7 +1203,7 @@ public class GrugORM {
 
     public interface Interfaces {
 
-        interface GrugLogger {
+        interface PikaLogger {
             enum Level {
                 ERROR, WARN, INFO, DEBUG, TRACE
             }
@@ -1211,7 +1211,7 @@ public class GrugORM {
             void log(Level level, String msg, Object... args);
         }
 
-        interface GrugRecordLifecycle {
+        interface PikaRecordLifecycle {
 
             default boolean validate() {
                 return true;
@@ -1385,7 +1385,7 @@ public class GrugORM {
         }
     }
 
-    public static class EnterpriseGrugBean implements GrugRecordLifecycle {
+    public static class EnterprisePikaBean implements PikaRecordLifecycle {
 
         private transient boolean persisted;
         private final transient Map<String, List<String>> errors = new LinkedHashMap<>();
@@ -1551,12 +1551,12 @@ public class GrugORM {
             return sb.toString();
         }
 
-        protected static <T> GrugListFinder<T> find(Class<T> c) {
+        protected static <T> PikaListFinder<T> find(Class<T> c) {
             return orm().find(c);
         }
 
-        protected static GrugORM orm() {
-            return GrugORM.get();
+        protected static PikaORM orm() {
+            return PikaORM.get();
         }
 
     }
@@ -1576,7 +1576,7 @@ public class GrugORM {
         }
     }
 
-    public class GrugQuery<T> {
+    public class PikaQuery<T> {
 
         private final String baseTable;
         private boolean distinct;
@@ -1591,12 +1591,12 @@ public class GrugORM {
         private int pageSize = -1;
         private int page = -1;
 
-        public GrugQuery(String baseTable) {
+        public PikaQuery(String baseTable) {
             this.baseTable = baseTable;
             this.resultClass = (Class<T>) ResultMap.class;
         }
 
-        public GrugQuery<T> where(String condition) {
+        public PikaQuery<T> where(String condition) {
             if (!whereClause.isEmpty()) {
                 whereClause.append(" AND ");
             }
@@ -1604,54 +1604,54 @@ public class GrugORM {
             return this;
         }
 
-        public GrugQuery<T> where(String condition, Map<String, Object> vars) {
+        public PikaQuery<T> where(String condition, Map<String, Object> vars) {
             return where(condition).withVars(vars);
         }
 
-        public GrugQuery<T> select(String... columns) {
+        public PikaQuery<T> select(String... columns) {
             return select(Arrays.asList(columns));
         }
 
-        public GrugQuery<T> select(List<String> columns) {
+        public PikaQuery<T> select(List<String> columns) {
             this.columns = columns;
             return this;
         }
 
-        public GrugQuery<T> withColumnPrefix(String columnPrefix) {
+        public PikaQuery<T> withColumnPrefix(String columnPrefix) {
             this.columnPrefix = columnPrefix;
             return this;
         }
 
-        public GrugQuery<T> distinct() {
+        public PikaQuery<T> distinct() {
             this.distinct = true;
             return this;
         }
 
-        public <Q> GrugQuery<Q> withResult(Class<Q> clazz) {
+        public <Q> PikaQuery<Q> withResult(Class<Q> clazz) {
             this.resultClass = (Class) clazz;
             //noinspection unchecked
-            return (GrugQuery<Q>) this;
+            return (PikaQuery<Q>) this;
         }
 
         public QueryResult<T> fetch() {
             String sql = generateSQL();
-            return GrugORM.this.select(sql, valMap, resultClass, columns);
+            return PikaORM.this.select(sql, valMap, resultClass, columns);
         }
 
         public BetterList<T> fetchAsList() {
             String sql = generateSQL();
-            QueryResult<T> select = GrugORM.this.select(sql, valMap, resultClass, columns);
+            QueryResult<T> select = PikaORM.this.select(sql, valMap, resultClass, columns);
             return select.getRawList();
         }
 
         public T fetchFirst() {
             String sql = generateSQLNoLimit() + " " + MessageFormat.format(limitOffsetClause, 1, 0);
-            return GrugORM.this.select(sql, valMap, resultClass, columns).first();
+            return PikaORM.this.select(sql, valMap, resultClass, columns).first();
         }
 
         public Stream<T> stream() {
             String sql = generateSQL();
-            return GrugORM.this.stream(sql, valMap, resultClass, new ColumnsSpec(columns));
+            return PikaORM.this.stream(sql, valMap, resultClass, new ColumnsSpec(columns));
         }
 
         private String generateSQL() {
@@ -1702,14 +1702,14 @@ public class GrugORM {
             return selectClause.toString();
         }
 
-        public GrugQuery<T> withVars(Map<String, Object> vals) {
+        public PikaQuery<T> withVars(Map<String, Object> vals) {
             for (Map.Entry<String, Object> stringObjectEntry : vals.entrySet()) {
                 withVar(stringObjectEntry.getKey(), stringObjectEntry.getValue());
             }
             return this;
         }
 
-        public GrugQuery<T> withVar(String name, Object value) {
+        public PikaQuery<T> withVar(String name, Object value) {
             if (valMap.containsKey(name)) {
                 throw new IllegalStateException("Value " + name + " already exists in query!");
             }
@@ -1717,7 +1717,7 @@ public class GrugORM {
             return this;
         }
 
-        public GrugQuery<T> join(String joinSql) {
+        public PikaQuery<T> join(String joinSql) {
             if (!joinSql.toUpperCase().contains("JOIN")) {
                 joinSql = "JOIN " + joinSql;
             }
@@ -1725,21 +1725,21 @@ public class GrugORM {
             return this;
         }
 
-        public GrugQuery<T> orderBy(String column) {
+        public PikaQuery<T> orderBy(String column) {
             return orderBy(column, null);
         }
 
-        public GrugQuery<T> orderBy(String column, SortOrder direction) {
+        public PikaQuery<T> orderBy(String column, SortOrder direction) {
             this.orderBys.add(new OrderBy(column, direction));
             return this;
         }
 
-        public GrugQuery<T> pageSize(int pageSize) {
+        public PikaQuery<T> pageSize(int pageSize) {
             this.pageSize = pageSize;
             return this;
         }
 
-        public GrugQuery<T> page(int page) {
+        public PikaQuery<T> page(int page) {
             this.page = page;
             return this;
         }
@@ -1783,42 +1783,42 @@ public class GrugORM {
 
         public long totalCount() {
             String sql = "SELECT COUNT(*) as TOTAL FROM (" + generateSQLNoLimit() + ") T1";
-            var result = GrugORM.this.select(sql, valMap).first();
+            var result = PikaORM.this.select(sql, valMap).first();
             return result.asLong("TOTAL");
         }
     }
 
-    public class GrugClassQuery<T> implements Callable<QueryResult<T>>, Iterable<T> {
+    public class PikaClassQuery<T> implements Callable<QueryResult<T>>, Iterable<T> {
 
-        private final GrugQuery<T> query;
+        private final PikaQuery<T> query;
         private final Class classToFind;
         private Class lastJoinedClass;
 
-        public GrugClassQuery(Class<T> classToFind) {
+        public PikaClassQuery(Class<T> classToFind) {
             this.classToFind = classToFind;
             Mapping mappingForClassToFind = getMapping(classToFind);
-            query = new GrugQuery<>(mappingForClassToFind.getTableName())
+            query = new PikaQuery<>(mappingForClassToFind.getTableName())
                     .withResult(classToFind)
                     .withColumnPrefix(mappingForClassToFind.getTableName())
                     .distinct();
             this.setLastJoinedClass(classToFind);
         }
 
-        public GrugClassQuery<T> join(Class classToJoin) {
+        public PikaClassQuery<T> join(Class classToJoin) {
             setLastJoinedClass(classToFind);
             return thenJoin(null, classToJoin);
         }
 
-        public GrugClassQuery<T> join(JoinType type, Class classToJoinTo) {
+        public PikaClassQuery<T> join(JoinType type, Class classToJoinTo) {
             setLastJoinedClass(classToFind);
             return thenJoin(type, classToJoinTo);
         }
 
-        public GrugClassQuery<T> thenJoin(Class classToJoinTo) {
+        public PikaClassQuery<T> thenJoin(Class classToJoinTo) {
             return thenJoin(null, classToJoinTo);
         }
 
-        private GrugClassQuery<T> thenJoin(JoinType type, Class classToJoinTo) {
+        private PikaClassQuery<T> thenJoin(JoinType type, Class classToJoinTo) {
             Class hasFk = resolveFkClass(getLastJoinedClass(), classToJoinTo);
             Class hasId = hasFk == classToJoinTo ? getLastJoinedClass() : classToJoinTo;
             return join(type, classToJoinTo, hasId, hasFk);
@@ -1836,7 +1836,7 @@ public class GrugORM {
             throw new IllegalStateException(MessageFormat.format("Cannot determine a foreign key relationship between {0} and {1}, please use an explicit join", class1.getSimpleName(), class2.getSimpleName()));
         }
 
-        public GrugClassQuery<T> join(JoinType type, Class classToJoin, Class hasId, Class hasFk) {
+        public PikaClassQuery<T> join(JoinType type, Class classToJoin, Class hasId, Class hasFk) {
             Mapping hasIdMapping = getMapping(hasId);
             Mapping hasFkMapping = getMapping(hasFk);
             Mapping classToJoinMapping = getMapping(classToJoin);
@@ -1857,12 +1857,12 @@ public class GrugORM {
             return this;
         }
 
-        public GrugClassQuery<T> where(String condition) {
+        public PikaClassQuery<T> where(String condition) {
             query.where(condition);
             return this;
         }
 
-        public GrugClassQuery<T> where(String condition, Map<String, Object> vals) {
+        public PikaClassQuery<T> where(String condition, Map<String, Object> vals) {
             query.where(condition, vals);
             return this;
         }
@@ -1883,42 +1883,42 @@ public class GrugORM {
             return query.stream();
         }
 
-        public GrugClassQuery<T> withVars(Map<String, Object> vals) {
+        public PikaClassQuery<T> withVars(Map<String, Object> vals) {
             query.withVars(vals);
             return this;
         }
 
-        public GrugClassQuery<T> withVar(String name, Object value) {
+        public PikaClassQuery<T> withVar(String name, Object value) {
             query.withVar(name, value);
             return this;
         }
 
-        public GrugClassQuery<T> join(String joinSql) {
+        public PikaClassQuery<T> join(String joinSql) {
             query.join(joinSql);
             return this;
         }
 
-        public GrugClassQuery<T> orderBy(String column) {
+        public PikaClassQuery<T> orderBy(String column) {
             query.orderBy(column);
             return this;
         }
 
-        public GrugClassQuery<T> orderBy(String column, SortOrder direction) {
+        public PikaClassQuery<T> orderBy(String column, SortOrder direction) {
             query.orderBy(column, direction);
             return this;
         }
 
-        public GrugClassQuery<T> pageSize(int pageSize) {
+        public PikaClassQuery<T> pageSize(int pageSize) {
             query.pageSize(pageSize);
             return this;
         }
 
-        public GrugClassQuery<T> page(int page) {
+        public PikaClassQuery<T> page(int page) {
             query.page(page);
             return this;
         }
 
-        public GrugQuery<T> raw() {
+        public PikaQuery<T> raw() {
             return query;
         }
 
@@ -1930,12 +1930,12 @@ public class GrugORM {
             this.lastJoinedClass = lastJoinedClass;
         }
 
-        public GrugClassQuery<T> withCols(String... cols) {
+        public PikaClassQuery<T> withCols(String... cols) {
             query.select(cols);
             return this;
         }
 
-        public GrugClassQuery<T> withCols(List<String> cols) {
+        public PikaClassQuery<T> withCols(List<String> cols) {
             query.select(cols);
             return this;
         }
@@ -1970,7 +1970,7 @@ public class GrugORM {
         }
     }
 
-    private class DefaultLogger implements GrugLogger {
+    private class DefaultLogger implements PikaLogger {
         // thank you slf4j for using a non-standard logging format, very cool
         final Pattern parens = Pattern.compile("\\{}");
 
@@ -2057,14 +2057,14 @@ public class GrugORM {
         });
     }
 
-    public GrugORM withMapping(Class classToMap, Mapping mapping) {
+    public PikaORM withMapping(Class classToMap, Mapping mapping) {
         mapping.setOrm(this);
         mapping.setClass(classToMap);
         mappings.put(classToMap, mapping);
         return this;
     }
 
-    public GrugORM withMapping(Class classToMap, String tableName) {
+    public PikaORM withMapping(Class classToMap, String tableName) {
         return withMapping(classToMap, new Mapping() {
             public String mapToTable() {
                 return tableName;
@@ -2075,7 +2075,7 @@ public class GrugORM {
     @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
     public static class Mapping {
 
-        GrugORM orm;
+        PikaORM orm;
         private Class classForTable;
         private RecordComponent[] recordComponents;
         private String tableName;
@@ -2088,7 +2088,7 @@ public class GrugORM {
         protected Mapping() {
         }
 
-        public void setOrm(GrugORM orm) {
+        public void setOrm(PikaORM orm) {
             this.orm = orm;
         }
 
@@ -2219,7 +2219,7 @@ public class GrugORM {
         }
 
         @SuppressWarnings({"unchecked"})
-        private <T> T newObjectFromResult(GrugORM orm, ResultSet resultSet, ColumnsSpec columnSpec) throws Exception {
+        private <T> T newObjectFromResult(PikaORM orm, ResultSet resultSet, ColumnsSpec columnSpec) throws Exception {
             if (classForTable == ResultMap.class) {
                 ResultSetMetaData metaData = resultSet.getMetaData();
                 int i = metaData.getColumnCount();
@@ -2258,7 +2258,7 @@ public class GrugORM {
                                 fieldMapping.mapFromDatabase(object, resultSet);
                             }
                         } catch (Exception e) {
-                            orm.getLogger().log(GrugLogger.Level.ERROR, "Could not map field {} on {}, available columns:{}, error:{}",
+                            orm.getLogger().log(PikaLogger.Level.ERROR, "Could not map field {} on {}, available columns:{}, error:{}",
                                     fieldMapping.getFieldName(), classForTable.getSimpleName(), getColumns(resultSet), e.getMessage());
                             throw rethrow(e);
                         }
@@ -2363,7 +2363,7 @@ public class GrugORM {
     }
 
     public static class FieldMapping {
-        GrugORM orm;
+        PikaORM orm;
         Field mappedField;
         String columnName;
         boolean idColumn;
@@ -2373,7 +2373,7 @@ public class GrugORM {
         Class dbStorageType;
         Function<Object, Object> versionIncrementer;
 
-        public FieldMapping(GrugORM orm, Field mappedField) {
+        public FieldMapping(PikaORM orm, Field mappedField) {
             mappedField.setAccessible(true);
             this.orm = orm;
             this.mappedField = mappedField;
@@ -2589,28 +2589,28 @@ public class GrugORM {
                   exit/quit - exit this tool
                   help/?    - show this help message
                 """;
-        private LinkedHashMap<String, GrugMigration> migrationsMap;
-        private GrugORM orm;
+        private LinkedHashMap<String, PikaMigration> migrationsMap;
+        private PikaORM orm;
 
-        public void setORM(GrugORM orm) {
+        public void setORM(PikaORM orm) {
             this.orm = orm;
         }
 
-        public GrugORM getORM() {
+        public PikaORM getORM() {
             if (orm != null) {
                 return orm;
             }
-            if (GrugORM.getDefault() != null) {
-                return GrugORM.getDefault();
+            if (PikaORM.getDefault() != null) {
+                return PikaORM.getDefault();
             }
             throw new IllegalStateException("ORM has not been set and there is no default ORM, don't know what database to migrate!");
         }
 
-        protected void add(Supplier<GrugMigration> migrationCallable) {
+        protected void add(Supplier<PikaMigration> migrationCallable) {
             add(migrationCallable.get());
         }
 
-        protected void add(GrugMigration migration) {
+        protected void add(PikaMigration migration) {
             String migrationName = migration.getName();
             if (migrationsMap.containsKey(migrationName)) {
                 throw new IllegalArgumentException("Migration " + migrationName + " already exists!");
@@ -2627,13 +2627,13 @@ public class GrugORM {
 
         public abstract void migrations();
 
-        public static GrugMigration makeMigration(String name) {
-            return new GrugMigration(name);
+        public static PikaMigration makeMigration(String name) {
+            return new PikaMigration(name);
         }
 
         public void console() {
             getORM();
-            orm.exec(GrugMigration.DDL);
+            orm.exec(PikaMigration.DDL);
             Console console = System.console();
             label:
             while (true) {
@@ -2664,14 +2664,14 @@ public class GrugORM {
 
         private String show() {
             getORM();
-            orm.exec(GrugMigration.DDL);
+            orm.exec(PikaMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
 
             StringBuilder sb = new StringBuilder("All Migrations:\n");
             String formatString = "%-30.30s | %-15.15s | %-30.30s | %-30.30s | %-30.30s | %-30.30s\n";
             sb.append(String.format(formatString, "name", "status", "applied", "description", "up", "down"));
             sb.append("-------------------------------------------------------------------------------------------------------------------------------------------------------\n");
-            for (GrugMigration value : mergedMigrations.values()) {
+            for (PikaMigration value : mergedMigrations.values()) {
                 sb.append(String.format(formatString,
                         value.getName(), value.getStatus(), value.appliedAtForDisplay(), value.description, value.upForDisplay(), value.downForDisplay()));
             }
@@ -2680,29 +2680,29 @@ public class GrugORM {
 
         public void up() {
             getORM();
-            orm.exec(GrugMigration.DDL);
+            orm.exec(PikaMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
 
             var values = new BetterList<>(mergedMigrations.values());
-            var firstUnappliedMigration = values.firstWhere(GrugMigration::isPending);
+            var firstUnappliedMigration = values.firstWhere(PikaMigration::isPending);
             if (firstUnappliedMigration != null) {
                 firstUnappliedMigration.runUp(orm);
             } else {
-                orm.getLogger().log(GrugLogger.Level.WARN, "No pending migrations were found in migrations file to apply");
+                orm.getLogger().log(PikaLogger.Level.WARN, "No pending migrations were found in migrations file to apply");
             }
         }
 
         public void down() {
             getORM();
-            orm.exec(GrugMigration.DDL);
+            orm.exec(PikaMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
 
             var values = new BetterList<>(mergedMigrations.values());
-            var lastAppliedMigration = values.lastWhere(GrugMigration::isApplied);
+            var lastAppliedMigration = values.lastWhere(PikaMigration::isApplied);
             if (lastAppliedMigration != null) {
                 lastAppliedMigration.runDown(orm);
             } else {
-                orm.getLogger().log(GrugLogger.Level.WARN, "No applied migrations were found in migrations file to back out");
+                orm.getLogger().log(PikaLogger.Level.WARN, "No applied migrations were found in migrations file to back out");
             }
         }
 
@@ -2711,27 +2711,27 @@ public class GrugORM {
          */
         public void applyAll() {
             getORM();
-            orm.exec(GrugMigration.DDL);
+            orm.exec(PikaMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
-            for (GrugMigration migration : mergedMigrations.values()) {
+            for (PikaMigration migration : mergedMigrations.values()) {
                 if (!migration.isApplied()) {
                     migration.runUp(orm);
                 }
             }
         }
 
-        private LinkedHashMap<String, GrugMigration> loadMigrations(GrugORM orm) {
+        private LinkedHashMap<String, PikaMigration> loadMigrations(PikaORM orm) {
 
             migrationsMap = new LinkedHashMap<>();
             migrations();
             // compute migrations with persisted migrations merged in
-            BetterList<GrugMigration> persistedMigrations = orm.find(GrugMigration.class).all().toList();
+            BetterList<PikaMigration> persistedMigrations = orm.find(PikaMigration.class).all().toList();
             var mergedMigrations = new LinkedHashMap<>(migrationsMap);
-            for (GrugMigration persistedMigration : persistedMigrations.copy()) {
-                GrugMigration existingMigration = mergedMigrations.get(persistedMigration.getName());
+            for (PikaMigration persistedMigration : persistedMigrations.copy()) {
+                PikaMigration existingMigration = mergedMigrations.get(persistedMigration.getName());
                 if (existingMigration != null) {
                     if (!existingMigration.equals(persistedMigration)) {
-                        orm.getLogger().log(GrugLogger.Level.WARN, MessageFormat.format("""
+                        orm.getLogger().log(PikaLogger.Level.WARN, MessageFormat.format("""
                                         Migration {0} has different content in the codebase and in the database:
                                         
                                         DB Content:
@@ -2755,14 +2755,14 @@ public class GrugORM {
             }
 
             if (!persistedMigrations.isEmpty()) {
-                orm.getLogger().log(GrugLogger.Level.WARN,
+                orm.getLogger().log(PikaLogger.Level.WARN,
                         "The following migrations have been found in the database, but are not in the current migration file:\n" +
                                 persistedMigrations.join("\n"));
             }
             return mergedMigrations;
         }
 
-        public static final class GrugMigration {
+        public static final class PikaMigration {
 
             public static final String DDL = """
                     CREATE TABLE IF NOT EXISTS grug_migrations (
@@ -2784,24 +2784,24 @@ public class GrugORM {
             private String down;
             private MigrationStatus status = MigrationStatus.PENDING;
 
-            private GrugMigration() {
+            private PikaMigration() {
             }
 
-            public GrugMigration(String name) {
+            public PikaMigration(String name) {
                 this.name = name;
             }
 
-            public GrugMigration description(String description) {
+            public PikaMigration description(String description) {
                 this.description = description;
                 return this;
             }
 
-            public GrugMigration up(String up) {
+            public PikaMigration up(String up) {
                 this.up = up;
                 return this;
             }
 
-            public GrugMigration down(String down) {
+            public PikaMigration down(String down) {
                 this.down = down;
                 return this;
             }
@@ -2826,7 +2826,7 @@ public class GrugORM {
                 return this.down.split(";");
             }
 
-            void runUp(GrugORM orm) {
+            void runUp(PikaORM orm) {
                 orm.withTransaction(() -> {
                     String[] upSqlSplitOnSemicolons = getUpSqlSplitOnSemicolons();
                     for (String sql : upSqlSplitOnSemicolons) {
@@ -2842,7 +2842,7 @@ public class GrugORM {
                 });
             }
 
-            void runDown(GrugORM orm) {
+            void runDown(PikaORM orm) {
                 orm.withTransaction(() -> {
                     String[] upSqlSplitOnSemicolons = getDownSqlSplitOnSemicolons();
                     for (String sql : upSqlSplitOnSemicolons) {
@@ -2856,7 +2856,7 @@ public class GrugORM {
             public boolean equals(Object o) {
                 if (this == o) return true;
                 if (o == null || getClass() != o.getClass()) return false;
-                GrugMigration migration = (GrugMigration) o;
+                PikaMigration migration = (PikaMigration) o;
                 return Objects.equals(name, migration.name) && Objects.equals(up, migration.up) && Objects.equals(down, migration.down);
             }
 
@@ -2911,15 +2911,15 @@ public class GrugORM {
     }
 
     //========================================================================================
-    // GrugORM Results Objects
+    // PikaORM Results Objects
     //========================================================================================
 
     @SuppressWarnings("NullableProblems")
     public static class ResultMap implements Map<String, Object> {
-        private final GrugORM orm;
+        private final PikaORM orm;
         private Map<String, Object> result;
 
-        public ResultMap(GrugORM orm, Map<String, Object> backingMap) {
+        public ResultMap(PikaORM orm, Map<String, Object> backingMap) {
             this.orm = orm;
             result = Collections.unmodifiableMap(backingMap);
         }
@@ -3093,7 +3093,7 @@ public class GrugORM {
 
     public static class QueryResult<T> implements Interfaces.BetterIterable<T> {
 
-        private final GrugORM orm;
+        private final PikaORM orm;
 
         // query specification
         private final String sql;
@@ -3105,7 +3105,7 @@ public class GrugORM {
         private BetterList<T> results;
         private List<T> readOnlyResults;
 
-        private QueryResult(GrugORM orm, String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, BetterList<T> resultList) {
+        private QueryResult(PikaORM orm, String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, BetterList<T> resultList) {
             this.orm = orm;
             this.sql = sql;
             this.args = args;
@@ -3168,7 +3168,7 @@ public class GrugORM {
     }
 
     private static Consumer<Exception> generateForceThrower() {
-        var tmpClass = new ClassLoader(GrugORM.class.getClassLoader()) {
+        var tmpClass = new ClassLoader(PikaORM.class.getClassLoader()) {
             public Class defineClass() {
                 byte[] bytes = Base64.getDecoder().decode("yv66vgAAADQAEgEAGGdydWcvZGIvRm9yY2VUaHJvd2VySW1wbAcAAQEAEGphdmEvbGFuZy9PYmplY3QHAAMBABtqYXZhL3V0aWwvZnVuY3Rpb24vQ29uc3VtZXIHAAUBABVGb3JjZVRocm93ZXJJbXBsLmphdmEBAAY8aW5pdD4BAAMoKVYMAAgACQoABAAKAQAGYWNjZXB0AQAVKExqYXZhL2xhbmcvT2JqZWN0OylWAQATamF2YS9sYW5nL1Rocm93YWJsZQcADgEABENvZGUBAApTb3VyY2VGaWxlACEAAgAEAAEABgAAAAIAAQAIAAkAAQAQAAAAEQABAAEAAAAFKrcAC7EAAAAAAAEADAANAAEAEAAAABEAAQACAAAABSvAAA+/AAAAAAABABEAAAACAAc=");
                 return defineClass("grug.db.ForceThrowerImpl", bytes, 0, bytes.length);

@@ -1,7 +1,7 @@
-package grug.db.models;
+package bigsky.pika.models;
 
 import com.google.gson.Gson;
-import grug.db.GrugORM.*;
+import bigsky.pika.PikaORM.*;
 
 import java.lang.reflect.Field;
 import java.util.*;

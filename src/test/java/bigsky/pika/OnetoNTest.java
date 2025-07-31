@@ -1,11 +1,9 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.models.Foo;
-import grug.db.models.FooContainer;
-import org.junit.jupiter.api.BeforeEach;
+import bigsky.pika.models.Foo;
+import bigsky.pika.models.FooContainer;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

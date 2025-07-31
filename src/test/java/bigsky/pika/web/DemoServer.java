@@ -1,14 +1,13 @@
-package grug.db.web;
+package bigsky.pika.web;
 
-import grug.db.GrugORM;
-import grug.db.GrugORM.Migrations;
+import bigsky.pika.PikaORM;
 import io.javalin.Javalin;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static grug.db.GrugORM.Interfaces.GrugLogger.Level.TRACE;
+import static bigsky.pika.PikaORM.Interfaces.PikaLogger.Level.TRACE;
 
 public class DemoServer {
 
@@ -17,7 +16,7 @@ public class DemoServer {
         clearOldDb();
 
         // init the ORM
-        GrugORM orm = new GrugORM("jdbc:sqlite:test/web.db")
+        PikaORM orm = new PikaORM("jdbc:sqlite:test/web.db")
                 .withLogLevel(TRACE)
                 .makeDefaultORM()
                 .withMigrations(new WebAppMigrations())

@@ -1,11 +1,11 @@
-package grug.db.models;
+package bigsky.pika.models;
 
-import grug.db.GrugORM;
-import grug.db.GrugORM.EnterpriseGrugBean;
+import bigsky.pika.PikaORM;
+import bigsky.pika.PikaORM.EnterprisePikaBean;
 
 import java.util.Date;
 
-public class SampleEgb extends EnterpriseGrugBean {
+public class SampleEgb extends EnterprisePikaBean {
 
     public static final String DDL = """
             CREATE TABLE IF NOT EXISTS sample_egbs (
@@ -39,8 +39,8 @@ public class SampleEgb extends EnterpriseGrugBean {
         }
     }
 
-    public static GrugORM.GrugClassQuery<SampleEgb> where(String str) {
-        return GrugORM.get().query(SampleEgb.class).where(str);
+    public static PikaORM.PikaClassQuery<SampleEgb> where(String str) {
+        return PikaORM.get().query(SampleEgb.class).where(str);
     }
 
 }

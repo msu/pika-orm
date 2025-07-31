@@ -1,8 +1,6 @@
-package grug.db.models;
+package bigsky.pika.models;
 
-import grug.db.GrugORM;
-
-import java.util.List;
+import bigsky.pika.PikaORM;
 
 public class FooContainer {
     public static final String DDL = """
@@ -13,8 +11,8 @@ public class FooContainer {
 
     private long id;
 
-    public GrugORM.QueryResult<Foo> getFoos() {
-        return GrugORM.get().loadMany(this, Foo.class);
+    public PikaORM.QueryResult<Foo> getFoos() {
+        return PikaORM.get().loadMany(this, Foo.class);
     }
 
     public long getId() {

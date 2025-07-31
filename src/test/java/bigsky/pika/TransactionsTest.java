@@ -1,6 +1,6 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.models.TransactionDemo;
+import bigsky.pika.models.TransactionDemo;
 import org.junit.jupiter.api.Test;
 
 

@@ -1,11 +1,11 @@
-package grug.db.web;
+package bigsky.pika.web;
 
-import grug.db.GrugORM.EnterpriseGrugBean;
-import grug.db.GrugORM.GrugListFinder;
+import bigsky.pika.PikaORM.EnterprisePikaBean;
+import bigsky.pika.PikaORM.PikaListFinder;
 
 import java.util.Date;
 
-public class Todo extends EnterpriseGrugBean {
+public class Todo extends EnterprisePikaBean {
 
     Long id;
     String title;
@@ -56,7 +56,7 @@ public class Todo extends EnterpriseGrugBean {
         this.completed = completed;
     }
 
-    public static GrugListFinder<Todo> find() {
+    public static PikaListFinder<Todo> find() {
         return find(Todo.class);
     }
 

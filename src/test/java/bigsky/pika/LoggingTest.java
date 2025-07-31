@@ -1,14 +1,12 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.models.SampleModel;
-import grug.db.models.SampleEgb;
-import org.junit.jupiter.api.BeforeEach;
+import bigsky.pika.models.SampleModel;
+import bigsky.pika.models.SampleEgb;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.sql.Date;
 

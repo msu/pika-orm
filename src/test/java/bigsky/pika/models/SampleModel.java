@@ -1,12 +1,10 @@
-package grug.db.models;
+package bigsky.pika.models;
 
-import grug.db.GrugORM;
-import grug.db.GrugORM.Interfaces.GrugRecordLifecycle;
+import bigsky.pika.PikaORM.Interfaces.PikaRecordLifecycle;
 
-import java.lang.reflect.Field;
 import java.util.Date;
 
-public class SampleModel implements GrugRecordLifecycle {
+public class SampleModel implements PikaRecordLifecycle {
 
     public static String DDL = """
             CREATE TABLE IF NOT EXISTS sample_models (

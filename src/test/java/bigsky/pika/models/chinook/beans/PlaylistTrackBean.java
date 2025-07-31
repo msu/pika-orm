@@ -1,10 +1,10 @@
-package grug.db.models.chinook.beans;
+package bigsky.pika.models.chinook.beans;
 
-import grug.db.GrugORM;
+import bigsky.pika.PikaORM;
 
 import java.util.Map;
 
-public class PlaylistTrackBean extends GrugORM.EnterpriseGrugBean {
+public class PlaylistTrackBean extends PikaORM.EnterprisePikaBean {
 
     int playlistId;
     int trackId;

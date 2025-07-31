@@ -1,8 +1,8 @@
-package grug.db.migrations;
+package bigsky.pika.migrations;
 
-import grug.db.GrugORM;
+import bigsky.pika.PikaORM;
 
-public class MigrationFileForConsoleTesting extends GrugORM.Migrations {
+public class MigrationFileForConsoleTesting extends PikaORM.Migrations {
 
     @Override
     public void migrations()
@@ -12,7 +12,7 @@ public class MigrationFileForConsoleTesting extends GrugORM.Migrations {
         add(this::addBarTable);
     }
 
-    public GrugMigration addBarTable() {
+    public PikaMigration addBarTable() {
         return makeMigration("add bar table")
                 .up("""
                         CREATE TABLE IF NOT EXISTS bars (
@@ -25,7 +25,7 @@ public class MigrationFileForConsoleTesting extends GrugORM.Migrations {
                         """);
     }
 
-    public GrugMigration addFooTable() {
+    public PikaMigration addFooTable() {
         return makeMigration("add foo table")
                 .up("""
                         CREATE TABLE IF NOT EXISTS foos (
@@ -38,7 +38,7 @@ public class MigrationFileForConsoleTesting extends GrugORM.Migrations {
                         """);
     }
 
-    public GrugMigration addMigrationDemoTable() {
+    public PikaMigration addMigrationDemoTable() {
         return makeMigration("migration1")
                 .up("""
                         CREATE TABLE IF NOT EXISTS migration_demo_models (

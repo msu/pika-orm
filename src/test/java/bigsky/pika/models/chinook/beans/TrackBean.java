@@ -1,11 +1,9 @@
-package grug.db.models.chinook.beans;
+package bigsky.pika.models.chinook.beans;
 
-import grug.db.GrugORM;
-import grug.db.GrugORM.GrugListFinder;
+import bigsky.pika.PikaORM;
+import bigsky.pika.PikaORM.PikaListFinder;
 
-import java.util.List;
-
-public class TrackBean extends GrugORM.EnterpriseGrugBean {
+public class TrackBean extends PikaORM.EnterprisePikaBean {
 
     Long trackId;
     String name;
@@ -81,11 +79,11 @@ public class TrackBean extends GrugORM.EnterpriseGrugBean {
         this.unitPrice = unitPrice;
     }
 
-    public GrugORM.QueryResult<PlaylistBean> getPlaylists() {
+    public PikaORM.QueryResult<PlaylistBean> getPlaylists() {
         return loadManyThrough(PlaylistTrackBean.class, PlaylistBean.class);
     }
 
-    public static GrugListFinder<TrackBean> find() {
+    public static PikaListFinder<TrackBean> find() {
         return find(TrackBean.class);
     }
 

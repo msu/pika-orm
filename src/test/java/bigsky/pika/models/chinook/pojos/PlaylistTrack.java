@@ -1,4 +1,4 @@
-package grug.db.models.chinook.pojos;
+package bigsky.pika.models.chinook.pojos;
 
 public class PlaylistTrack {
 

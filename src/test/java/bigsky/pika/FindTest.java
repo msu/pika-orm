@@ -1,8 +1,8 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.GrugORM.QueryResult;
-import grug.db.models.SampleModel;
-import grug.db.models.SampleEgb;
+import bigsky.pika.PikaORM.QueryResult;
+import bigsky.pika.models.SampleModel;
+import bigsky.pika.models.SampleEgb;
 import org.junit.jupiter.api.Test;
 
 import java.time.temporal.ChronoUnit;
@@ -100,10 +100,10 @@ public class FindTest extends TestBase {
         System.out.println(results);
 
         assertEquals(3, results.size());
-        GrugORM.ResultMap first = results.getFirst();
+        PikaORM.ResultMap first = results.getFirst();
 
 
-        GrugORM.ResultMap insensitive = first.toCaseInsensitiveMap();
+        PikaORM.ResultMap insensitive = first.toCaseInsensitiveMap();
         assertEquals("foo", insensitive.get("str_val"));
         assertEquals(10, insensitive.get("int_val"));
         assertEquals(true, insensitive.asBoolean("bool_val"));
@@ -113,7 +113,7 @@ public class FindTest extends TestBase {
 
     record SampleModelGroupByQuery(String strVal, Long sum) {
         public static QueryResult<SampleModelGroupByQuery> exec() {
-            return GrugORM.get().select("""
+            return PikaORM.get().select("""
                             SELECT str_val, sum(int_val) as sum
                             FROM sample_models
                             GROUP BY str_val

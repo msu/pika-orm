@@ -1,7 +1,7 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.models.SampleModel;
-import grug.db.models.SampleEgb;
+import bigsky.pika.models.SampleModel;
+import bigsky.pika.models.SampleEgb;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

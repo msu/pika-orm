@@ -1,9 +1,9 @@
-package grug.db.web;
+package bigsky.pika.web;
 
-import grug.db.GrugORM;
+import bigsky.pika.PikaORM;
 import org.jetbrains.annotations.NotNull;
 
-public class WebAppMigrations extends GrugORM.Migrations {
+public class WebAppMigrations extends PikaORM.Migrations {
 
     @Override
     public void migrations() {
@@ -11,7 +11,7 @@ public class WebAppMigrations extends GrugORM.Migrations {
     }
 
     @NotNull
-    public GrugMigration initialTodoSchema() {
+    public PikaMigration initialTodoSchema() {
         return makeMigration("Todo Schema")
                 .up("""
                         CREATE TABLE IF NOT EXISTS todos (
