@@ -1,14 +1,14 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.models.chinook.pojos.Album;
+import bigsky.pika.models.chinook.pojos.Album;
 import org.junit.jupiter.api.Test;
 
-import static grug.db.GrugORM.*;
+import static bigsky.pika.PikaORM.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static grug.db.ChinookTest.configureOrm;
+import static bigsky.pika.ChinookTest.configureOrm;
 
-public class GrugQueryBuilderTest {
+public class PikaQueryBuilderTest {
 
     @Test
     void testRawQueryBuilderCanSelectColumnsWithResultObject() {

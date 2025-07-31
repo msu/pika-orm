@@ -1,6 +1,6 @@
-package grug.db;
+package bigsky.pika;
 
-import grug.db.models.SampleEgb;
+import bigsky.pika.models.SampleEgb;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Date;
@@ -8,7 +8,7 @@ import java.sql.Date;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class EnterpriseGrugBeanTest extends TestBase {
+public class EnterprisePikaBeanTest extends TestBase {
 
     @Test
     void testInsertAsRecord() {
@@ -24,7 +24,7 @@ public class EnterpriseGrugBeanTest extends TestBase {
         SampleEgb sampleModel = new SampleEgb("foo", -10, true, new Date(2021, 1, 1));
         long id = sampleModel.insert();
         assertTrue(sampleModel.hasErrors());
-        assertEquals(GrugORM.INSERT_FAILED, id);
+        assertEquals(PikaORM.INSERT_FAILED, id);
     }
 
 }
