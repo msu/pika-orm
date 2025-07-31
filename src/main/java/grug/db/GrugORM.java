@@ -1403,17 +1403,33 @@ public class GrugORM {
             errorList.add(error);
         }
 
+        public void addError(Field field, String error) {
+            addError(field.getName(), error);
+        }
+
         public void addError(String field, String error) {
             var errorList = getErrorList(field);
             errorList.add(error);
         }
 
-        public List<String> getClassErrors() {
+        public List<String> getGeneralErrors() {
             return getErrorList(null);
         }
 
-        public List<String> getFieldErrors(String field) {
+        public List<String> getErrors(String field) {
             return getErrorList(field);
+        }
+
+        public String getErrorString(String field) {
+            return getErrorList(field).stream().collect(Collectors.joining(", "));
+        }
+
+        public boolean hasError(Field field) {
+            return hasError(field.getName());
+        }
+
+        public boolean hasError(String field) {
+            return errors.containsKey(field);
         }
 
         private List<String> getErrorList(String key) {
