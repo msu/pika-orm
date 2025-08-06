@@ -1,7 +1,7 @@
 package bigsky.pika.models.chinook.beans;
 
 import bigsky.pika.PikaORM.EnterprisePikaBean;
-import bigsky.pika.PikaORM.PikaListFinder;
+import bigsky.pika.PikaORM.PikaClassFinder;
 
 public class AlbumBean extends EnterprisePikaBean {
     Long artistId;
@@ -24,7 +24,7 @@ public class AlbumBean extends EnterprisePikaBean {
         return load(ArtistBean.class);
     }
 
-    public static PikaListFinder<AlbumBean> find() {
+    public static PikaClassFinder<AlbumBean> find() {
         return find(AlbumBean.class);
     }
 }

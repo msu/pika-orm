@@ -18,7 +18,7 @@ public class PikaQueryBuilderTest {
                 .where("Title LIKE '%A%'")
                 .withResult(Album.class);
 
-        var results = query.fetchAsList();
+        var results = query.fetchList();
         assertEquals(264, results.size());
 
         assertEquals("For Those About To Rock We Salute You", results.first().getTitle());
@@ -47,7 +47,7 @@ public class PikaQueryBuilderTest {
                 .select("Title")
                 .where("Title LIKE '%A%'");
 
-        var results = query.fetchAsList();
+        var results = query.fetchList();
         assertEquals(264, results.size());
 
         assertEquals("For Those About To Rock We Salute You", results.first().get("Title"));
@@ -61,7 +61,7 @@ public class PikaQueryBuilderTest {
                 .select("Title as AlbumTitle")
                 .where("Title LIKE '%A%'");
 
-        var results = query.fetchAsList();
+        var results = query.fetchList();
         assertEquals(264, results.size());
 
 
@@ -76,7 +76,7 @@ public class PikaQueryBuilderTest {
                 .select("Albums.Title as AlbumTitle")
                 .where("Title LIKE '%A%'");
 
-        var results = query.fetchAsList();
+        var results = query.fetchList();
         assertEquals(264, results.size());
 
 
@@ -92,7 +92,7 @@ public class PikaQueryBuilderTest {
                 .join("Tracks on albums.AlbumId = tracks.TrackId")
                 .where("Title LIKE '%A%'");
 
-        var results = query.fetchAsList();
+        var results = query.fetchList();
         assertEquals(264, results.size());
 
         assertEquals(4, results.first().size());
@@ -109,7 +109,7 @@ public class PikaQueryBuilderTest {
                 .where("albums.Title LIKE '%A%'")
                 .withResult(Album.class);
 
-        var results = query.fetchAsList();
+        var results = query.fetchList();
         assertEquals(264, results.size());
 
         assertEquals("For Those About To Rock (We Salute You)", results.first().getTitle());
@@ -124,7 +124,7 @@ public class PikaQueryBuilderTest {
                 .join("Artists on artists.artistId = albums.artistId")
                 .where("artists.Name LIKE '%AC/DC%'");
 
-        var results = query.fetchAsList();
+        var results = query.fetchList();
         assertEquals(2, results.size());
 
         System.out.println(results);//LinkedHashMaps Generic!
@@ -141,7 +141,7 @@ public class PikaQueryBuilderTest {
                 .where("artists.Name LIKE '%AC/DC%'")
                 .withResult(Album.class);
 
-        var results = query.fetchAsList();
+        var results = query.fetchList();
         assertEquals(2, results.size());
 
         System.out.println(results);//Album Objects
@@ -159,7 +159,7 @@ public class PikaQueryBuilderTest {
                 .where("artistname LIKE '%Led Zeppelin%'")
                 .orderBy("Title", SortOrder.DESC);
 
-        var results = query.fetchAsList();
+        var results = query.fetchList();
 
         assertEquals(14, results.size());
         assertEquals("Led Zeppelin", results.first().getString("artistname"));

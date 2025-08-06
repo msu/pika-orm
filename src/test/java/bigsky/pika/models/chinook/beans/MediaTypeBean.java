@@ -20,7 +20,7 @@ public class MediaTypeBean extends PikaORM.EnterprisePikaBean {
         this.name = name;
     }
 
-    public static PikaORM.PikaListFinder<MediaTypeBean> find() {
+    public static PikaORM.PikaClassFinder<MediaTypeBean> find() {
         return find(MediaTypeBean.class);
     }
 

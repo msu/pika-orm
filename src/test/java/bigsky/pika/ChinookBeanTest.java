@@ -98,7 +98,7 @@ public class ChinookBeanTest {
                 .join(TrackBean.class)
                 .join(ArtistBean.class)
                 .where("tracks.Name LIKE 'A%' AND artists.Name LIKE 'A%'")
-                        .fetchAsList();
+                        .fetchList();
 
         assertEquals(6, result.size());
     }

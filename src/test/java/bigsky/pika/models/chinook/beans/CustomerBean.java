@@ -120,7 +120,7 @@ public class CustomerBean extends PikaORM.EnterprisePikaBean {
         this.supportRepId = supportRepId;
     }
 
-    public static PikaORM.PikaListFinder<CustomerBean> find() {
+    public static PikaORM.PikaClassFinder<CustomerBean> find() {
         return find(CustomerBean.class);
     }
 }

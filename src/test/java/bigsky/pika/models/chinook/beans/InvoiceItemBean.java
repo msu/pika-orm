@@ -47,7 +47,7 @@ public class InvoiceItemBean extends PikaORM.EnterprisePikaBean {
         this.quantity = quantity;
     }
 
-    public static PikaORM.PikaListFinder<InvoiceItemBean> find() {
+    public static PikaORM.PikaClassFinder<InvoiceItemBean> find() {
         return find(InvoiceItemBean.class);
     }
 }

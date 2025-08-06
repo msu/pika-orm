@@ -38,7 +38,7 @@ public class InsertTest extends TestBase {
                 .where("date_val = :val")
                 .withVar("val", new Date(2021, 1, 1));
 
-        var result = query.fetchAsList();
+        var result = query.toList();
 
         assertEquals(6, result.size());
     }

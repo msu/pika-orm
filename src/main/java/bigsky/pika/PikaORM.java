@@ -19,6 +19,8 @@ import java.util.*;
 import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,8 +36,9 @@ public class PikaORM {
 
     private static PikaORM DEFAULT_ORM = null;
 
-    // TODO Do we need a remove() call on this at some point?
     private static final ThreadLocal<ConnectionSession> CURRENT_SESSION = new ThreadLocal<>();
+
+    private static final ThreadLocal<AtomicLong> QUERY_COUNT = new ThreadLocal<>();
 
     private static final Consumer<Exception> FORCE_THROWER = generateForceThrower();
 
@@ -340,8 +343,8 @@ public class PikaORM {
     // Main entrypoints into the query layer
     //====================================================================
 
-    public <T> PikaListFinder<T> find(Class<T> classToFind) {
-        return new PikaListFinder<>(classToFind);
+    public <T> PikaClassFinder<T> find(Class<T> classToFind) {
+        return new PikaClassFinder<>(classToFind);
     }
 
     public <T> PikaStreamFinder<T> stream(Class<T> classToFind) {
@@ -356,10 +359,30 @@ public class PikaORM {
         return new PikaQuery<>(baseTable);
     }
 
-    public class PikaListFinder<T> {
+    public void startThreadQueryCount() {
+        QUERY_COUNT.set(new AtomicLong(0));
+    }
+
+    public void incrementThreadQueryCount() {
+        AtomicLong count = QUERY_COUNT.get();
+        if (count != null) {
+            count.incrementAndGet();
+        }
+    }
+
+    public long getThreadQueryCount() {
+        AtomicLong count = QUERY_COUNT.get();
+        if (count == null) {
+            return 0;
+        } else {
+            return count.longValue();
+        }
+    }
+
+    public class PikaClassFinder<T> {
         Class<T> classToFind;
 
-        public PikaListFinder(Class<T> classToFind) {
+        public PikaClassFinder(Class<T> classToFind) {
             this.classToFind = classToFind;
         }
 
@@ -395,12 +418,28 @@ public class PikaORM {
             return select(sql, Map.of("val", val), classToFind);
         }
 
+        public QueryResult<T> where(String whereClause, String arg, Object val) {
+            return where(whereClause, Map.of(arg, val));
+        }
+
+        public QueryResult<T> where(String whereClause, String arg, Object val, String arg2, Object val2) {
+            return where(whereClause, Map.of(arg, val, arg2, val2));
+        }
+
         public QueryResult<T> where(String whereClause, Map<String, Object> args) {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
             String selectClause = "SELECT * FROM " + tableName + " WHERE ";
             String sql = selectClause + whereClause;
             return select(sql, args, classToFind);
+        }
+
+        public T firstWhere(String whereClause, String arg, Object val) {
+            return firstWhere(whereClause, Map.of(arg, val));
+        }
+
+        public T firstWhere(String whereClause, String arg, Object val, String arg2, Object val2) {
+            return firstWhere(whereClause, Map.of(arg, val, arg2, val2));
         }
 
         public T firstWhere(String whereClause, Map<String, Object> args) {
@@ -418,6 +457,7 @@ public class PikaORM {
         public PikaClassQuery<T> byQuery() {
             return query(classToFind);
         }
+
     }
 
     public class PikaStreamFinder<T> {
@@ -587,6 +627,7 @@ public class PikaORM {
         }
 
         private PreparedStatement prepareStatement(String updatedSql, Collection<Object> vals, String[] keyCols) throws SQLException {
+            incrementThreadQueryCount();
             PreparedStatement ps;
             if (keyCols != null) {
                 ps = conn.prepareStatement(updatedSql, keyCols);
@@ -1054,9 +1095,9 @@ public class PikaORM {
             logger.log(PikaLogger.Level.WARN, "SQL is blank, will not be executed!");
             return false;
         }
-        logger.log(getQueryLogLevel(), "EXECUTING RAW SQL: {} with args {}\n", sql, args);
+        logger.log(getQueryLogLevel(), "EXECUTING RAW SQL: {} with args {}\n", updatedSql, args);
         try (var session = getOrCreateSession();
-             var ps = session.prepareStatement(sql, vals)) {
+             var ps = session.prepareStatement(updatedSql, vals)) {
             boolean result = time(ps::execute);
             return result;
         } catch (Exception e) {
@@ -1273,7 +1314,7 @@ public class PikaORM {
             }
 
             default <K> Map<K, List<T>> toMap(Function<T, K> mapper) {
-                Map<K, List<T>> mappedResult = new HashMap<>();
+                Map<K, List<T>> mappedResult = new LinkedHashMap<>();
                 for (T t : this) {
                     mappedResult
                             .computeIfAbsent(mapper.apply(t), _ -> new ArrayList<>())
@@ -1336,7 +1377,7 @@ public class PikaORM {
                 return mappedResult;
             }
 
-            default String join(String separator) {
+            default String toString(String separator) {
                 StringBuilder builder = new StringBuilder();
                 int i = 0;
                 for (T t : this) {
@@ -1551,7 +1592,7 @@ public class PikaORM {
             return sb.toString();
         }
 
-        protected static <T> PikaListFinder<T> find(Class<T> c) {
+        protected static <T> PikaClassFinder<T> find(Class<T> c) {
             return orm().find(c);
         }
 
@@ -1576,7 +1617,7 @@ public class PikaORM {
         }
     }
 
-    public class PikaQuery<T> {
+    public class PikaQuery<T> implements Callable<QueryResult<T>>, Interfaces.BetterIterable<T> {
 
         private final String baseTable;
         private boolean distinct;
@@ -1591,9 +1632,15 @@ public class PikaORM {
         private int pageSize = -1;
         private int page = -1;
 
+        // result caches
+        private LazyVar<QueryResult<T>> fetchResult;
+        private LazyVar<T> fetchFirstResult;
+        private LazyVar<Long> totalCountResult;
+
         public PikaQuery(String baseTable) {
             this.baseTable = baseTable;
             this.resultClass = (Class<T>) ResultMap.class;
+            initResults();
         }
 
         public PikaQuery<T> where(String condition) {
@@ -1602,6 +1649,14 @@ public class PikaORM {
             }
             whereClause.append(condition);
             return this;
+        }
+
+        public PikaQuery<T> where(String whereClause, String arg, Object val) {
+            return where(whereClause, Map.of(arg, val));
+        }
+
+        public PikaQuery<T> where(String whereClause, String arg, Object val, String arg2, Object val2) {
+            return where(whereClause, Map.of(arg, val, arg2, val2));
         }
 
         public PikaQuery<T> where(String condition, Map<String, Object> vars) {
@@ -1631,27 +1686,6 @@ public class PikaORM {
             this.resultClass = (Class) clazz;
             //noinspection unchecked
             return (PikaQuery<Q>) this;
-        }
-
-        public QueryResult<T> fetch() {
-            String sql = generateSQL();
-            return PikaORM.this.select(sql, valMap, resultClass, columns);
-        }
-
-        public BetterList<T> fetchAsList() {
-            String sql = generateSQL();
-            QueryResult<T> select = PikaORM.this.select(sql, valMap, resultClass, columns);
-            return select.getRawList();
-        }
-
-        public T fetchFirst() {
-            String sql = generateSQLNoLimit() + " " + MessageFormat.format(limitOffsetClause, 1, 0);
-            return PikaORM.this.select(sql, valMap, resultClass, columns).first();
-        }
-
-        public Stream<T> stream() {
-            String sql = generateSQL();
-            return PikaORM.this.stream(sql, valMap, resultClass, new ColumnsSpec(columns));
         }
 
         private String generateSQL() {
@@ -1781,14 +1815,61 @@ public class PikaORM {
             }
         }
 
+        // actual queries
+        private void initResults() {
+            fetchResult = new LazyVar<>(() ->{
+                String sql = generateSQL();
+                return PikaORM.this.select(sql, valMap, resultClass, columns);
+            });
+            fetchFirstResult = new LazyVar<>(() -> {
+                String sql = generateSQLNoLimit() + " " + MessageFormat.format(limitOffsetClause, 1, 0);
+                return PikaORM.this.select(sql, valMap, resultClass, columns).first();
+            });
+            totalCountResult = new LazyVar<>(() -> {
+                String sql = "SELECT COUNT(*) as TOTAL FROM (" + generateSQLNoLimit() + ") T1";
+                var result = PikaORM.this.select(sql, valMap).first();
+                return result.asLong("TOTAL");
+            });
+        }
+
         public long totalCount() {
-            String sql = "SELECT COUNT(*) as TOTAL FROM (" + generateSQLNoLimit() + ") T1";
-            var result = PikaORM.this.select(sql, valMap).first();
-            return result.asLong("TOTAL");
+            return totalCountResult.get();
+        }
+
+        public QueryResult<T> fetch() {
+            return fetchResult.get();
+        }
+
+        public BetterList<T> fetchList() {
+            QueryResult<T> select = fetch();
+            return select.toList();
+        }
+
+        public T fetchFirst() {
+            return fetchFirstResult.get();
+        }
+
+        public void reload() {
+            initResults();
+        }
+
+        public Stream<T> stream() {
+            String sql = generateSQL();
+            return PikaORM.this.stream(sql, valMap, resultClass, new ColumnsSpec(columns));
+        }
+
+        @Override
+        public Iterator<T> iterator() {
+            return fetch().iterator();
+        }
+
+        @Override
+        public QueryResult<T> call() throws Exception {
+            return fetch();
         }
     }
 
-    public class PikaClassQuery<T> implements Callable<QueryResult<T>>, Iterable<T> {
+    public class PikaClassQuery<T> implements Callable<QueryResult<T>>, Interfaces.BetterIterable<T> {
 
         private final PikaQuery<T> query;
         private final Class classToFind;
@@ -1862,6 +1943,14 @@ public class PikaORM {
             return this;
         }
 
+        public PikaClassQuery<T> where(String whereClause, String arg, Object val) {
+            return where(whereClause, Map.of(arg, val));
+        }
+
+        public PikaClassQuery<T> where(String whereClause, String arg, Object val, String arg2, Object val2) {
+            return where(whereClause, Map.of(arg, val, arg2, val2));
+        }
+
         public PikaClassQuery<T> where(String condition, Map<String, Object> vals) {
             query.where(condition, vals);
             return this;
@@ -1869,10 +1958,6 @@ public class PikaORM {
 
         public QueryResult<T> fetch() {
             return query.fetch();
-        }
-
-        public BetterList<T> fetchAsList() {
-            return query.fetch().getRawList();
         }
 
         public T fetchFirst() {
@@ -1918,7 +2003,7 @@ public class PikaORM {
             return this;
         }
 
-        public PikaQuery<T> raw() {
+        public PikaQuery<T> toRawQuery() {
             return query;
         }
 
@@ -1967,6 +2052,14 @@ public class PikaORM {
 
         public long totalCount() {
             return this.query.totalCount();
+        }
+
+        public void reload() {
+            query.reload();
+        }
+
+        public BetterList<T> fetchList() {
+            return query.fetchList();
         }
     }
 
@@ -2643,7 +2736,7 @@ public class PikaORM {
                     console.printf(show());
                 } else if (cmd.equals("raw")) {
                     var mergedMigrations = loadMigrations(orm);
-                    console.printf(new BetterList<>(mergedMigrations.values()).join("\n"));
+                    console.printf(new BetterList<>(mergedMigrations.values()).toString("\n"));
                 } else if (cmd.equals("up")) {
                     up();
                 } else if (cmd.equals("down")) {
@@ -2757,7 +2850,7 @@ public class PikaORM {
             if (!persistedMigrations.isEmpty()) {
                 orm.getLogger().log(PikaLogger.Level.WARN,
                         "The following migrations have been found in the database, but are not in the current migration file:\n" +
-                                persistedMigrations.join("\n"));
+                                persistedMigrations.toString("\n"));
             }
             return mergedMigrations;
         }
@@ -3125,7 +3218,7 @@ public class PikaORM {
             orm.select(sql, args, resultClass, columnSpec, results);
         }
 
-        public BetterList<T> getRawList() {
+        public BetterList<T> toList() {
             return results;
         }
 
@@ -3135,6 +3228,44 @@ public class PikaORM {
 
         public List<T> getAsReadOnlyList() {
             return readOnlyResults;
+        }
+    }
+
+    //================================================================================================
+    // Simple locked lazy var
+    //================================================================================================
+
+    static class LazyVar<T> implements Callable<T> {
+        private volatile boolean set = false;
+        private ReentrantLock lock = new ReentrantLock();
+        private final Callable<T> valueProducer;
+        private T value = null;
+        public LazyVar(Callable<T> valueProducer) {
+            this.valueProducer = valueProducer;
+        }
+
+        @Override
+        public T call() throws Exception {
+            if (!set) {
+                lock.lock();
+                try {
+                    if(!set) {
+                        value = valueProducer.call();
+                        set = true;
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            }
+            return value;
+        }
+
+        public T get() {
+            try {
+                return call();
+            } catch (Exception e) {
+                throw rethrow(e);
+            }
         }
     }
 

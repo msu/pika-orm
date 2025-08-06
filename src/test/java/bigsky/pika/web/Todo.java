@@ -1,7 +1,7 @@
 package bigsky.pika.web;
 
 import bigsky.pika.PikaORM.EnterprisePikaBean;
-import bigsky.pika.PikaORM.PikaListFinder;
+import bigsky.pika.PikaORM.PikaClassFinder;
 
 import java.util.Date;
 
@@ -56,7 +56,7 @@ public class Todo extends EnterprisePikaBean {
         this.completed = completed;
     }
 
-    public static PikaListFinder<Todo> find() {
+    public static PikaClassFinder<Todo> find() {
         return find(Todo.class);
     }
 

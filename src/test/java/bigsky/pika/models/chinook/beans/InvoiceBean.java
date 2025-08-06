@@ -87,7 +87,7 @@ public class InvoiceBean extends PikaORM.EnterprisePikaBean {
         this.total = total;
     }
 
-    public static PikaORM.PikaListFinder<InvoiceBean> find() {
+    public static PikaORM.PikaClassFinder<InvoiceBean> find() {
         return find(InvoiceBean.class);
     }
 }

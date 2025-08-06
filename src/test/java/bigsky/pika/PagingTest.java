@@ -22,7 +22,7 @@ public class PagingTest  extends TestBase {
         }
 
         // first page
-        var sampleModels = orm.find(SampleModel.class).byQuery().page(1).pageSize(10).orderBy("id").fetchAsList();
+        var sampleModels = orm.find(SampleModel.class).byQuery().page(1).pageSize(10).orderBy("id").fetchList();
 
         assertEquals(10, sampleModels.size());
         assertEquals("sample 0", sampleModels.first().getStrVal());
@@ -42,7 +42,7 @@ public class PagingTest  extends TestBase {
         }
 
         // first page
-        var sampleModels = orm.find(SampleModel.class).byQuery().page(10).pageSize(10).orderBy("id").fetchAsList();
+        var sampleModels = orm.find(SampleModel.class).byQuery().page(10).pageSize(10).orderBy("id").fetchList();
 
         assertEquals(10, sampleModels.size());
         assertEquals("sample 90", sampleModels.first().getStrVal());
@@ -105,7 +105,7 @@ public class PagingTest  extends TestBase {
         // first page
         var sampleModels = orm.find(SampleModel.class).byQuery().page(11).pageSize(10).orderBy("id");
 
-        assertEquals(5, sampleModels.fetchAsList().size());
+        assertEquals(5, sampleModels.fetchList().size());
         assertFalse(sampleModels.isFirstPage());
         assertTrue(sampleModels.isLastPage());
     }

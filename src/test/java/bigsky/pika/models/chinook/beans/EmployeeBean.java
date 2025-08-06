@@ -1,7 +1,7 @@
 package bigsky.pika.models.chinook.beans;
 
 import bigsky.pika.PikaORM.EnterprisePikaBean;
-import bigsky.pika.PikaORM.PikaListFinder;
+import bigsky.pika.PikaORM.PikaClassFinder;
 import bigsky.pika.PikaORM.QueryResult;
 
 import java.util.Date;
@@ -148,7 +148,7 @@ public class EmployeeBean extends EnterprisePikaBean {
         return load(EmployeeBean.class, "ReportsTo");
     }
 
-    public static PikaListFinder<EmployeeBean> find() {
+    public static PikaClassFinder<EmployeeBean> find() {
         return find(EmployeeBean.class);
     }
 }

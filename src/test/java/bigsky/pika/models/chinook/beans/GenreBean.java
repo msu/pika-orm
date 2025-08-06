@@ -20,7 +20,7 @@ public class GenreBean extends PikaORM.EnterprisePikaBean {
         this.name = name;
     }
 
-    public static PikaORM.PikaListFinder<GenreBean> find() {
+    public static PikaORM.PikaClassFinder<GenreBean> find() {
         return find(GenreBean.class);
     }
 }

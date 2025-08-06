@@ -1,7 +1,7 @@
 package bigsky.pika.models.chinook.beans;
 
 import bigsky.pika.PikaORM;
-import bigsky.pika.PikaORM.PikaListFinder;
+import bigsky.pika.PikaORM.PikaClassFinder;
 import bigsky.pika.PikaORM.QueryResult;
 
 public class PlaylistBean extends PikaORM.EnterprisePikaBean {
@@ -26,7 +26,7 @@ public class PlaylistBean extends PikaORM.EnterprisePikaBean {
         return loadManyThrough(PlaylistTrackBean.class, TrackBean.class);
     }
 
-    public static PikaListFinder<PlaylistBean> find() {
+    public static PikaClassFinder<PlaylistBean> find() {
         return find(PlaylistBean.class);
     }
 

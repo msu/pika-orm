@@ -23,7 +23,7 @@ public class ArtistBean extends EnterprisePikaBean {
         return loadMany(AlbumBean.class);
     }
 
-    public static PikaListFinder<ArtistBean> find() {
+    public static PikaClassFinder<ArtistBean> find() {
         return find(ArtistBean.class);
     }
 }
