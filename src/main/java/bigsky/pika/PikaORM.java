@@ -214,7 +214,10 @@ public class PikaORM {
     // Coercion System
     //====================================================================
 
-    public Object coerce(Class targetClass, Object value) {
+    public <T> T coerce(Class<T> targetClass, Object value) {
+        if(value == null) {
+            return null;
+        }
         for (BiFunction<Class, Object, Object> coercer : coercers) {
             Object result = coercer.apply(targetClass, value);
             if (result != null) {
@@ -231,7 +234,7 @@ public class PikaORM {
                     value.getClass().getSimpleName() + " with value " + value + " to class " +
                     targetClass.getSimpleName());
         }
-        return result;
+        return (T) result;
     }
 
     private Object sloppyCoerce(Class targetClass, Object value) {
@@ -1663,7 +1666,7 @@ public class PikaORM {
         protected Class<T> resultClass;
 
         private int pageSize = -1;
-        private int page = -1;
+        private long page = -1;
 
         // result caches
         private LazyVar<QueryResult<T>> fetchResult;
@@ -1730,7 +1733,7 @@ public class PikaORM {
                 } else {
                     limit = pageSize;
                 }
-                int offset = (page - 1) * limit;
+                long offset = (page - 1) * limit;
                 sql += "\n" + MessageFormat.format(limitOffsetClause, limit, offset);
             } else if (pageSize != -1) {
                 int offset = 0;
@@ -1806,7 +1809,7 @@ public class PikaORM {
             return this;
         }
 
-        public PikaQuery<T> page(int page) {
+        public PikaQuery<T> page(long page) {
             this.page = page;
             return this;
         }
@@ -1815,7 +1818,7 @@ public class PikaORM {
             return generateSQL() + "\nVals:" + this.valMap;
         }
 
-        public int getPage() {
+        public long getPage() {
             return page;
         }
 
@@ -2031,7 +2034,7 @@ public class PikaORM {
             return this;
         }
 
-        public PikaClassQuery<T> page(int page) {
+        public PikaClassQuery<T> page(long page) {
             query.page(page);
             return this;
         }
@@ -2067,7 +2070,7 @@ public class PikaORM {
             return fetch().iterator();
         }
 
-        public int getPage() {
+        public long getPage() {
             return this.query.getPage();
         }
 
