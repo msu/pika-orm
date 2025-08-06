@@ -1724,7 +1724,7 @@ public class PikaORM {
             return (PikaQuery<Q>) this;
         }
 
-        private String generateSQL() {
+        public String generateSQL() {
             String sql = generateSQLNoLimit();
             if (page != -1) {
                 int limit;
