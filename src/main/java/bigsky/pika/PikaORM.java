@@ -1611,7 +1611,6 @@ public class PikaORM {
             var mapping = orm().getMapping(this.getClass());
             var fieldMappings = mapping.fieldNameToMapping;
             var sb = new StringBuilder(this.getClass().getSimpleName()).append("{");
-            boolean first = true;
             fieldMappings.forEach((name, fieldMapping) -> {
                 sb.append(name);
                 sb.append(":");
@@ -1724,7 +1723,7 @@ public class PikaORM {
             return (PikaQuery<Q>) this;
         }
 
-        public String generateSQL() {
+        public String getSQL() {
             String sql = generateSQLNoLimit();
             if (page != -1) {
                 int limit;
@@ -1815,7 +1814,7 @@ public class PikaORM {
         }
 
         public String toString() {
-            return generateSQL() + "\nVals:" + this.valMap;
+            return getSQL() + "\nVals:" + this.valMap;
         }
 
         public long getPage() {
@@ -1856,14 +1855,14 @@ public class PikaORM {
         }
 
         public QueryResult<ResultMap> explain(String suffix) {
-            String sql = "EXPLAIN " + suffix + " " + generateSQL();
+            String sql = "EXPLAIN " + suffix + " " + getSQL();
             return PikaORM.this.select(sql, valMap, ResultMap.class, columns);
         }
 
         // actual queries
         private void initResults() {
             fetchResult = new LazyVar<>(() ->{
-                String sql = generateSQL();
+                String sql = getSQL();
                 return PikaORM.this.select(sql, valMap, resultClass, columns);
             });
             fetchFirstResult = new LazyVar<>(() -> {
@@ -1899,7 +1898,7 @@ public class PikaORM {
         }
 
         public Stream<T> stream() {
-            String sql = generateSQL();
+            String sql = getSQL();
             return PikaORM.this.stream(sql, valMap, resultClass, new ColumnsSpec(columns));
         }
 
@@ -2113,6 +2112,10 @@ public class PikaORM {
 
         public QueryResult<ResultMap> explain(String suffix) {
             return query.explain(suffix);
+        }
+
+        public String getSQL() {
+            return query.getSQL();
         }
     }
 
