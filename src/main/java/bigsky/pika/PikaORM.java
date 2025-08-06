@@ -992,9 +992,6 @@ public class PikaORM {
         String keyCol = mapping.getIdColumn();
         Map<String, Object> valuesToUpdate = mapping.toDatabaseMap(object);
         Object keyVal = valuesToUpdate.remove(keyCol); // remove the key
-        if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.beforeUpdate()) {
-            return false;
-        }
         String versionColumn = null;
         Object currentVersionValue = null;
         Object nextVersionValue = null;
@@ -1002,6 +999,9 @@ public class PikaORM {
             versionColumn = mapping.getVersionColumn();
             currentVersionValue = mapping.getCurrentVersion(valuesToUpdate);
             nextVersionValue = mapping.incrementVersion(valuesToUpdate);
+        }
+        if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.beforeUpdate(valuesToUpdate)) {
+            return false;
         }
         boolean update = update(tableName, keyCol, keyVal, versionColumn, currentVersionValue, valuesToUpdate);
         if (mapping.hasVersionColumn() && update) {
@@ -1014,6 +1014,10 @@ public class PikaORM {
     }
 
     private boolean update(String tableName, String keyCol, Object keyVal, String versionCol, Object versionVal, Map<String, Object> values) {
+        if(values.isEmpty()) {
+            // nothing to update
+            return true;
+        }
         if (!(values instanceof TreeMap<String, Object>)) {
             values = new TreeMap<>(values);
         }
@@ -1262,7 +1266,7 @@ public class PikaORM {
                 return true;
             }
 
-            default boolean beforeUpdate() {
+            default boolean beforeUpdate(Map<String, Object> valuesToUpdate) {
                 return true;
             }
 
@@ -1430,6 +1434,7 @@ public class PikaORM {
 
         private transient boolean persisted;
         private final transient Map<String, List<String>> errors = new LinkedHashMap<>();
+        private transient Map<String, Object> originalValues = Collections.emptyMap();
 
         public boolean hasErrors() {
             return !errors.isEmpty();
@@ -1488,9 +1493,37 @@ public class PikaORM {
             // override in subclasses
         }
 
-
         public void afterSelect() {
+            markPersisted();
+        }
+
+        private void markPersisted() {
             this.persisted = true;
+            Mapping mapping = orm().getMapping(this.getClass());
+            originalValues = mapping.toDatabaseMap(this);
+        }
+
+        public Object getOriginalValue(Field f) {
+            return getOriginalValue(f.getName());
+        }
+
+        public Object getOriginalValue(String fieldName) {
+            return originalValues.get(fieldName);
+        }
+
+        @Override
+        public boolean beforeUpdate(Map<String, Object> valuesToUpdate) {
+            Iterator<String> keys = valuesToUpdate.keySet().iterator();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                if (originalValues.containsKey(key)) {
+                    // remove any elements that are equal to their original value, making update unnecessary
+                    if(originalValues.get(key).equals(valuesToUpdate.get(key))) {
+                        keys.remove();
+                    }
+                }
+            }
+            return true;
         }
 
         public long insert() {
@@ -1498,7 +1531,7 @@ public class PikaORM {
                 throw new IllegalStateException("This record is already persisted!");
             }
             long id = orm().insert(this);
-            this.persisted = true;
+            markPersisted();
             return id;
         }
 
@@ -1880,8 +1913,7 @@ public class PikaORM {
             Mapping mappingForClassToFind = getMapping(classToFind);
             query = new PikaQuery<>(mappingForClassToFind.getTableName())
                     .withResult(classToFind)
-                    .withColumnPrefix(mappingForClassToFind.getTableName())
-                    .distinct();
+                    .withColumnPrefix(mappingForClassToFind.getTableName());
             this.setLastJoinedClass(classToFind);
         }
 
@@ -1934,7 +1966,8 @@ public class PikaORM {
             }
             String sqlString = joinType + joinedTable + " ON " + idTable + "." + idColumn + " = " + fkTable + "." + fkColumn;
             setLastJoinedClass(classToJoin);
-            query.join(sqlString);
+            // since we are joining mark the query as distinct
+            query.distinct().join(sqlString);
             return this;
         }
 

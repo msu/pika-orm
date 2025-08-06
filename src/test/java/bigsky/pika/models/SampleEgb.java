@@ -43,4 +43,7 @@ public class SampleEgb extends EnterprisePikaBean {
         return PikaORM.get().query(SampleEgb.class).where(str);
     }
 
+    public void setStrVal(String s) {
+        this.strVal = s;
+    }
 }
