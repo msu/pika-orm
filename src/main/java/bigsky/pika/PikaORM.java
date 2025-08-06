@@ -1851,6 +1851,15 @@ public class PikaORM {
             }
         }
 
+        public QueryResult<ResultMap> explain() {
+            return explain("");
+        }
+
+        public QueryResult<ResultMap> explain(String suffix) {
+            String sql = "EXPLAIN " + suffix + " " + generateSQL();
+            return PikaORM.this.select(sql, valMap, ResultMap.class, columns);
+        }
+
         // actual queries
         private void initResults() {
             fetchResult = new LazyVar<>(() ->{
@@ -2096,6 +2105,14 @@ public class PikaORM {
 
         public BetterList<T> fetchList() {
             return query.fetchList();
+        }
+
+        public QueryResult<ResultMap> explain() {
+            return query.explain();
+        }
+
+        public QueryResult<ResultMap> explain(String suffix) {
+            return query.explain(suffix);
         }
     }
 
@@ -3186,6 +3203,10 @@ public class PikaORM {
 
         public Set<Entry<String, Object>> entrySet() {
             return result.entrySet();
+        }
+
+        public String toString() {
+            return result.toString();
         }
     }
 
