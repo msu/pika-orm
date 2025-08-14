@@ -11,7 +11,7 @@ public class FooContainer {
 
     private long id;
 
-    public PikaORM.QueryResult<Foo> getFoos() {
+    public PikaORM.ManyResult<Foo> getFoos() {
         return PikaORM.get().loadMany(this, Foo.class);
     }
 

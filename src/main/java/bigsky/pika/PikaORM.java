@@ -326,16 +326,14 @@ public class PikaORM {
                 .fetch();
     }
 
-    public <T> QueryResult<T> loadMany(Object objectOfOne, Class<T> classOfMany) {
+    public <T> ManyResult<T> loadMany(Object objectOfOne, Class<T> classOfMany) {
         Mapping mapping = getMapping(objectOfOne.getClass());
         String fkName = mapping.getDefaultForeignKeyColumnName();
         return loadMany(objectOfOne, classOfMany, fkName);
     }
 
-    public <T> QueryResult<T> loadMany(Object objectOfOne, Class<T> classOfMany, String foreignKeyColumnOnMany) {
-        Mapping mapping = getMapping(objectOfOne.getClass());
-        Object ownerPkValue = mapping.getId(objectOfOne);
-        return find(classOfMany).allBy(foreignKeyColumnOnMany, ownerPkValue);
+    public <T> ManyResult<T> loadMany(Object objectOfOne, Class<T> classOfMany, String foreignKeyColumnOnMany) {
+        return new ManyResult<>(objectOfOne, classOfMany, foreignKeyColumnOnMany, this);
     }
 
     public <T> T load(Object objectWithFk, Class<T> classToLoad) {
@@ -1597,11 +1595,11 @@ public class PikaORM {
             return orm().loadManyThrough(this, through, to);
         }
 
-        protected <T> QueryResult<T> loadMany(Class<T> of) {
+        protected <T> ManyResult<T> loadMany(Class<T> of) {
             return orm().loadMany(this, of);
         }
 
-        protected <T> QueryResult<T> loadMany(Class<T> of, String fkColumn) {
+        protected <T> ManyResult<T> loadMany(Class<T> of, String fkColumn) {
             return orm().loadMany(this, of, fkColumn);
         }
 
@@ -1630,9 +1628,9 @@ public class PikaORM {
 
         private void setValueFromString(String col, String str) {
             Mapping mapping = orm().getMapping(this.getClass());
-            FieldMapping fieldMapping = mapping.getFieldMapping(col);
+            FieldMapping fieldMapping = mapping.getFieldMappingForFieldName(col);
             if (fieldMapping == null) {
-                fieldMapping = mapping.getFieldMapping(TextTools.camelCase(col));
+                fieldMapping = mapping.getFieldMappingForFieldName(TextTools.camelCase(col));
                 if(fieldMapping == null) {
                     throw new IllegalArgumentException("No field '" + str + "' found on " + this.getClass().getSimpleName());
                 }
@@ -2545,8 +2543,20 @@ public class PikaORM {
             return idMapping != null;
         }
 
-        public FieldMapping getFieldMapping(String field) {
+        public FieldMapping getFieldMappingForFieldName(String field) {
             return fieldNameToMapping.get(field);
+        }
+
+        public FieldMapping getFieldMappingForColumn(String field) {
+            return columnToMapping.get(field);
+        }
+
+        public Object newInstance() {
+            try {
+                return constructor.newInstance();
+            } catch (Exception e) {
+                throw rethrow(e);
+            }
         }
     }
 
@@ -3284,6 +3294,72 @@ public class PikaORM {
 
         public BetterList<T> copy() {
             return new BetterList<>(this);
+        }
+    }
+
+    public static class ManyResult<T> implements Interfaces.BetterIterable<T> {
+
+        private final Mapping mappingForOwner;
+        private final Mapping mappingForMany;
+        private final Object owner;
+        private final Class<T> classOfMany;
+        private final String fkColumn;
+        private final PikaORM orm;
+        private QueryResult<T> result;
+
+        public ManyResult(Object owner,
+                          Class<T> classOfMany,
+                          String fkColumn,
+                          PikaORM orm) {
+            this.mappingForOwner = orm.getMapping(owner.getClass());
+            this.mappingForMany = orm.getMapping(classOfMany);
+            this.owner = owner;
+            this.classOfMany = classOfMany;
+            this.fkColumn = fkColumn;
+            this.orm = orm;
+        }
+
+        @Override
+        public Iterator<T> iterator() {
+            if(result == null) {
+                Object id = mappingForOwner.getId(owner);
+                result = orm.find(classOfMany).allBy(fkColumn, id);
+            }
+            return result.iterator();
+        }
+
+        public void addAndSave(T newMember) {
+            add(newMember);
+            if (newMember instanceof EnterprisePikaBean epb) {
+                epb.save();
+            } else {
+                Object idForNewMember = mappingForMany.getId(newMember);
+                if (idForNewMember == null) {
+                    get().insert(newMember);
+                } else {
+                    get().update(newMember);
+                }
+            }
+            reload();
+        }
+
+        public void reload() {
+            result = null;
+        }
+
+        public void add(T newMember) {
+            Object id = mappingForOwner.getId(owner);
+            if (id == null) {
+                throw new IllegalStateException(owner + " must be saved to the database to add " + newMember);
+            }
+            FieldMapping fieldMapping = mappingForMany.getFieldMappingForColumn(fkColumn);
+            fieldMapping.setFieldValue(newMember, id);
+        }
+
+        public T newMember() {
+            T newMember = (T) mappingForMany.newInstance();
+            add(newMember);
+            return newMember;
         }
     }
 

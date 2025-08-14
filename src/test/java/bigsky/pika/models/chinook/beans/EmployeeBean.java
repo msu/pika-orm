@@ -1,5 +1,6 @@
 package bigsky.pika.models.chinook.beans;
 
+import bigsky.pika.PikaORM;
 import bigsky.pika.PikaORM.EnterprisePikaBean;
 import bigsky.pika.PikaORM.PikaClassFinder;
 import bigsky.pika.PikaORM.QueryResult;
@@ -140,7 +141,7 @@ public class EmployeeBean extends EnterprisePikaBean {
         this.email = email;
     }
 
-    public QueryResult<EmployeeBean> getReports() {
+    public PikaORM.ManyResult<EmployeeBean> getReports() {
         return loadMany(EmployeeBean.class, "ReportsTo");
     }
 
