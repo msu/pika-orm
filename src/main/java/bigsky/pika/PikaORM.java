@@ -181,6 +181,14 @@ public class PikaORM {
         return this;
     }
 
+    public boolean getLogQueries() {
+        return logQueries;
+    }
+
+    public void doNotLogQueries() {
+        logQueries = false;
+    }
+
     public PikaORM makeDefaultORM() {
         setDefaultORM(this);
         return this;
@@ -257,7 +265,7 @@ public class PikaORM {
         if (targetType.isInstance(value)) {
             return value;
         } else if (targetType.isEnum()) {
-            return Enum.valueOf(targetType, String.valueOf(value));
+            return Enum.valueOf(targetType, String.valueOf(value).toUpperCase());
         } else if (targetType == String.class) {
             return String.valueOf(value);
         } else if ((targetType == Short.class || targetType == short.class) && value instanceof String s) {
@@ -393,14 +401,14 @@ public class PikaORM {
             Mapping mapping = getMapping(classToFind);
             String column = mapping.getIdColumn();
             Mapping mapping1 = getMapping(classToFind);
-            String sql = "SELECT * FROM " + mapping1.getTableName() + " WHERE " + column + "=:arg " + MessageFormat.format(limitOffsetClause, 1, 0);
+            String sql = "SELECT * FROM " + mapping1.getTableName() + "\nWHERE " + column + "=:arg " + MessageFormat.format(limitOffsetClause, 1, 0);
             QueryResult<T> result = select(sql, Map.of("arg", id), classToFind);
             return result.first();
         }
 
         public T byKey(String col, Object value) {
             Mapping mapping = getMapping(classToFind);
-            String sql = "SELECT * FROM " + mapping.getTableName() + " WHERE " + col + "=:arg " + MessageFormat.format(limitOffsetClause, 1, 0);
+            String sql = "SELECT * FROM " + mapping.getTableName() + "\nWHERE " + col + "=:arg " + MessageFormat.format(limitOffsetClause, 1, 0);
             QueryResult<T> result = select(sql, Map.of("arg", value), classToFind);
             return result.first();
         }
@@ -408,15 +416,14 @@ public class PikaORM {
         public QueryResult<T> all() {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
-            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
-            String sql = selectClause + "true=true";
+            String sql = "SELECT * FROM " + tableName;
             return select(sql, Map.of(), classToFind);
         }
 
         public QueryResult<T> allBy(String column, Object val) {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
-            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
+            String selectClause = "SELECT * FROM " + tableName + "\nWHERE ";
             String sql = selectClause + column + "=:val ";
             return select(sql, Map.of("val", val), classToFind);
         }
@@ -432,7 +439,7 @@ public class PikaORM {
         public QueryResult<T> where(String whereClause, Map<String, Object> args) {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
-            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
+            String selectClause = "SELECT * FROM " + tableName + "\nWHERE ";
             String sql = selectClause + whereClause;
             return select(sql, args, classToFind);
         }
@@ -448,7 +455,7 @@ public class PikaORM {
         public T firstWhere(String whereClause, Map<String, Object> args) {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
-            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
+            String selectClause = "SELECT * FROM " + tableName + "\nWHERE ";
             String sql = selectClause + whereClause + " " + MessageFormat.format(limitOffsetClause, 1, 0);
             return select(sql, args, classToFind).first();
         }
@@ -474,28 +481,27 @@ public class PikaORM {
             Mapping mapping = getMapping(classToFind);
             String column = mapping.getIdColumn();
             Mapping mapping1 = getMapping(classToFind);
-            String sql = "SELECT * FROM " + mapping1.getTableName() + " WHERE " + column + "=:arg " + MessageFormat.format(limitOffsetClause, 1, 0);
+            String sql = "SELECT * FROM " + mapping1.getTableName() + "\nWHERE " + column + "=:arg " + MessageFormat.format(limitOffsetClause, 1, 0);
             return stream(sql, Map.of("arg", id), classToFind);
         }
 
         public Stream<T> byKey(String col, Object value) {
             Mapping mapping = getMapping(classToFind);
-            String sql = "SELECT * FROM " + mapping.getTableName() + " WHERE " + col + "=:arg " + MessageFormat.format(limitOffsetClause, 1, 0);
+            String sql = "SELECT * FROM " + mapping.getTableName() + "\nWHERE " + col + "=:arg " + MessageFormat.format(limitOffsetClause, 1, 0);
             return stream(sql, Map.of("arg", value), classToFind);
         }
 
         public Stream<T> all() {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
-            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
-            String sql = selectClause + "true=true";
+            String sql = "SELECT * FROM " + tableName;
             return stream(sql, Map.of(), classToFind);
         }
 
         public Stream<T> allBy(String column, Object val) {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
-            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
+            String selectClause = "SELECT * FROM " + tableName + "\nWHERE ";
             String sql = selectClause + column + "=:val ";
             return stream(sql, Map.of("val", val), classToFind);
         }
@@ -503,7 +509,7 @@ public class PikaORM {
         public Stream<T> where(String whereClause, Map<String, Object> args) {
             Mapping metaData = getMapping(classToFind);
             String tableName = metaData.getTableName();
-            String selectClause = "SELECT * FROM " + tableName + " WHERE ";
+            String selectClause = "SELECT * FROM " + tableName + "\nWHERE ";
             String sql = selectClause + whereClause;
             return stream(sql, args, classToFind);
         }
@@ -548,7 +554,7 @@ public class PikaORM {
             openCount--;
             logger.log(PikaLogger.Level.DEBUG, "Decremented open count on connection {}: {}", uuid, "*".repeat(openCount));
             if (openCount == 0) { // if we are back at the top level of the connection count we close the connection
-                logger.log(PikaLogger.Level.INFO, "Closing connection {} on Thread {}", uuid, Thread.currentThread().getName());
+                logger.log(PikaLogger.Level.DEBUG, "Closing connection {} on Thread {}", uuid, Thread.currentThread().getName());
                 try {
                     for (var rs : resultSets) {
                         try {
@@ -582,9 +588,9 @@ public class PikaORM {
         public void startTransaction() {
             if (transactionCount == 0) {
                 safely(() -> conn.setAutoCommit(false));
-                logger.log(PikaLogger.Level.INFO, "Starting new transaction for connection {}", uuid);
+                logger.log(PikaLogger.Level.DEBUG, "Starting new transaction for connection {}", uuid);
             } else {
-                logger.log(PikaLogger.Level.INFO, "Existing transaction for connection {}, joining it", uuid);
+                logger.log(PikaLogger.Level.DEBUG, "Existing transaction for connection {}, joining it", uuid);
             }
             transactionCount++;
         }
@@ -593,7 +599,7 @@ public class PikaORM {
             if (isInTransaction()) {
                 transactionCount--;
                 if (transactionCount == 0) {
-                    logger.log(PikaLogger.Level.INFO, "Transaction for connection {} completed, committing", uuid);
+                    logger.log(PikaLogger.Level.DEBUG, "Transaction for connection {} completed, committing", uuid);
                     safely(() -> conn.commit());
                 } else {
                     logger.log(PikaLogger.Level.INFO, "Nested transaction detected for connection {}, deferring commit", uuid);
@@ -674,7 +680,7 @@ public class PikaORM {
     private ConnectionSession pushNewSession() {
         ConnectionSession currentSession = getCurrentSession();
         ConnectionSession newSession = new ConnectionSession(currentSession);
-        logger.log(PikaLogger.Level.INFO, "Created a new connection for Thread {} w/ID {}", Thread.currentThread().getName(), newSession.uuid);
+        logger.log(PikaLogger.Level.DEBUG, "Created a new connection for Thread {} w/ID {}", Thread.currentThread().getName(), newSession.uuid);
         CURRENT_SESSION.set(newSession);
         return newSession;
     }
@@ -775,7 +781,7 @@ public class PikaORM {
         Mapping mapping = getMapping(resultClass);
         ArrayList<Object> vals = new ArrayList<>();
         String updatedSql = updateSqlVars(sql, args, vals);
-        logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
+        logQuery("Issuing SQL Query:", sql, args);
         try (var session = getOrCreateSession();
              var ps = session.prepareStatement(updatedSql, vals);
              var resultSet = session.execute(ps)) {
@@ -823,7 +829,7 @@ public class PikaORM {
         Mapping mapping = getMapping(resultClass);
         ArrayList<Object> vals = new ArrayList<>();
         String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
-        logger.log(getQueryLogLevel(), "Select SQL: {}\n  Args:{}", updatedSql, vals);
+        logQuery("Issuing SQL Query:", sql, args);
         try {
             PreparedStatement ps = session.prepareStatement(updatedSql, vals);
             ResultSet rs = session.execute(ps);
@@ -934,6 +940,7 @@ public class PikaORM {
 
         String insertString = sb.toString();
 
+        logQuery("Bulk Insert SQL:", insertString, Map.of());
         logger.log(getQueryLogLevel(), "BULK INSERT SQL: {}\n  Args:{}", insertString, values);
         try (var session = getOrCreateSession();
              var ps = session.prepareStatement(insertString, values)) {
@@ -1028,14 +1035,13 @@ public class PikaORM {
         sb.append(tableName);
         sb.append(" SET ");
         sb.append(values.keySet().stream().map(col -> col + "=?").collect(Collectors.joining(", ")));
-        sb.append(" WHERE ");
+        sb.append(" \nWHERE ");
         sb.append(keyCol).append("=?");
         if (versionCol != null) {
             sb.append(" AND ").append(versionCol).append("=?");
         }
 
         String updateSQL = sb.toString();
-        logger.log(getQueryLogLevel(), "UPDATE SQL: {}\n  Args:{}", updateSQL, values.values());
 
         // construct final values collection
         ArrayList<Object> finalValues = new ArrayList<>(values.values());
@@ -1044,6 +1050,7 @@ public class PikaORM {
             finalValues.add(versionVal);
         }
 
+        logQuery("Update SQL: ", updateSQL, values);
         try (var session = getOrCreateSession();
              var ps = session.prepareStatement(updateSQL, finalValues)) {
             int i = time(ps::executeUpdate);
@@ -1072,8 +1079,8 @@ public class PikaORM {
     }
 
     private boolean delete(String tableName, String keyCol, Object keyVal) {
-        String deleteSQL = "DELETE FROM " + tableName + " WHERE " + keyCol + "=?";
-        logger.log(getQueryLogLevel(), "DELETE SQL: {}\n  Args:{}", deleteSQL, List.of(keyVal));
+        String deleteSQL = "DELETE FROM " + tableName + "\nWHERE " + keyCol + "=?";
+        logQuery("Delete SQL:", deleteSQL, Map.of(keyCol, keyVal));
         try (var session = getOrCreateSession();
              var ps = session.prepareStatement(deleteSQL, List.of(keyVal))) {
             int i = time(ps::executeUpdate);
@@ -1102,7 +1109,7 @@ public class PikaORM {
             logger.log(PikaLogger.Level.WARN, "SQL is blank, will not be executed!");
             return false;
         }
-        logger.log(getQueryLogLevel(), "EXECUTING RAW SQL: {} with args {}\n", updatedSql, args);
+        logQuery("Executing Raw SQL:", updatedSql, args);
         try (var session = getOrCreateSession();
              var ps = session.prepareStatement(updatedSql, vals)) {
             boolean result = time(ps::execute);
@@ -1110,6 +1117,14 @@ public class PikaORM {
         } catch (Exception e) {
             logger.log(PikaLogger.Level.ERROR, "Exception in exec() with SQL {}: {}", sql, e.getMessage());
             throw rethrow(e);
+        }
+    }
+
+    private void logQuery(String msg, String sql, Map<String, Object> args) {
+        if (args.isEmpty()) {
+            logger.log(getQueryLogLevel(), "{}\n{}", msg, sql);
+        } else {
+            logger.log(getQueryLogLevel(), "{}\n{}\nARGS:{}", msg, sql, args);
         }
     }
 
@@ -1128,7 +1143,7 @@ public class PikaORM {
         }
     }
 
-    private PikaLogger.Level getQueryLogLevel() {
+    public PikaLogger.Level getQueryLogLevel() {
         if (logQueries) {
             return PikaLogger.Level.INFO;
         } else {
@@ -1200,9 +1215,9 @@ public class PikaORM {
             return new String(chars);
         }
 
-        public static String snakeCase(String string) {
+        public static String snakeCase(String camelCaseString) {
             StringBuilder result = new StringBuilder();
-            char[] charArray = string.toCharArray();
+            char[] charArray = camelCaseString.toCharArray();
             for (int i = 0; i < charArray.length; i++) {
                 char c = charArray[i];
                 if (Character.isUpperCase(c)) {
@@ -1212,6 +1227,27 @@ public class PikaORM {
                     result.append(Character.toLowerCase(c));
                 } else {
                     result.append(c);
+                }
+            }
+            return result.toString();
+        }
+
+        public static String camelCase(String snakeCaseString) {
+            StringBuilder result = new StringBuilder();
+            char[] charArray = snakeCaseString.toCharArray();
+            for (int i = 0; i < charArray.length; i++) {
+                char c = charArray[i];
+                if (i == 0) {
+                    result.append(c);
+                } else {
+                    if (c == '_') {
+                        i++;
+                        if(i < charArray.length) {
+                            result.append(Character.toUpperCase(charArray[i]));
+                        }
+                    } else {
+                        result.append(c);
+                    }
                 }
             }
             return result.toString();
@@ -1596,7 +1632,10 @@ public class PikaORM {
             Mapping mapping = orm().getMapping(this.getClass());
             FieldMapping fieldMapping = mapping.getFieldMapping(col);
             if (fieldMapping == null) {
-                throw new IllegalArgumentException("No field '" + str + "' found on " + this.getClass().getSimpleName());
+                fieldMapping = mapping.getFieldMapping(TextTools.camelCase(col));
+                if(fieldMapping == null) {
+                    throw new IllegalArgumentException("No field '" + str + "' found on " + this.getClass().getSimpleName());
+                }
             }
             Class fieldType = fieldMapping.getType();
             fieldMapping.setFieldValue(this, orm().coerce(fieldType, str));
@@ -1723,7 +1762,7 @@ public class PikaORM {
             return (PikaQuery<Q>) this;
         }
 
-        public String getSQL() {
+        private String generateSQL() {
             String sql = generateSQLNoLimit();
             if (page != -1) {
                 int limit;
@@ -1814,7 +1853,7 @@ public class PikaORM {
         }
 
         public String toString() {
-            return getSQL() + "\nVals:" + this.valMap;
+            return generateSQL() + "\nVals:" + this.valMap;
         }
 
         public long getPage() {
@@ -1855,14 +1894,14 @@ public class PikaORM {
         }
 
         public QueryResult<ResultMap> explain(String suffix) {
-            String sql = "EXPLAIN " + suffix + " " + getSQL();
+            String sql = "EXPLAIN " + suffix + " " + generateSQL();
             return PikaORM.this.select(sql, valMap, ResultMap.class, columns);
         }
 
         // actual queries
         private void initResults() {
             fetchResult = new LazyVar<>(() ->{
-                String sql = getSQL();
+                String sql = generateSQL();
                 return PikaORM.this.select(sql, valMap, resultClass, columns);
             });
             fetchFirstResult = new LazyVar<>(() -> {
@@ -1898,7 +1937,7 @@ public class PikaORM {
         }
 
         public Stream<T> stream() {
-            String sql = getSQL();
+            String sql = generateSQL();
             return PikaORM.this.stream(sql, valMap, resultClass, new ColumnsSpec(columns));
         }
 
@@ -2114,8 +2153,8 @@ public class PikaORM {
             return query.explain(suffix);
         }
 
-        public String getSQL() {
-            return query.getSQL();
+        public String generateSQL() {
+            return query.generateSQL();
         }
     }
 
@@ -2859,14 +2898,18 @@ public class PikaORM {
          * Applies all outstanding migrations in the order they are declared
          */
         public void applyAll() {
-            getORM();
-            orm.exec(PikaMigration.DDL);
-            var mergedMigrations = loadMigrations(orm);
-            for (PikaMigration migration : mergedMigrations.values()) {
-                if (!migration.isApplied()) {
-                    migration.runUp(orm);
+            orm.logger.log(PikaLogger.Level.INFO, "Applying migrations");
+            orm.withTransaction(()-> {
+                orm.exec(PikaMigration.DDL);
+                var mergedMigrations = loadMigrations(orm);
+                for (PikaMigration migration : mergedMigrations.values()) {
+                    if (!migration.isApplied()) {
+                        orm.logger.log(PikaLogger.Level.INFO, "Applying migration " + migration.name);
+                        migration.runUp(orm);
+                    }
                 }
-            }
+                orm.logger.log(PikaLogger.Level.INFO, "Done applying migrations");
+            });
         }
 
         private LinkedHashMap<String, PikaMigration> loadMigrations(PikaORM orm) {
