@@ -22,9 +22,9 @@ public class EnterprisePikaBeanTest extends TestBase {
     void testFieldValidation() {
         initTestDb(SampleEgb.DDL);
         SampleEgb sampleModel = new SampleEgb("foo", -10, true, new Date(2021, 1, 1));
-        long id = sampleModel.insert();
+        Long id = sampleModel.insert();
         assertTrue(sampleModel.hasErrors());
-        assertEquals(PikaORM.INSERT_FAILED, id);
+        assertEquals(null, id);
     }
 
 }

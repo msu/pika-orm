@@ -6,29 +6,25 @@ import java.util.Map;
 
 public class PlaylistTrackBean extends PikaORM.EnterprisePikaBean {
 
-    int playlistId;
-    int trackId;
+    Long playlistId;
+    Long trackId;
 
     // Getters and setters
-    public int getPlaylistId() {
+    public long getPlaylistId() {
         return playlistId;
     }
 
-    public int getTrackId() {
+    public long getTrackId() {
         return trackId;
     }
 
     // no constructor
     private PlaylistTrackBean(){}
 
-    public static void associate(PlaylistBean playlistBean, TrackBean track){
-        orm().exec("INSERT INTO playlist_track(PlaylistId, TrackId) VALUES (:playlistId, :trackId)",
-                Map.of("playlistId", playlistBean.getPlaylistId(), "trackId", track.getTrackId()));
+    // playlisttrack doesn't have an id :/ so we need to override and implement this
+    @Override
+    public boolean delete() {
+        orm().exec("DELETE FROM playlist_track WHERE PlaylistId=:pid AND TrackId=:trackid", Map.of("pid", playlistId, "trackid", trackId));
+        return true;
     }
-
-    public static void unassociate(PlaylistBean playlistBean, TrackBean track){
-        orm().exec("DELETE FROM playlist_track WHERE PlaylistId=:playlistId AND TrackId=:trackId",
-                Map.of("playlistId", playlistBean.getPlaylistId(), "trackId", track.getTrackId()));
-    }
-
 }

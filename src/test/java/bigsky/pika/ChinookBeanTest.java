@@ -128,9 +128,8 @@ public class ChinookBeanTest {
         var tracks = playlist.getTracks();
         assertFalse(tracks.hasMatch(trackBean -> trackBean.getTrackId() == 3));
 
-        PlaylistTrackBean.associate(playlist, TrackBean.find().byId(3));
+        tracks.addAndSave(TrackBean.find().byId(3));
 
-        tracks.reload();
         assertTrue(tracks.hasMatch(trackBean -> trackBean.getTrackId() == 3));
     }
 
@@ -142,7 +141,7 @@ public class ChinookBeanTest {
         var tracks = playlist.getTracks();
         var firstTrack = tracks.first();
 
-        PlaylistTrackBean.unassociate(playlist, firstTrack);
+        playlist.getTracks().remove(firstTrack);
 
         tracks = playlist.getTracks();
         assertFalse(tracks.hasMatch(trackBean -> Objects.equals(trackBean.getTrackId(), firstTrack.getTrackId())));
@@ -160,9 +159,10 @@ public class ChinookBeanTest {
         newTrack.setComposer(existingTrack.getComposer());
         newTrack.setMilliseconds(existingTrack.getMilliseconds());
         newTrack.setMediaTypeId(existingTrack.getMediaTypeId());
+        newTrack.save();
 
         PlaylistBean playlist = PlaylistBean.find().byId(1);
-        playlist.addTrack(newTrack);
+        playlist.getTracks().addAndSave(newTrack);
 
         TrackBean newTrackLoaded = TrackBean.find().byKey("name", newTrack.getName());
         assertNotNull(newTrackLoaded);

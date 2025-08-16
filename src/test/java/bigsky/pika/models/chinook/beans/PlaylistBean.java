@@ -2,15 +2,14 @@ package bigsky.pika.models.chinook.beans;
 
 import bigsky.pika.PikaORM;
 import bigsky.pika.PikaORM.PikaClassFinder;
-import bigsky.pika.PikaORM.QueryResult;
 
 public class PlaylistBean extends PikaORM.EnterprisePikaBean {
 
-    int playlistId;
+    Long playlistId;
     String name;
 
     // Getters and setters
-    public int getPlaylistId() {
+    public Long getPlaylistId() {
         return playlistId;
     }
 
@@ -22,23 +21,11 @@ public class PlaylistBean extends PikaORM.EnterprisePikaBean {
         this.name = name;
     }
 
-    public QueryResult<TrackBean> getTracks() {
+    public PikaORM.ManyToManyResult<PlaylistTrackBean, TrackBean> getTracks() {
         return loadManyThrough(PlaylistTrackBean.class, TrackBean.class);
     }
 
     public static PikaClassFinder<PlaylistBean> find() {
         return find(PlaylistBean.class);
-    }
-
-    public void addTrack(TrackBean track) {
-        if (track == null) {
-            throw new IllegalArgumentException("Track cannot be null");
-        }
-
-        if (!track.isPersisted()) {
-            track.insert();
-        }
-
-        PlaylistTrackBean.associate(this, track);
     }
 }

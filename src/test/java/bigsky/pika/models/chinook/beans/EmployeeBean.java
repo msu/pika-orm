@@ -3,7 +3,6 @@ package bigsky.pika.models.chinook.beans;
 import bigsky.pika.PikaORM;
 import bigsky.pika.PikaORM.EnterprisePikaBean;
 import bigsky.pika.PikaORM.PikaClassFinder;
-import bigsky.pika.PikaORM.QueryResult;
 
 import java.util.Date;
 
@@ -141,7 +140,7 @@ public class EmployeeBean extends EnterprisePikaBean {
         this.email = email;
     }
 
-    public PikaORM.ManyResult<EmployeeBean> getReports() {
+    public PikaORM.OneToManyResult<EmployeeBean> getReports() {
         return loadMany(EmployeeBean.class, "ReportsTo");
     }
 

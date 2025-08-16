@@ -19,7 +19,7 @@ public class ArtistBean extends EnterprisePikaBean {
         this.name = name;
     }
 
-    public ManyResult<AlbumBean> getAlbums() {
+    public OneToManyResult<AlbumBean> getAlbums() {
         return loadMany(AlbumBean.class);
     }
 
