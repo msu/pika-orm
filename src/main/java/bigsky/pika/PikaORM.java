@@ -3377,6 +3377,15 @@ public class PikaORM {
                     .withVar("pikaId", oneMapping.getId(one));
         }
 
+        public T findById(long manyId) {
+            Mapping mappingForMany = orm.getMapping(classOfMany);
+            String idCol = mappingForMany.getIdColumn();
+            return findBy(idCol, manyId);
+        }
+
+        private T findBy(String col, Object val) {
+            return toQuery().where(col + "=:val", Map.of("val", val)).fetchFirst();
+        }
 
         public PikaClassQuery<T> where(String condition) {
             return toQuery().where(condition);
@@ -3498,10 +3507,19 @@ public class PikaORM {
             return toQuery().where(condition, vals);
         }
 
-        public T newMember() {
+        public T create() {
             T newMember = (T) mappingForMany.newInstance();
             add(newMember);
             return newMember;
+        }
+
+        public T findById(long manyId) {
+            String idCol = mappingForMany.getIdColumn();
+            return findBy(idCol, manyId);
+        }
+
+        private T findBy(String col, Object val) {
+            return toQuery().where(col + "=:val", Map.of("val", val)).fetchFirst();
         }
     }
 
