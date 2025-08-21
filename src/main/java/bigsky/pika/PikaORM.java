@@ -1581,7 +1581,9 @@ public class PikaORM {
             if (!persisted) {
                 throw new IllegalStateException("This record has not been persisted!");
             }
-            return orm().update(this);
+            boolean update = orm().update(this);
+            markPersisted();
+            return update;
         }
 
         public boolean save() {
