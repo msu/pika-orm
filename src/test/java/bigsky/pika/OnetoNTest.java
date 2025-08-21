@@ -84,7 +84,7 @@ public class OnetoNTest extends TestBase {
         FooContainer fooContainer = new FooContainer();
         orm.insert(fooContainer);
         for (int i = 0; i < 10; i++) {
-            Foo foo = fooContainer.getFoos().newMember();
+            Foo foo = fooContainer.getFoos().create();
             orm.insert(foo);
         }
 

@@ -140,7 +140,7 @@ public class EmployeeBean extends EnterprisePikaBean {
         this.email = email;
     }
 
-    public PikaORM.OneToManyResult<EmployeeBean> getReports() {
+    public PikaORM.PikaManyQuery<EmployeeBean> getReports() {
         return loadMany(EmployeeBean.class, "ReportsTo");
     }
 

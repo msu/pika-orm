@@ -79,7 +79,7 @@ public class TrackBean extends PikaORM.EnterprisePikaBean {
         this.unitPrice = unitPrice;
     }
 
-    public PikaORM.ManyToManyResult<PlaylistTrackBean, PlaylistBean> getPlaylists() {
+    public PikaORM.PikaManyThroughQuery<PlaylistTrackBean, PlaylistBean> getPlaylists() {
         return loadManyThrough(PlaylistTrackBean.class, PlaylistBean.class);
     }
 

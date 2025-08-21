@@ -21,7 +21,7 @@ public class PlaylistBean extends PikaORM.EnterprisePikaBean {
         this.name = name;
     }
 
-    public PikaORM.ManyToManyResult<PlaylistTrackBean, TrackBean> getTracks() {
+    public PikaORM.PikaManyThroughQuery<PlaylistTrackBean, TrackBean> getTracks() {
         return loadManyThrough(PlaylistTrackBean.class, TrackBean.class);
     }
 

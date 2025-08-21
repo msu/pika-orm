@@ -150,7 +150,7 @@ public class PikaORM {
     }
 
     public PikaORM withNoDefaultVersionColumn() {
-        defaultVersionFieldName = _ -> null;
+        defaultVersionFieldName = clazz -> null;
         return this;
     }
 
@@ -251,7 +251,7 @@ public class PikaORM {
                 try {
                     // return as string
                     return coerce(targetClass, String.valueOf(value));
-                } catch (Exception _) {
+                } catch (Exception ex) {
                     // ignore, rethrow original exception
                 }
             }
@@ -291,7 +291,7 @@ public class PikaORM {
         } else if (targetType == Date.class && value instanceof String s) {
             try {
                 return new Date(Long.parseLong(s));
-            } catch (NumberFormatException _) {
+            } catch (NumberFormatException nfe) {
                 // if the value is not a long, try to parse it as a date string
                 return safely(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(s));
             }
@@ -315,22 +315,22 @@ public class PikaORM {
     // One to Many & Many to One & Many to Many functionality
     //====================================================================
 
-    public <J, T> ManyToManyResult<J, T> loadManyThrough(Object one, Class<J> joinClass, Class<T> classOfMany) {
+    public <J, T> PikaManyThroughQuery<J, T> loadManyThrough(Object one, Class<J> joinClass, Class<T> classOfMany) {
         Mapping oneMapping = getMapping(one.getClass());
         String oneFk = oneMapping.getDefaultForeignKeyColumnName();
         Mapping manyMapping = getMapping(classOfMany);
         String manyFk = manyMapping.getDefaultForeignKeyColumnName();
-        return new ManyToManyResult<>(one, oneFk, joinClass, classOfMany, manyFk, this);
+        return new PikaManyThroughQuery<>(one, oneFk, joinClass, classOfMany, manyFk, this);
     }
 
-    public <T> OneToManyResult<T> loadMany(Object one, Class<T> classOfMany) {
+    public <T> PikaManyQuery<T> loadMany(Object one, Class<T> classOfMany) {
         Mapping mapping = getMapping(one.getClass());
         String fkName = mapping.getDefaultForeignKeyColumnName();
         return loadMany(one, classOfMany, fkName);
     }
 
-    public <T> OneToManyResult<T> loadMany(Object one, Class<T> classOfMany, String manyFk) {
-        return new OneToManyResult<>(one, classOfMany, manyFk, this);
+    public <T> PikaManyQuery<T> loadMany(Object one, Class<T> classOfMany, String manyFk) {
+        return new PikaManyQuery<>(one, classOfMany, manyFk, this);
     }
 
     public <T> T load(Object objectWithFk, Class<T> classToLoad) {
@@ -967,14 +967,14 @@ public class PikaORM {
                 sb.append(" (");
                 sb.append(String.join(", ", keyCols));
                 sb.append(") VALUES (");
-                sb.append(Arrays.stream(keyCols).map(_ -> "DEFAULT").collect(Collectors.joining(", ")));
+                sb.append(Arrays.stream(keyCols).map(col -> "DEFAULT").collect(Collectors.joining(", ")));
                 sb.append(")");
             }
         } else {
             sb.append(" (");
             sb.append(String.join(", ", values.keySet()));
             sb.append(") VALUES (");
-            sb.append(values.keySet().stream().map(_ -> "?").collect(Collectors.joining(", ")));
+            sb.append(values.keySet().stream().map(key -> "?").collect(Collectors.joining(", ")));
             sb.append(")");
         }
         String insertString = sb.toString();
@@ -1125,9 +1125,9 @@ public class PikaORM {
 
     private void logQuery(String msg, String sql, Map<String, Object> args) {
         if (args.isEmpty()) {
-            logger.log(getQueryLogLevel(), "{}\n{}", msg, sql);
+            logger.log(getQueryLogLevel(), "{}\n{}", msg, new SQLString(sql));
         } else {
-            logger.log(getQueryLogLevel(), "{}\n{}\nARGS:{}", msg, sql, args);
+            logger.log(getQueryLogLevel(), "{}\n{}\nARGS:{}", msg, new SQLString(sql), args);
         }
     }
 
@@ -1363,7 +1363,7 @@ public class PikaORM {
                 Map<K, List<T>> mappedResult = new LinkedHashMap<>();
                 for (T t : this) {
                     mappedResult
-                            .computeIfAbsent(mapper.apply(t), _ -> new ArrayList<>())
+                            .computeIfAbsent(mapper.apply(t), val -> new ArrayList<>())
                             .add(t);
                 }
                 return mappedResult;
@@ -1373,7 +1373,7 @@ public class PikaORM {
                 TreeMap<K, List<T>> mappedResult = new TreeMap<>();
                 for (T t : this) {
                     mappedResult
-                            .computeIfAbsent(mapper.apply(t), _ -> new ArrayList<>())
+                            .computeIfAbsent(mapper.apply(t), val -> new ArrayList<>())
                             .add(t);
                 }
                 return mappedResult;
@@ -1383,7 +1383,7 @@ public class PikaORM {
                 TreeMap<K, List<T>> mappedResult = new TreeMap<>(comparator);
                 for (T t : this) {
                     mappedResult
-                            .computeIfAbsent(mapper.apply(t), _ -> new ArrayList<>())
+                            .computeIfAbsent(mapper.apply(t), val -> new ArrayList<>())
                             .add(t);
                 }
                 return mappedResult;
@@ -1521,7 +1521,7 @@ public class PikaORM {
         }
 
         private List<String> getErrorList(String key) {
-            return errors.computeIfAbsent(key, _ -> new ArrayList<>());
+            return errors.computeIfAbsent(key, val -> new ArrayList<>());
         }
 
 
@@ -1596,15 +1596,15 @@ public class PikaORM {
             return orm().delete(this);
         }
 
-        protected <J, T> ManyToManyResult<J, T> loadManyThrough(Class<J> through, Class<T> to) {
+        protected <J, T> PikaManyThroughQuery<J, T> loadManyThrough(Class<J> through, Class<T> to) {
             return orm().loadManyThrough(this, through, to);
         }
 
-        protected <T> OneToManyResult<T> loadMany(Class<T> of) {
+        protected <T> PikaManyQuery<T> loadMany(Class<T> of) {
             return orm().loadMany(this, of);
         }
 
-        protected <T> OneToManyResult<T> loadMany(Class<T> of, String fkColumn) {
+        protected <T> PikaManyQuery<T> loadMany(Class<T> of, String fkColumn) {
             return orm().loadMany(this, of, fkColumn);
         }
 
@@ -3302,132 +3302,7 @@ public class PikaORM {
         }
     }
 
-    public static class ManyToManyResult<J, T> implements Interfaces.BetterIterable<T> {
-
-        private final PikaORM orm;
-        private final Class<?> joinClass;
-        private final Object one;
-        private final String oneFk;
-        private final Mapping oneMapping;
-        private final Class<T> classOfMany;
-        private final String manyFk;
-        private QueryResult<T> result;
-
-        public ManyToManyResult(Object one, String oneFk, Class<J> joinClass, Class<T> classOfMany, String manyFk, PikaORM orm) {
-            this.one = one;
-            this.oneFk = oneFk;
-            this.oneMapping = orm.getMapping(one.getClass());
-            this.joinClass = joinClass;
-            this.classOfMany = classOfMany;
-            this.manyFk = manyFk;
-            this.orm = orm;
-        }
-
-        public void reload() {
-            result = null;
-        }
-
-        @Override
-        public Iterator<T> iterator() {
-            if(result == null) {
-                result = toQuery().fetch();
-            }
-            return result.iterator();
-        }
-
-        public J add(T newMember) {
-            Object initialObjectId = oneMapping.getId(one);
-            if (initialObjectId == null) {
-                throw new IllegalStateException(one + " must be saved to the database to add " + newMember);
-            }
-            Mapping newMemberMapping = orm.getMapping(newMember.getClass());
-            Object idOfNewMember = newMemberMapping.getId(newMember);
-            if (idOfNewMember == null) {
-                throw new IllegalStateException(newMember + " must be saved to the database to add");
-            }
-            Mapping joinObjectMapping = orm.getMapping(joinClass);
-
-            J instance = (J) joinObjectMapping.newInstance();
-
-            FieldMapping fieldMappingForInitialObject = joinObjectMapping.getFieldMappingForColumn(oneFk);
-            fieldMappingForInitialObject.setFieldValue(instance, initialObjectId);
-
-            FieldMapping fieldMappingForNewMember = joinObjectMapping.getFieldMappingForColumn(manyFk);
-            fieldMappingForNewMember.setFieldValue(instance, idOfNewMember);
-
-            return instance;
-        }
-
-        public J addAndSave(T newMember) {
-            J obj = add(newMember);
-            if (obj instanceof EnterprisePikaBean epb) {
-                epb.save();
-            } else {
-                get().insert(newMember);
-            }
-            reload();
-            return obj;
-        }
-
-        private PikaClassQuery<T> toQuery() {
-            return orm.query(classOfMany)
-                    .join(joinClass)
-                    .thenJoin(one.getClass())
-                    .where(oneMapping.tableName + "." + oneMapping.getIdColumn() + "=:pikaId")
-                    .withVar("pikaId", oneMapping.getId(one));
-        }
-
-        public T findById(long manyId) {
-            Mapping mappingForMany = orm.getMapping(classOfMany);
-            String idCol = mappingForMany.getIdColumn();
-            return findBy(idCol, manyId);
-        }
-
-        private T findBy(String col, Object val) {
-            return toQuery().where(col + "=:val", Map.of("val", val)).fetchFirst();
-        }
-
-        public PikaClassQuery<T> where(String condition) {
-            return toQuery().where(condition);
-        }
-
-        public PikaClassQuery<T> where(String whereClause, String arg, Object val) {
-            return toQuery().where(whereClause, arg, val);
-        }
-
-        public PikaClassQuery<T> where(String whereClause, String arg, Object val, String arg2, Object val2) {
-            return toQuery().where(whereClause, arg, val, arg2, val2);
-        }
-
-        public PikaClassQuery<T> where(String condition, Map<String, Object> vals) {
-            return toQuery().where(condition, vals);
-        }
-
-        public void remove(T element) {
-            Mapping elementToRemove = orm.getMapping(element.getClass());
-
-            String initialObjectFk = oneMapping.getDefaultForeignKeyColumnName();
-            String elementToRemoveFk = elementToRemove.getDefaultForeignKeyColumnName();
-
-            Mapping joinClassMapping = orm.getMapping(joinClass);
-
-
-            PikaClassQuery<?> joinObjects = orm.query(joinClass)
-                    .where(joinClassMapping.tableName + "." + initialObjectFk + "=:pikaId")
-                    .withVar("pikaId", oneMapping.getId(one))
-                    .where(joinClassMapping.tableName + "." + elementToRemoveFk + "=:elementId")
-                    .withVar("elementId", elementToRemove.getId(element));
-            for (Object joinObject : joinObjects) {
-                if(joinObject instanceof EnterprisePikaBean epb) {
-                    epb.delete();
-                } else {
-                    orm.delete(joinObject);
-                }
-            }
-        }
-    }
-
-    public static class OneToManyResult<T> implements Interfaces.BetterIterable<T> {
+    public static class PikaManyQuery<T> implements Interfaces.BetterIterable<T> {
 
         private final Mapping mappingForOne;
         private final Mapping mappingForMany;
@@ -3436,11 +3311,12 @@ public class PikaORM {
         private final String manyFk;
         private final PikaORM orm;
         private QueryResult<T> result;
+        private final List<OrderBy> orderBys = new ArrayList<>();
 
-        public OneToManyResult(Object one,
-                               Class<T> classOfMany,
-                               String manyFk,
-                               PikaORM orm) {
+        public PikaManyQuery(Object one,
+                             Class<T> classOfMany,
+                             String manyFk,
+                             PikaORM orm) {
             this.mappingForOne = orm.getMapping(one.getClass());
             this.mappingForMany = orm.getMapping(classOfMany);
             this.one = one;
@@ -3486,25 +3362,37 @@ public class PikaORM {
             reload();
         }
 
-        public PikaClassQuery<T> toQuery() {
+        public PikaClassQuery<T> toClassQuery() {
             Object id = mappingForOne.getId(one);
-            return orm.query(classOfMany).where(manyFk + "=:pikaFKValue", "pikaFKValue", id);
+            PikaClassQuery<T> classQuery = orm.query(classOfMany).where(manyFk + "=:pikaFKValue", "pikaFKValue", id);
+            orderBys.forEach(orderBy -> classQuery.orderBy(orderBy.col, orderBy.direction));
+            return classQuery;
         }
 
         public PikaClassQuery<T> where(String condition) {
-            return toQuery().where(condition);
+            return toClassQuery().where(condition);
         }
 
         public PikaClassQuery<T> where(String whereClause, String arg, Object val) {
-            return toQuery().where(whereClause, arg, val);
+            return toClassQuery().where(whereClause, arg, val);
         }
 
         public PikaClassQuery<T> where(String whereClause, String arg, Object val, String arg2, Object val2) {
-            return toQuery().where(whereClause, arg, val, arg2, val2);
+            return toClassQuery().where(whereClause, arg, val, arg2, val2);
         }
 
         public PikaClassQuery<T> where(String condition, Map<String, Object> vals) {
-            return toQuery().where(condition, vals);
+            return toClassQuery().where(condition, vals);
+        }
+
+        public PikaManyQuery<T> orderBy(String col) {
+            orderBy(col, null);
+            return this;
+        }
+
+        public PikaManyQuery<T> orderBy(String col, SortOrder direction) {
+            orderBys.add(new OrderBy(col, direction));
+            return this;
         }
 
         public T create() {
@@ -3519,7 +3407,145 @@ public class PikaORM {
         }
 
         private T findBy(String col, Object val) {
-            return toQuery().where(col + "=:val", Map.of("val", val)).fetchFirst();
+            return toClassQuery().where(col + "=:val", Map.of("val", val)).fetchFirst();
+        }
+    }
+
+    public static class PikaManyThroughQuery<J, T> implements Interfaces.BetterIterable<T> {
+
+        private final PikaORM orm;
+        private final Class<?> joinClass;
+        private final Object one;
+        private final String oneFk;
+        private final Mapping oneMapping;
+        private final Class<T> classOfMany;
+        private final String manyFk;
+        private QueryResult<T> result;
+        private final List<OrderBy> orderBys = new ArrayList<>();
+
+        public PikaManyThroughQuery(Object one, String oneFk, Class<J> joinClass, Class<T> classOfMany, String manyFk, PikaORM orm) {
+            this.one = one;
+            this.oneFk = oneFk;
+            this.oneMapping = orm.getMapping(one.getClass());
+            this.joinClass = joinClass;
+            this.classOfMany = classOfMany;
+            this.manyFk = manyFk;
+            this.orm = orm;
+        }
+
+        public void reload() {
+            result = null;
+        }
+
+        @Override
+        public Iterator<T> iterator() {
+            if(result == null) {
+                result = toClassQuery().fetch();
+            }
+            return result.iterator();
+        }
+
+        public J add(T newMember) {
+            Object initialObjectId = oneMapping.getId(one);
+            if (initialObjectId == null) {
+                throw new IllegalStateException(one + " must be saved to the database to add " + newMember);
+            }
+            Mapping newMemberMapping = orm.getMapping(newMember.getClass());
+            Object idOfNewMember = newMemberMapping.getId(newMember);
+            if (idOfNewMember == null) {
+                throw new IllegalStateException(newMember + " must be saved to the database to add");
+            }
+            Mapping joinObjectMapping = orm.getMapping(joinClass);
+
+            J instance = (J) joinObjectMapping.newInstance();
+
+            FieldMapping fieldMappingForInitialObject = joinObjectMapping.getFieldMappingForColumn(oneFk);
+            fieldMappingForInitialObject.setFieldValue(instance, initialObjectId);
+
+            FieldMapping fieldMappingForNewMember = joinObjectMapping.getFieldMappingForColumn(manyFk);
+            fieldMappingForNewMember.setFieldValue(instance, idOfNewMember);
+
+            return instance;
+        }
+
+        public J addAndSave(T newMember) {
+            J obj = add(newMember);
+            if (obj instanceof EnterprisePikaBean epb) {
+                epb.save();
+            } else {
+                get().insert(newMember);
+            }
+            reload();
+            return obj;
+        }
+
+        private PikaClassQuery<T> toClassQuery() {
+            PikaClassQuery<T> classQuery = orm.query(classOfMany)
+                    .join(joinClass)
+                    .thenJoin(one.getClass())
+                    .where(oneMapping.tableName + "." + oneMapping.getIdColumn() + "=:pikaId")
+                    .withVar("pikaId", oneMapping.getId(one));
+                orderBys.forEach(orderBy -> classQuery.orderBy(orderBy.col, orderBy.direction));
+                return classQuery;
+        }
+
+        public T findById(long manyId) {
+            Mapping mappingForMany = orm.getMapping(classOfMany);
+            String idCol = mappingForMany.getIdColumn();
+            return findBy(idCol, manyId);
+        }
+
+        private T findBy(String col, Object val) {
+            return toClassQuery().where(col + "=:val", Map.of("val", val)).fetchFirst();
+        }
+
+        public PikaClassQuery<T> where(String condition) {
+            return toClassQuery().where(condition);
+        }
+
+        public PikaClassQuery<T> where(String whereClause, String arg, Object val) {
+            return toClassQuery().where(whereClause, arg, val);
+        }
+
+        public PikaClassQuery<T> where(String whereClause, String arg, Object val, String arg2, Object val2) {
+            return toClassQuery().where(whereClause, arg, val, arg2, val2);
+        }
+
+        public PikaClassQuery<T> where(String condition, Map<String, Object> vals) {
+            return toClassQuery().where(condition, vals);
+        }
+
+        public PikaManyThroughQuery<J, T> orderBy(String col) {
+            orderBy(col, null);
+            return this;
+        }
+
+        public PikaManyThroughQuery<J, T> orderBy(String col, SortOrder direction) {
+            orderBys.add(new OrderBy(col, direction));
+            return this;
+        }
+
+        public void remove(T element) {
+            Mapping elementToRemove = orm.getMapping(element.getClass());
+
+            String initialObjectFk = oneMapping.getDefaultForeignKeyColumnName();
+            String elementToRemoveFk = elementToRemove.getDefaultForeignKeyColumnName();
+
+            Mapping joinClassMapping = orm.getMapping(joinClass);
+
+
+            PikaClassQuery<?> joinObjects = orm.query(joinClass)
+                    .where(joinClassMapping.tableName + "." + initialObjectFk + "=:pikaId")
+                    .withVar("pikaId", oneMapping.getId(one))
+                    .where(joinClassMapping.tableName + "." + elementToRemoveFk + "=:elementId")
+                    .withVar("elementId", elementToRemove.getId(element));
+            for (Object joinObject : joinObjects) {
+                if(joinObject instanceof EnterprisePikaBean epb) {
+                    epb.delete();
+                } else {
+                    orm.delete(joinObject);
+                }
+            }
         }
     }
 
@@ -3649,6 +3675,16 @@ public class PikaORM {
             return (Consumer) tmpClass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static class SQLString {
+        private final String sql;
+        public SQLString(String sql) {
+            this.sql = sql;
+        }
+        public String toString() {
+            return sql;
         }
     }
 }

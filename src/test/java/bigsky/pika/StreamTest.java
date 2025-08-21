@@ -18,7 +18,7 @@ public class StreamTest extends TestBase{
         var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
         SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
         long id = orm.insert(sampleModel);
-        try (var _ = orm.establishConnection()) {
+        try (var conn = orm.establishConnection()) {
             var stream = orm.stream(SampleModel.class).all();
             var fromDb = stream.findFirst().get();
 
@@ -41,7 +41,7 @@ public class StreamTest extends TestBase{
             long id = orm.insert(sampleModel);
             sampleModel.setId(id);
         }
-        try (var _ = orm.establishConnection()) {
+        try (var conn = orm.establishConnection()) {
 
             List<SampleModel> results =
                     orm.stream(SampleModel.class).where("int_val=:val", Map.of("val", 10)).toList();
