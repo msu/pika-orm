@@ -767,13 +767,13 @@ public class PikaORM {
     }
 
     private <T> QueryResult<T> select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec) {
-        BetterList<T> resultList = new BetterList<>();
+        PikaList<T> resultList = new PikaList<>();
         QueryResult<T> queryResult = new QueryResult<>(this, sql, args, resultClass, columnSpec, resultList);
         select(sql, args, resultClass, columnSpec, resultList);
         return queryResult;
     }
 
-    private <T> void select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, BetterList<T> results) {
+    private <T> void select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, PikaList<T> results) {
         Mapping mapping = getMapping(resultClass);
         ArrayList<Object> vals = new ArrayList<>();
         String updatedSql = updateSqlVars(sql, args, vals);
@@ -1334,14 +1334,14 @@ public class PikaORM {
             void close();
         }
 
-        interface BetterIterable<T> extends Iterable<T> {
+        interface PikaIterable<T> extends Iterable<T> {
 
             //==============================================================================
             // Stream alternative (i hate streams)
             //==============================================================================
 
-            default <Q> BetterList<Q> map(Function<T, Q> mapper) {
-                BetterList<Q> mappedResult = new BetterList<>();
+            default <Q> PikaList<Q> map(Function<T, Q> mapper) {
+                PikaList<Q> mappedResult = new PikaList<>();
                 for (T t : this) {
                     mappedResult.add(mapper.apply(t));
                 }
@@ -1354,8 +1354,8 @@ public class PikaORM {
                 return ts;
             }
 
-            default BetterList<T> toList() {
-                BetterList<T> ts = new BetterList<>();
+            default PikaList<T> toList() {
+                PikaList<T> ts = new PikaList<>();
                 forEach(ts::add);
                 return ts;
             }
@@ -1414,8 +1414,8 @@ public class PikaORM {
                 return mappedResult;
             }
 
-            default BetterList<T> filter(Predicate<? super T> filter) {
-                BetterList<T> mappedResult = new BetterList<>();
+            default PikaList<T> filter(Predicate<? super T> filter) {
+                PikaList<T> mappedResult = new PikaList<>();
                 for (T t : this) {
                     if (filter.test(t)) {
                         mappedResult.add(t);
@@ -1697,7 +1697,7 @@ public class PikaORM {
         }
     }
 
-    public class PikaQuery<T> implements Callable<QueryResult<T>>, Interfaces.BetterIterable<T> {
+    public class PikaQuery<T> implements Callable<QueryResult<T>>, Interfaces.PikaIterable<T> {
 
         private final String baseTable;
         private boolean distinct;
@@ -1929,7 +1929,7 @@ public class PikaORM {
             return fetchResult.get();
         }
 
-        public BetterList<T> fetchList() {
+        public PikaList<T> fetchList() {
             QueryResult<T> select = fetch();
             return select.toList();
         }
@@ -1958,7 +1958,7 @@ public class PikaORM {
         }
     }
 
-    public class PikaClassQuery<T> implements Callable<QueryResult<T>>, Interfaces.BetterIterable<T> {
+    public class PikaClassQuery<T> implements Callable<QueryResult<T>>, Interfaces.PikaIterable<T> {
 
         private final PikaQuery<T> query;
         private final Class classToFind;
@@ -2147,7 +2147,7 @@ public class PikaORM {
             query.reload();
         }
 
-        public BetterList<T> fetchList() {
+        public PikaList<T> fetchList() {
             return query.fetchList();
         }
 
@@ -2848,7 +2848,7 @@ public class PikaORM {
                     console.printf(show());
                 } else if (cmd.equals("raw")) {
                     var mergedMigrations = loadMigrations(orm);
-                    console.printf(new BetterList<>(mergedMigrations.values()).toString("\n"));
+                    console.printf(new PikaList<>(mergedMigrations.values()).toString("\n"));
                 } else if (cmd.equals("up")) {
                     up();
                 } else if (cmd.equals("down")) {
@@ -2888,7 +2888,7 @@ public class PikaORM {
             orm.exec(PikaMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
 
-            var values = new BetterList<>(mergedMigrations.values());
+            var values = new PikaList<>(mergedMigrations.values());
             var firstUnappliedMigration = values.firstWhere(PikaMigration::isPending);
             if (firstUnappliedMigration != null) {
                 firstUnappliedMigration.runUp(orm);
@@ -2902,7 +2902,7 @@ public class PikaORM {
             orm.exec(PikaMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
 
-            var values = new BetterList<>(mergedMigrations.values());
+            var values = new PikaList<>(mergedMigrations.values());
             var lastAppliedMigration = values.lastWhere(PikaMigration::isApplied);
             if (lastAppliedMigration != null) {
                 lastAppliedMigration.runDown(orm);
@@ -2934,7 +2934,7 @@ public class PikaORM {
             migrationsMap = new LinkedHashMap<>();
             migrations();
             // compute migrations with persisted migrations merged in
-            BetterList<PikaMigration> persistedMigrations = orm.find(PikaMigration.class).all().toList();
+            PikaList<PikaMigration> persistedMigrations = orm.find(PikaMigration.class).all().toList();
             var mergedMigrations = new LinkedHashMap<>(migrationsMap);
             for (PikaMigration persistedMigration : persistedMigrations.copy()) {
                 PikaMigration existingMigration = mergedMigrations.get(persistedMigration.getName());
@@ -3277,12 +3277,12 @@ public class PikaORM {
         }
     }
 
-    public static class BetterList<T> extends ArrayList<T> implements Interfaces.BetterIterable<T> {
+    public static class PikaList<T> extends ArrayList<T> implements Interfaces.PikaIterable<T> {
 
-        public BetterList() {
+        public PikaList() {
         }
 
-        public BetterList(Collection<? extends T> c) {
+        public PikaList(Collection<? extends T> c) {
             super(c);
         }
 
@@ -3303,12 +3303,12 @@ public class PikaORM {
             return null;
         }
 
-        public BetterList<T> copy() {
-            return new BetterList<>(this);
+        public PikaList<T> copy() {
+            return new PikaList<>(this);
         }
     }
 
-    public static class PikaManyQuery<T> implements Interfaces.BetterIterable<T> {
+    public static class PikaManyQuery<T> implements Interfaces.PikaIterable<T> {
 
         private final Mapping mappingForOne;
         private final Mapping mappingForMany;
@@ -3417,7 +3417,7 @@ public class PikaORM {
         }
     }
 
-    public static class PikaManyThroughQuery<J, T> implements Interfaces.BetterIterable<T> {
+    public static class PikaManyThroughQuery<J, T> implements Interfaces.PikaIterable<T> {
 
         private final PikaORM orm;
         private final Class<?> joinClass;
@@ -3555,7 +3555,7 @@ public class PikaORM {
         }
     }
 
-    public static class QueryResult<T> implements Interfaces.BetterIterable<T> {
+    public static class QueryResult<T> implements Interfaces.PikaIterable<T> {
 
         private final PikaORM orm;
 
@@ -3566,10 +3566,10 @@ public class PikaORM {
         private final ColumnsSpec columnSpec;
 
         // results
-        private BetterList<T> results;
+        private PikaList<T> results;
         private List<T> readOnlyResults;
 
-        private QueryResult(PikaORM orm, String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, BetterList<T> resultList) {
+        private QueryResult(PikaORM orm, String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, PikaList<T> resultList) {
             this.orm = orm;
             this.sql = sql;
             this.args = args;
@@ -3584,12 +3584,12 @@ public class PikaORM {
         }
 
         public void reload() {
-            results = new BetterList<>();
+            results = new PikaList<>();
             readOnlyResults = Collections.unmodifiableList(results);
             orm.select(sql, args, resultClass, columnSpec, results);
         }
 
-        public BetterList<T> toList() {
+        public PikaList<T> toList() {
             return results;
         }
 
