@@ -88,6 +88,7 @@ public class PikaORM {
 
     public PikaORM(Callable<Connection> connectionSource) {
         this.connectionSource = connectionSource;
+        getMapping(Migrations.PikaMigration.class); // register pika migrations before any customizations are made
     }
 
     public PikaORM(String connectionString) {
@@ -2786,7 +2787,6 @@ public class PikaORM {
 
         public static final String HELP_MSG = """
                 Migrations Commands
-                
                   show      - show all migrations
                   up        - apply one pending migration
                   down      - back out the latest migration
@@ -2840,7 +2840,7 @@ public class PikaORM {
             getORM();
             orm.exec(PikaMigration.DDL);
             Console console = System.console();
-            label:
+            System.out.println("Welcome to PikaORM Migrations, type ? for help");
             while (true) {
                 String cmd = console.readLine("migrations > ").strip();
                 //noinspection IfCanBeSwitch
@@ -2859,7 +2859,7 @@ public class PikaORM {
                 } else if (cmd.equals("help") || cmd.equals("?")) {
                     console.printf(HELP_MSG);
                 } else if (cmd.equals("exit") || cmd.equals("quit")) {
-                    break label;
+                    break;
                 } else {
                     console.printf("Unknown command : " + cmd + "\n");
                     console.printf(HELP_MSG);
@@ -3039,7 +3039,9 @@ public class PikaORM {
                 orm.withTransaction(() -> {
                     String[] upSqlSplitOnSemicolons = getUpSqlSplitOnSemicolons();
                     for (String sql : upSqlSplitOnSemicolons) {
-                        orm.exec(sql);
+                        if (!sql.isBlank()) {
+                            orm.exec(sql);
+                        }
                     }
                     this.status = MigrationStatus.APPLIED;
                     this.appliedAt = new Date().getTime();
@@ -3055,7 +3057,9 @@ public class PikaORM {
                 orm.withTransaction(() -> {
                     String[] upSqlSplitOnSemicolons = getDownSqlSplitOnSemicolons();
                     for (String sql : upSqlSplitOnSemicolons) {
-                        orm.exec(sql);
+                        if (!sql.isBlank()) {
+                            orm.exec(sql);
+                        }
                     }
                     orm.delete(this);
                 });
@@ -3487,8 +3491,8 @@ public class PikaORM {
                     .thenJoin(one.getClass())
                     .where(oneMapping.tableName + "." + oneMapping.getIdColumn() + "=:pikaId")
                     .withVar("pikaId", oneMapping.getId(one));
-                orderBys.forEach(orderBy -> classQuery.orderBy(orderBy.col, orderBy.direction));
-                return classQuery;
+            orderBys.forEach(orderBy -> classQuery.orderBy(orderBy.col, orderBy.direction));
+            return classQuery;
         }
 
         public T findById(long manyId) {
