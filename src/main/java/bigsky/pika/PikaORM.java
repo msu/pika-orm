@@ -15,6 +15,7 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.Date;
 import java.util.concurrent.Callable;
@@ -241,6 +242,7 @@ public class PikaORM {
                     value.getClass().getSimpleName() + " with value " + value + " to class " +
                     targetClass.getSimpleName());
         }
+        if (result == NULL_SENTINEL) result = null;
         return (T) result;
     }
 
@@ -267,6 +269,8 @@ public class PikaORM {
             return Enum.valueOf(targetType, String.valueOf(value).toUpperCase());
         } else if (targetType == String.class) {
             return String.valueOf(value);
+        } else if (Number.class.isAssignableFrom(targetType) && ("".equals(value) || "null".equals(value))) {
+            return NULL_SENTINEL;
         } else if ((targetType == Short.class || targetType == short.class) && value instanceof String s) {
             return Short.valueOf(s);
         } else if ((targetType == Integer.class || targetType == int.class) && value instanceof String s) {
@@ -289,6 +293,10 @@ public class PikaORM {
             return new BigInteger(s);
         } else if (targetType == BigDecimal.class && value instanceof String s) {
             return new BigDecimal(s);
+        } else if (targetType == LocalDateTime.class && value instanceof String s) {
+            return safely(() -> {
+                return LocalDateTime.parse(s, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
+            });
         } else if (targetType == Date.class && value instanceof String s) {
             try {
                 return new Date(Long.parseLong(s));
@@ -1640,7 +1648,7 @@ public class PikaORM {
             if (fieldMapping == null) {
                 fieldMapping = mapping.getFieldMappingForFieldName(TextTools.camelCase(col));
                 if(fieldMapping == null) {
-                    throw new IllegalArgumentException("No field '" + str + "' found on " + this.getClass().getSimpleName());
+                    throw new IllegalArgumentException("No field '" + col + "' found on " + this.getClass().getSimpleName());
                 }
             }
             Class fieldType = fieldMapping.getType();
