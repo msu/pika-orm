@@ -45,7 +45,7 @@ public class MigrationsTest extends TestBase {
         var migrationsInDb = orm.find(PikaMigration.class).all().toList();
 
         assertEquals(1, migrationsInDb.size());
-        assertEquals(MigrationStatus.APPLIED, migrationsInDb.getFirst().getStatus());
+        assertEquals(MigrationStatus.APPLIED, migrationsInDb.get(0).getStatus());
     }
 
     @Test
@@ -59,7 +59,7 @@ public class MigrationsTest extends TestBase {
         var demoModel = orm.find(MigrationDemoModel.class).all().toList();
 
         assertEquals(1, demoModel.size());
-        assertEquals("foo", demoModel.getFirst().getStrVal());
+        assertEquals("foo", demoModel.get(0).getStrVal());
     }
 
     /*

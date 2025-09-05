@@ -100,7 +100,7 @@ public class FindTest extends TestBase {
         System.out.println(results);
 
         assertEquals(3, results.size());
-        PikaORM.ResultMap first = results.getFirst();
+        PikaORM.ResultMap first = results.get(0);
 
 
         PikaORM.ResultMap insensitive = first.toCaseInsensitiveMap();
@@ -138,7 +138,7 @@ public class FindTest extends TestBase {
 
         assertEquals(2, results.size());
 
-        SampleModelGroupByQuery first = results.getFirst();
+        SampleModelGroupByQuery first = results.get(0);
         assertEquals("bar", first.strVal());
         assertEquals(10, first.sum());
 

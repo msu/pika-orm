@@ -909,7 +909,7 @@ public class PikaORM {
         }
 
         // Metadata
-        Object templateItem = items.getFirst();
+        Object templateItem = items.get(0);
         Class<?> templateClass = templateItem.getClass();
         Mapping mapping = getMapping(templateClass);
         Set<String> columns = mapping.toDatabaseMap(templateItem).keySet();
@@ -1882,6 +1882,16 @@ public class PikaORM {
             }
         }
 
+        // SOURCE: STOLEN FROM JAVA 18 SRC
+        private static long ceilDiv(long x, long y) {
+            final long q = x / y;
+            // if the signs are the same and modulo not zero, round up
+            if ((x ^ y) >= 0 && (q * y != x)) {
+                return q + 1;
+            }
+            return q;
+        }
+
         public long totalPages() {
             if (page > 0) {
                 long totalCount = totalCount();
@@ -1889,7 +1899,7 @@ public class PikaORM {
                 if (finalPageSize == -1) {
                     finalPageSize = defaultPageSize;
                 }
-                return Math.ceilDiv(totalCount, finalPageSize);
+                return ceilDiv(totalCount, finalPageSize);
             } else {
                 return 1;
             }
@@ -2207,27 +2217,46 @@ public class PikaORM {
             val = e.name();
         }
 
-        switch (val) {
-            case Boolean b -> ps.setBoolean(parameterIndex, b);
-            case Short s -> ps.setShort(parameterIndex, s);
-            case Integer i -> ps.setInt(parameterIndex, i);
-            case Long l -> ps.setLong(parameterIndex, l);
-            case Float f -> ps.setDouble(parameterIndex, f);
-            case Double d -> ps.setDouble(parameterIndex, d);
-            case BigDecimal bd -> ps.setBigDecimal(parameterIndex, bd);
-            case String str -> ps.setString(parameterIndex, str);
-            case Time d -> ps.setTime(parameterIndex, d);
-            case Timestamp ts -> ps.setTimestamp(parameterIndex, ts);
-            case Date d -> ps.setTimestamp(parameterIndex, new Timestamp(d.getTime()));
-            case LocalDate ld -> ps.setDate(parameterIndex, java.sql.Date.valueOf(ld));
-            case LocalDateTime ldt -> ps.setTimestamp(parameterIndex, Timestamp.valueOf(ldt));
-            case Blob blob -> ps.setBlob(parameterIndex, blob);
-            case NClob nclob -> ps.setNClob(parameterIndex, nclob);
-            case Clob clob -> ps.setClob(parameterIndex, clob);
-            case Byte b -> ps.setByte(parameterIndex, b);
-            case byte[] bytes -> ps.setBytes(parameterIndex, bytes);
-            case URL url -> ps.setURL(parameterIndex, url);
-            default -> ps.setObject(parameterIndex, val);
+        if (val instanceof Boolean b) {
+            ps.setBoolean(parameterIndex, b);
+        } else if (val instanceof Short s) {
+            ps.setShort(parameterIndex, s);
+        } else if (val instanceof Integer i) {
+            ps.setInt(parameterIndex, i);
+        } else if (val instanceof Long l) {
+            ps.setLong(parameterIndex, l);
+        } else if (val instanceof Float f) {
+            ps.setDouble(parameterIndex, f);
+        } else if (val instanceof Double d) {
+            ps.setDouble(parameterIndex, d);
+        } else if (val instanceof BigDecimal bd) {
+            ps.setBigDecimal(parameterIndex, bd);
+        } else if (val instanceof String str) {
+            ps.setString(parameterIndex, str);
+        } else if (val instanceof Time d) {
+            ps.setTime(parameterIndex, d);
+        } else if (val instanceof Timestamp ts) {
+            ps.setTimestamp(parameterIndex, ts);
+        } else if (val instanceof Date d) {
+            ps.setTimestamp(parameterIndex, new Timestamp(d.getTime()));
+        } else if (val instanceof LocalDate ld) {
+            ps.setDate(parameterIndex, java.sql.Date.valueOf(ld));
+        } else if (val instanceof LocalDateTime ldt) {
+            ps.setTimestamp(parameterIndex, Timestamp.valueOf(ldt));
+        } else if (val instanceof Blob blob) {
+            ps.setBlob(parameterIndex, blob);
+        } else if (val instanceof NClob nclob) {
+            ps.setNClob(parameterIndex, nclob);
+        } else if (val instanceof Clob clob) {
+            ps.setClob(parameterIndex, clob);
+        } else if (val instanceof Byte b) {
+            ps.setByte(parameterIndex, b);
+        } else if (val instanceof byte[] bytes) {
+            ps.setBytes(parameterIndex, bytes);
+        } else if (val instanceof URL url) {
+            ps.setURL(parameterIndex, url);
+        } else {
+            ps.setObject(parameterIndex, val);
         }
     }
 
@@ -3290,12 +3319,13 @@ public class PikaORM {
             if (this.size() == 0) {
                 return null;
             } else {
-                return this.getLast();
+                return this.get(this.size() - 1);
             }
         }
 
         public T lastWhere(Predicate<? super T> predicate) {
-            for (T t : this.reversed()) {
+            for (int i = this.size() - 1; i >= 0; i--) {
+                var t = this.get(i);
                 if (predicate.test(t)) {
                     return t;
                 }

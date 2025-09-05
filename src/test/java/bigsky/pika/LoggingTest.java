@@ -48,8 +48,7 @@ public class LoggingTest extends TestBase {
                 case INFO -> logger.info(msg, args);
                 case WARN -> logger.warn(msg, args);
                 case ERROR -> logger.error(msg, args);
-                case null, default -> {
-                }
+                default -> {}
             }
         });
         SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
