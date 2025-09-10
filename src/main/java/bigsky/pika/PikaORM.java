@@ -62,8 +62,14 @@ public class PikaORM {
         return TextTools.snakeCase(plural);
     };
     private Function<Field, String> defaultFieldToColumnMapping = field -> TextTools.snakeCase(field.getName());
+
     private Function<Class, String> defaultIdFieldName = aClass -> "id";
+
+    private Function<Class, String> defaultUUIDFieldName = aClass -> "uuid";
+    private Function<Class, Supplier<Object>> defaultUUIDGenerator = aClass -> () -> UUID.randomUUID().toString();
+
     private Function<Class, String> defaultFkColumnName = aClass -> TextTools.snakeCase(aClass.getSimpleName()) + "_id";
+
     private Function<Class, String> defaultVersionFieldName = aClass -> "version";
     private Function<Class, Function<Object, Object>> defaultVersionIncrementer = aClass -> previousValue -> {
         if (previousValue == null) {
@@ -133,6 +139,11 @@ public class PikaORM {
 
     public PikaORM withDefaultIdField(Function<Class, String> val) {
         defaultIdFieldName = val;
+        return this;
+    }
+
+    public PikaORM withDefaultUUIDField(Function<Class, String> val) {
+        defaultUUIDFieldName = val;
         return this;
     }
 
@@ -885,6 +896,16 @@ public class PikaORM {
             return null;
         }
         Object newVersionValue = null;
+        Object uuid = null;
+        FieldMapping uuidFieldMapping = null;
+        if (mapping.hasUUIDColumn()) {
+            uuidFieldMapping = mapping.getUUIDMapping();
+            String uuidColumn = uuidFieldMapping.getColumnName();
+            if(values.get(uuidColumn) == null) {
+                uuid = uuidFieldMapping.generateUUID();
+                values.putIfAbsent(uuidColumn, uuid);
+            }
+        }
         // TODO - remove this?  It's an insert...
         if (mapping.hasVersionColumn()) {
             newVersionValue = mapping.incrementVersion(values);
@@ -900,6 +921,9 @@ public class PikaORM {
         }
         if (!mapping.isReadOnly() && id != null) {
             mapping.setId(object, id);
+        }
+        if (uuidFieldMapping != null && uuid != null) {
+            uuidFieldMapping.setFieldValue(object, uuid);
         }
         if (object instanceof PikaRecordLifecycle lifecycle) {
             lifecycle.afterInsert();
@@ -1230,14 +1254,17 @@ public class PikaORM {
         public static String snakeCase(String camelCaseString) {
             StringBuilder result = new StringBuilder();
             char[] charArray = camelCaseString.toCharArray();
+            boolean lastCharWasUppercase = true;
             for (int i = 0; i < charArray.length; i++) {
                 char c = charArray[i];
                 if (Character.isUpperCase(c)) {
-                    if (i != 0) {
+                    if (!lastCharWasUppercase) {
                         result.append("_");
                     }
                     result.append(Character.toLowerCase(c));
+                    lastCharWasUppercase = true;
                 } else {
+                    lastCharWasUppercase = false;
                     result.append(c);
                 }
             }
@@ -1484,7 +1511,7 @@ public class PikaORM {
     public static class EnterprisePikaBean implements PikaRecordLifecycle {
 
         private transient boolean persisted;
-        private final transient Map<String, List<String>> errors = new LinkedHashMap<>();
+        private final transient Map<String, PikaList<String>> errors = new LinkedHashMap<>();
         private transient Map<String, Object> originalValues = Collections.emptyMap();
 
         public boolean hasErrors() {
@@ -1509,12 +1536,20 @@ public class PikaORM {
             errorList.add(error);
         }
 
-        public List<String> getGeneralErrors() {
+        public PikaList<String> getGeneralErrors() {
             return getErrorList(null);
         }
 
-        public List<String> getErrors(String field) {
+
+        public PikaList<String> getErrors(String field) {
             return getErrorList(field);
+        }
+
+        public Map<String, PikaList<String>> getAllFieldErrors() {
+            var copy = new HashMap<>(errors);
+            copy.remove(null);
+            var ordered = new TreeMap<>(copy);
+            return ordered;
         }
 
         public String getErrorString(String field) {
@@ -1529,10 +1564,9 @@ public class PikaORM {
             return errors.containsKey(field);
         }
 
-        private List<String> getErrorList(String key) {
-            return errors.computeIfAbsent(key, val -> new ArrayList<>());
+        private PikaList<String> getErrorList(String key) {
+            return errors.computeIfAbsent(key, val -> new PikaList<>());
         }
-
 
         public final boolean validate() {
             clearErrors();
@@ -2313,6 +2347,7 @@ public class PikaORM {
         private Map<String, FieldMapping> fieldNameToMapping;
         private Map<String, FieldMapping> columnToMapping;
         private FieldMapping idMapping;
+        private FieldMapping uuidMapping;
         private Constructor constructor;
         private FieldMapping versionMapping;
 
@@ -2360,6 +2395,7 @@ public class PikaORM {
             }
 
             idMapping = resolveIdMapping();
+            uuidMapping = resolveUUIDMapping();
             versionMapping = resolveVersionMapping();
         }
 
@@ -2399,6 +2435,25 @@ public class PikaORM {
                 idMapping = fieldNameToMapping.get(idFieldName);
             }
             return idMapping;
+        }
+
+        private FieldMapping resolveUUIDMapping() {
+            FieldMapping uuidMapping = null;
+            for (FieldMapping mapping : fieldNameToMapping.values()) {
+                if (mapping.isUUID()) {
+                    if (uuidMapping == null) {
+                        uuidMapping = mapping;
+                    } else {
+                        throw new IllegalStateException("Cannot have more than one field as the uuid column: " + uuidMapping.getFieldName() +
+                                " and " + mapping.getFieldName() + " are both uuids!");
+                    }
+                }
+            }
+            if (uuidMapping == null) {
+                String idFieldName = orm.defaultUUIDFieldName.apply(classForTable);
+                uuidMapping = fieldNameToMapping.get(idFieldName);
+            }
+            return uuidMapping;
         }
 
         protected final FieldMapping ignore(Field field) {
@@ -2537,11 +2592,22 @@ public class PikaORM {
             return getIdMapping().getColumnName();
         }
 
+        public String getUUIDColumn() {
+            return getUUIDMapping().getColumnName();
+        }
+
         private FieldMapping getIdMapping() {
             if (idMapping == null) {
                 throw new IllegalStateException("The class " + classForTable.getName() + " has no id column");
             } else {
                 return idMapping;
+            }
+        }
+        private FieldMapping getUUIDMapping() {
+            if (uuidMapping == null) {
+                throw new IllegalStateException("The class " + classForTable.getName() + " has no id column");
+            } else {
+                return uuidMapping;
             }
         }
 
@@ -2588,6 +2654,10 @@ public class PikaORM {
             return idMapping != null;
         }
 
+        public boolean hasUUIDColumn() {
+            return uuidMapping != null;
+        }
+
         public FieldMapping getFieldMappingForFieldName(String field) {
             return fieldNameToMapping.get(field);
         }
@@ -2610,11 +2680,13 @@ public class PikaORM {
         Field mappedField;
         String columnName;
         boolean idColumn;
+        boolean uuidColumn;
         boolean versionColumn;
         Function<Object, Object> toDatabaseValue;
         Function<Object, Object> fromDatabaseValue;
         Class dbStorageType;
         Function<Object, Object> versionIncrementer;
+        Supplier<Object> uuidGenerator;
 
         public FieldMapping(PikaORM orm, Field mappedField) {
             mappedField.setAccessible(true);
@@ -2622,6 +2694,7 @@ public class PikaORM {
             this.mappedField = mappedField;
             this.columnName = orm.defaultFieldToColumnMapping.apply(mappedField);
             this.versionIncrementer = orm.defaultVersionIncrementer.apply(mappedField.getDeclaringClass());
+            this.uuidGenerator = orm.defaultUUIDGenerator.apply(mappedField.getDeclaringClass());
             this.dbStorageType = mappedField.getType();
         }
 
@@ -2713,6 +2786,11 @@ public class PikaORM {
             return this;
         }
 
+        public FieldMapping withUUIDGenerator(Supplier<Object> uuidGenerator) {
+            this.uuidGenerator = uuidGenerator;
+            return this;
+        }
+
         public FieldMapping toColumn(String columnName) {
             this.columnName = columnName;
             return this;
@@ -2737,6 +2815,10 @@ public class PikaORM {
             return idColumn;
         }
 
+        public boolean isUUID() {
+            return uuidColumn;
+        }
+
         public boolean isVersionProperty() {
             return versionColumn;
         }
@@ -2746,6 +2828,10 @@ public class PikaORM {
             Object updatedValue = versionIncrementer.apply(value);
             values.put(columnName, updatedValue);
             return updatedValue;
+        }
+
+        public Object generateUUID() {
+            return uuidGenerator.get();
         }
 
         public Object getValueFromDBMap(Map<String, Object> values) {
@@ -3492,12 +3578,12 @@ public class PikaORM {
         public J add(T newMember) {
             Object initialObjectId = oneMapping.getId(one);
             if (initialObjectId == null) {
-                throw new IllegalStateException(one + " must be saved to the database to add " + newMember);
+                throw new IllegalStateException(" The owning object of a 1-to-Many relationship must be saved to the database to add elements to it.");
             }
             Mapping newMemberMapping = orm.getMapping(newMember.getClass());
             Object idOfNewMember = newMemberMapping.getId(newMember);
             if (idOfNewMember == null) {
-                throw new IllegalStateException(newMember + " must be saved to the database to add");
+                throw new IllegalStateException("The object being added to a 1-to-Many relationship through another table must be saved to the database before it can be added");
             }
             Mapping joinObjectMapping = orm.getMapping(joinClass);
 
