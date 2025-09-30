@@ -1657,6 +1657,34 @@ public class PikaORM {
             }
         }
 
+        public void saveOrThrow() {
+            if (!save()) {
+                throw new IllegalStateException("This record has not been persisted!\n" + getErrorString());
+            }
+        }
+
+        private String getErrorString() {
+            PikaList<String> errorKeys = new PikaList<>(errors.keySet());
+            errorKeys.removeIf(s -> s == null);
+            if(!errorKeys.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                if (errorKeys.contains(null)) {
+                    sb.append("  Errors:\n");
+                    sb.append("    ").append(getErrorList(null).toString(", ")).append("\n");
+                    errorKeys.remove(null);
+                }
+                if (!errorKeys.isEmpty()) {
+                    sb.append("  Field Errors:\n");
+                    errorKeys.sort(Comparator.naturalOrder());
+                    for (String errorKey : errorKeys) {
+                        sb.append("    ").append(errorKey).append(": ").append(getErrorString(errorKey)).append("\n");
+                    }
+                }
+                return sb.toString();
+            }
+            return "";
+        }
+
         public boolean delete() {
             return orm().delete(this);
         }
