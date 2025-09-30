@@ -12,10 +12,9 @@ import java.net.URL;
 import java.sql.*;
 import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.*;
 import java.util.Date;
 import java.util.concurrent.Callable;
@@ -32,6 +31,7 @@ import java.util.stream.StreamSupport;
 public class PikaORM {
 
     public static final String SQL_VARS_PATTERN = "(:[\\w][\\w]*)";
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd[[ ]['T']HH:mm[:ss][XXX]]");
 
     private static PikaORM DEFAULT_ORM = null;
 
@@ -313,7 +313,27 @@ public class PikaORM {
                 return new Date(Long.parseLong(s));
             } catch (NumberFormatException nfe) {
                 // if the value is not a long, try to parse it as a date string
-                return safely(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(s));
+                TemporalAccessor parsedDate = DATE_TIME_FORMATTER.parse(s);
+                try {
+                    // Try to convert to Instant first (works if all fields present)
+                    Instant instant = Instant.from(parsedDate);
+                    return Date.from(instant);
+                } catch (DateTimeException e) {
+                    // If that fails, try LocalDateTime
+                    try {
+                        LocalDateTime localDateTime = LocalDateTime.from(parsedDate);
+                        return Date.from(localDateTime.atZone(ZoneId.systemDefault()).toInstant());
+                    } catch (DateTimeException e2) {
+                        // If that fails, try LocalDate (date only, no time)
+                        try {
+                            LocalDate localDate = LocalDate.from(parsedDate);
+                            return Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+                        } catch (DateTimeException e3) {
+                            throw new IllegalArgumentException("Unable to convert temporal to Date: " + parsedDate);
+                        }
+                    }
+                }
+
             }
         } else if (targetType == Boolean.class) {
             if (value == null) {
