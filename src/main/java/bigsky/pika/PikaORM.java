@@ -503,6 +503,9 @@ public class PikaORM {
             return query(classToFind);
         }
 
+        public T first() {
+            return byQuery().first();
+        }
     }
 
     public class PikaStreamFinder<T> {
