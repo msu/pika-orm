@@ -3525,6 +3525,9 @@ public class PikaORM {
                 throw new IllegalStateException(one + " must be saved to the database to add " + newMember);
             }
             FieldMapping fieldMapping = mappingForMany.getFieldMappingForColumn(manyFk);
+            if (fieldMapping == null) {
+                throw new IllegalStateException(" I don't know how to map " + newMember + " to a many relationship with " + one);
+            }
             fieldMapping.setFieldValue(newMember, id);
         }
 
