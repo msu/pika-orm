@@ -4,7 +4,9 @@ import bigsky.pika.PikaORM.Interfaces.PikaLogger;
 import bigsky.pika.PikaORM.Interfaces.PikaRecordLifecycle;
 import bigsky.pika.PikaORM.Interfaces.SafeAutoCloseable;
 
+import java.io.Closeable;
 import java.io.Console;
+import java.io.IOException;
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -423,6 +425,12 @@ public class PikaORM {
         } else {
             return count.longValue();
         }
+    }
+
+    public SafeAutoCloseable suppressQueries() {
+        boolean originalValue = logQueries;
+        logQueries = false;
+        return () -> logQueries = originalValue;
     }
 
     public class PikaClassFinder<T> {
@@ -3089,17 +3097,23 @@ public class PikaORM {
          * Applies all outstanding migrations in the order they are declared
          */
         public void applyAll() {
-            orm.logger.log(PikaLogger.Level.INFO, "Applying migrations");
             orm.withTransaction(()-> {
+                orm.logger.log(PikaLogger.Level.INFO, "Applying migrations");
                 orm.exec(PikaMigration.DDL);
                 var mergedMigrations = loadMigrations(orm);
+                int migrationCount = 0;
                 for (PikaMigration migration : mergedMigrations.values()) {
                     if (!migration.isApplied()) {
                         orm.logger.log(PikaLogger.Level.INFO, "Applying migration " + migration.name);
+                        migrationCount++;
                         migration.runUp(orm);
                     }
                 }
-                orm.logger.log(PikaLogger.Level.INFO, "Done applying migrations");
+                if (migrationCount > 0) {
+                    orm.logger.log(PikaLogger.Level.INFO, "Done applying "  + migrationCount + " migration" + (migrationCount == 1 ? "" : "s"));
+                } else {
+                    orm.logger.log(PikaLogger.Level.INFO, "No pending migrations found");
+                }
             });
         }
 
