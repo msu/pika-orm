@@ -2454,7 +2454,8 @@ public class PikaORM {
                 return; // special case
             } else {
                 this.tableName = mapToTable();
-                if(!aClass.equals(Migrations.PikaMigration.class)) {
+                // for epb's we validate that the columns are in the database at metadata generation time
+                if(EnterprisePikaBean.class.isAssignableFrom(aClass)) {
                     columnsInDb = getColumnsInDb(tableName);
                 }
                 fieldNameToMapping = new LinkedHashMap<>();
@@ -2499,13 +2500,25 @@ public class PikaORM {
                     DatabaseMetaData metaData = connection.getMetaData();
                     try (ResultSet columns = metaData.getColumns(null, null, tableName, null)) {
                         while (columns.next()) {
-                            columnNames.add(columns.getString("COLUMN_NAME"));
+                            columnNames.add(columns.getString("COLUMN_NAME").toLowerCase());
+                        }
+                        if (columnNames.isEmpty()) {
+                            try {
+                                // try again with the upper case table name (H2, etc.)
+                                columnNames = getColumnsInDb(tableName.toUpperCase());
+                            } catch (Exception e) {
+                                // ignore
+                            }
+                            if(columnNames.isEmpty()) {
+                                orm.logger.log(PikaLogger.Level.WARN, "Unable to determine column names in table : {}", tableName);
+                                return null;
+                            }
                         }
                         return columnNames;
                     }
                 }
             } catch (SQLException e) {
-                orm.logger.log(PikaLogger.Level.ERROR, "Unable to determine column names in database : {}", e.getMessage());
+                orm.logger.log(PikaLogger.Level.ERROR, "Unable to determine column names in table {} : {}", tableName, e.getSQLState());
                 return null;
             }
         }
@@ -2590,7 +2603,7 @@ public class PikaORM {
         }
 
         private boolean columnExists(String columnName) {
-            return columnsInDb == null || columnsInDb.contains(columnName);
+            return columnsInDb == null || columnsInDb.contains(columnName.toLowerCase());
         }
 
         protected FieldMapping mapField(Field field) {
