@@ -1357,6 +1357,18 @@ public class PikaORM {
             }
             return noun + "s"; // default to appending 's'
         }
+
+        public static String humanize(String string) {
+            String[] splitString = string.split("(?=\\p{Lu})|_");
+            StringBuilder result = new StringBuilder();
+            for (String str : splitString) {
+                if (!result.isEmpty()) {
+                    result.append(" ");
+                }
+                result.append(capitalize(str));
+            }
+            return result.toString();
+        }
     }
 
     public interface Interfaces {
@@ -1611,6 +1623,20 @@ public class PikaORM {
 
         protected void validation() {
             // override in subclasses
+        }
+
+        protected void require(String... fields) {
+            Arrays.stream(fields).forEach(this::require);
+        }
+
+        protected void require(String field) {
+            var mapping = orm().getMapping(getClass());
+            var fieldMapping = mapping.getFieldMappingForFieldName(field);
+            Object fieldValue = fieldMapping.getFieldValue(this);
+            if(fieldValue == null || (fieldValue instanceof String s && s.isEmpty() )) {
+                // TODO pluggable error messages
+                this.addError(field, TextTools.humanize(field) + " is required");
+            }
         }
 
         public void afterSelect() {
