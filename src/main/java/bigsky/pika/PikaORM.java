@@ -2433,6 +2433,7 @@ public class PikaORM {
         private Class classForTable;
         private RecordComponent[] recordComponents;
         private String tableName;
+        private Set<String> columnsInDb;
         private Map<String, FieldMapping> fieldNameToMapping;
         private Map<String, FieldMapping> columnToMapping;
         private FieldMapping idMapping;
@@ -2453,6 +2454,9 @@ public class PikaORM {
                 return; // special case
             } else {
                 this.tableName = mapToTable();
+                if(!aClass.equals(Migrations.PikaMigration.class)) {
+                    columnsInDb = getColumnsInDb(tableName);
+                }
                 fieldNameToMapping = new LinkedHashMap<>();
                 columnToMapping = new LinkedHashMap<>();
                 for (Field field : getAllFields(aClass)) {
@@ -2486,6 +2490,24 @@ public class PikaORM {
             idMapping = resolveIdMapping();
             uuidMapping = resolveUUIDMapping();
             versionMapping = resolveVersionMapping();
+        }
+
+        private Set<String> getColumnsInDb(String tableName) {
+            Set<String> columnNames = new HashSet<>();
+            try {
+                try (Connection connection = orm.getNewRawConnection()) {
+                    DatabaseMetaData metaData = connection.getMetaData();
+                    try (ResultSet columns = metaData.getColumns(null, null, tableName, null)) {
+                        while (columns.next()) {
+                            columnNames.add(columns.getString("COLUMN_NAME"));
+                        }
+                        return columnNames;
+                    }
+                }
+            } catch (SQLException e) {
+                orm.logger.log(PikaLogger.Level.ERROR, "Unable to determine column names in database : {}", e.getMessage());
+                return null;
+            }
         }
 
         private FieldMapping resolveVersionMapping() {
@@ -2557,8 +2579,18 @@ public class PikaORM {
             if (shouldIgnore(field)) {
                 return ignore(field);
             } else {
-                return map(field);
+                FieldMapping map = map(field);
+                if (columnExists(map.getColumnName())) {
+                    return map;
+                } else {
+                    orm.logger.log(PikaLogger.Level.WARN, "The field {} on class {} does not map to a database column.  Available options: {}", field.getName(), classForTable.getName(), columnsInDb);
+                    return ignore(field);
+                }
             }
+        }
+
+        private boolean columnExists(String columnName) {
+            return columnsInDb == null || columnsInDb.contains(columnName);
         }
 
         protected FieldMapping mapField(Field field) {

@@ -1,12 +1,12 @@
 package bigsky.pika;
 
+import bigsky.pika.models.BadModel;
 import bigsky.pika.models.SampleEgb;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Date;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class EnterprisePikaBeanTest extends TestBase {
 
@@ -25,6 +25,15 @@ public class EnterprisePikaBeanTest extends TestBase {
         Long id = sampleModel.insert();
         assertTrue(sampleModel.hasErrors());
         assertEquals(null, id);
+    }
+
+    @Test
+    void testUnmappedFieldDoesNotCauseError() {
+        initTestDb(BadModel.DDL);
+        BadModel badModel = new BadModel();
+        badModel.insert();
+        assertNotNull(badModel.getId());
+        assertNull(badModel.getUnmappedField());
     }
 
 }
