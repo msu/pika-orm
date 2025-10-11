@@ -2818,7 +2818,9 @@ public class PikaORM {
                 } else if (targetType.isEnum()) {
                     // enums deserialize as strings
                     String strValue = resultSet.getString(columnName);
-                    fieldVal = Enum.valueOf(targetType, strValue);
+                    if (strValue != null && !strValue.isEmpty()) {
+                        fieldVal = Enum.valueOf(targetType, strValue);
+                    }
                 } else if (targetType == Date.class) {
                     Timestamp timestamp = resultSet.getTimestamp(columnName);
                     if (timestamp != null) {
