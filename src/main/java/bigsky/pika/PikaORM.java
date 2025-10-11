@@ -514,6 +514,10 @@ public class PikaORM {
         public T first() {
             return byQuery().first();
         }
+
+        public long totalCount() {
+            return byQuery().totalCount();
+        }
     }
 
     public class PikaStreamFinder<T> {
@@ -2798,7 +2802,7 @@ public class PikaORM {
             return value;
         }
 
-        private static Object getValueFromResultSet(String columnName, Class targetType, ResultSet resultSet) {
+        private Object getValueFromResultSet(String columnName, Class targetType, ResultSet resultSet) {
             Object fieldVal = null;
             try {
                 if (targetType == String.class) {
@@ -3606,6 +3610,10 @@ public class PikaORM {
 
         private T findBy(String col, Object val) {
             return toClassQuery().where(col + "=:val", Map.of("val", val)).fetchFirst();
+        }
+
+        public long totalCount() {
+            return toClassQuery().totalCount();
         }
     }
 
