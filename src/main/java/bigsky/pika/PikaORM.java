@@ -442,6 +442,9 @@ public class PikaORM {
         }
 
         public T byId(Object id) {
+            if(id == null) {
+                throw new IllegalArgumentException("id cannot be null");
+            }
             Mapping mapping = getMapping(classToFind);
             String column = mapping.getIdColumn();
             Mapping mapping1 = getMapping(classToFind);
