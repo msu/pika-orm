@@ -472,6 +472,10 @@ public class PikaORM {
             return select(sql, Map.of("val", val), classToFind);
         }
 
+        public QueryResult<T> where(String whereClause) {
+            return where(whereClause, Map.of());
+        }
+
         public QueryResult<T> where(String whereClause, String arg, Object val) {
             return where(whereClause, Map.of(arg, val));
         }
@@ -1669,7 +1673,7 @@ public class PikaORM {
                 String key = keys.next();
                 if (originalValues.containsKey(key)) {
                     // remove any elements that are equal to their original value, making update unnecessary
-                    if(originalValues.get(key).equals(valuesToUpdate.get(key))) {
+                    if(Objects.equals(originalValues.get(key), valuesToUpdate.get(key))) {
                         keys.remove();
                     }
                 }
@@ -3777,7 +3781,7 @@ public class PikaORM {
         public T findById(long manyId) {
             Mapping mappingForMany = orm.getMapping(classOfMany);
             String idCol = mappingForMany.getIdColumn();
-            return findBy(idCol, manyId);
+            return findBy(mappingForMany.getTableName() + "." + idCol, manyId);
         }
 
         private T findBy(String col, Object val) {
