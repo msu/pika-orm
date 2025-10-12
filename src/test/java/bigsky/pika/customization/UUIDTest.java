@@ -1,7 +1,7 @@
 package bigsky.pika.customization;
 
 import bigsky.pika.TestBase;
-import bigsky.pika.models.HasUUID;
+import bigsky.pika.customization.model.HasUUID;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;

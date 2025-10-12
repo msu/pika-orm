@@ -1,10 +1,10 @@
 package bigsky.pika.integration;
 
 import bigsky.pika.PikaORM;
-import bigsky.pika.models.chinook.pojos.Album;
-import bigsky.pika.models.chinook.pojos.Artist;
-import bigsky.pika.models.chinook.pojos.Employee;
-import bigsky.pika.models.chinook.pojos.Track;
+import bigsky.pika.integration.model.pojos.Album;
+import bigsky.pika.integration.model.pojos.Artist;
+import bigsky.pika.integration.model.pojos.Employee;
+import bigsky.pika.integration.model.pojos.Track;
 import org.junit.jupiter.api.Test;
 
 import static bigsky.pika.PikaORM.*;

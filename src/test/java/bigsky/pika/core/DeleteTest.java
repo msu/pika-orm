@@ -2,7 +2,7 @@ package bigsky.pika.core;
 
 import bigsky.pika.TestBase;
 import bigsky.pika.models.SampleModel;
-import bigsky.pika.models.SampleEgb;
+import bigsky.pika.models.SampleEPB;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Date;
@@ -13,7 +13,7 @@ public class DeleteTest extends TestBase {
 
     @Test
     public void testBasicDelete() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
 
         SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
         orm.insert(sampleModel);

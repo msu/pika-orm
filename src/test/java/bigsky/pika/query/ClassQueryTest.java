@@ -2,7 +2,7 @@ package bigsky.pika.query;
 
 import bigsky.pika.TestBase;
 import bigsky.pika.models.SampleModel;
-import bigsky.pika.models.SampleEgb;
+import bigsky.pika.models.SampleEPB;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +20,7 @@ public class ClassQueryTest extends TestBase {
 
     @Test
     void testBasicQueryBuilder() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
 
         for (int i = 0; i < 10 ; i++) {
             SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
@@ -40,25 +40,25 @@ public class ClassQueryTest extends TestBase {
 
     @Test
     void testBasicQueryBuilderWithStaticMethod() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
 
         for (int i = 0; i < 10 ; i++) {
-            SampleEgb sampleModel = new SampleEgb("bar", 10, true, new Date(2021, 1, 1));
+            SampleEPB sampleModel = new SampleEPB("bar", 10, true, new Date(2021, 1, 1));
             long id = orm.insert(sampleModel);
         }
 
-        var query = SampleEgb.find().byQuery()
+        var query = SampleEPB.find().byQuery()
                 .where("date_val < :val")
                 .withVar("val", new Date(2050, 1, 1));
 
-        List<SampleEgb> results = query.fetchList();
+        List<SampleEPB> results = query.fetchList();
 
         assertEquals(10, results.size());
     }
 
     @Test
     void testChainedQueryBuilder() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
 
         for (int i = 0; i < 10 ; i++) {
             SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(21, 1, 1));

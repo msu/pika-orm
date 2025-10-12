@@ -1,17 +1,16 @@
 package bigsky.pika.core;
 
 import bigsky.pika.TestBase;
-import bigsky.pika.models.HasDate;
-import bigsky.pika.models.HasEnum;
-import bigsky.pika.models.HasUUID;
+import bigsky.pika.core.model.HasDate;
+import bigsky.pika.core.model.HasEnum;
 import bigsky.pika.models.SampleModel;
 import org.junit.jupiter.api.Test;
 
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
-import static bigsky.pika.models.HasEnum.MyEnum.BAR;
-import static bigsky.pika.models.HasEnum.MyEnum.FOO;
+import static bigsky.pika.core.model.HasEnum.MyEnum.BAR;
+import static bigsky.pika.core.model.HasEnum.MyEnum.FOO;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class DataTypesTest extends TestBase {
@@ -122,34 +121,6 @@ public class DataTypesTest extends TestBase {
         assertNotNull(orm.find(HasDate.class).byId(date1.getId()).getDate());
         assertNotNull(orm.find(HasDate.class).byId(date2.getId()).getDate());
         assertNotNull(orm.find(HasDate.class).byId(date3.getId()).getDate());
-    }
-
-    @Test
-    void testStringUUIDSerializeAndDeserialize() {
-        var orm = initTestDb(HasUUID.DDL);
-        HasUUID hasUUID = new HasUUID();
-        String uuid = "550e8400-e29b-41d4-a716-446655440000";
-        hasUUID.setUUID(uuid);
-        long id = orm.insert(hasUUID);
-
-        HasUUID fromDb = orm.find(HasUUID.class).byId(id);
-        assertEquals(uuid, fromDb.getUUID());
-    }
-
-    @Test
-    void testStringUUIDUpdate() {
-        var orm = initTestDb(HasUUID.DDL);
-        HasUUID hasUUID = new HasUUID();
-        String uuid1 = "550e8400-e29b-41d4-a716-446655440000";
-        hasUUID.setUUID(uuid1);
-        long id = orm.insert(hasUUID);
-
-        String uuid2 = "123e4567-e89b-12d3-a456-426614174000";
-        hasUUID.setUUID(uuid2);
-        orm.update(hasUUID);
-
-        HasUUID fromDb = orm.find(HasUUID.class).byId(id);
-        assertEquals(uuid2, fromDb.getUUID());
     }
 
     @Test

@@ -2,7 +2,7 @@ package bigsky.pika.features;
 
 import bigsky.pika.TestBase;
 import bigsky.pika.models.SampleModel;
-import bigsky.pika.models.SampleEgb;
+import bigsky.pika.models.SampleEPB;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +18,7 @@ public class LoggingTest extends TestBase {
 
     @Test
     void testDefaultLogger() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel sampleModel = new SampleModel("foo", 10, true, new Date(2021, 1, 1));
         PrintStream original = System.out;
         try {
@@ -37,7 +37,7 @@ public class LoggingTest extends TestBase {
 
     @Test
     void testCustomLogger() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         Logger logger = LoggerFactory.getLogger(LoggingTest.class);
         orm.logQueries(); // log at INFO so they appear in the logs
 

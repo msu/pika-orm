@@ -1,7 +1,7 @@
 package bigsky.pika.customization;
 
 import bigsky.pika.TestBase;
-import bigsky.pika.models.HasCustomizedMetadata;
+import bigsky.pika.customization.model.HasCustomizedMetadata;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

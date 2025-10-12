@@ -1,7 +1,6 @@
 package bigsky.pika.core;
 
 import bigsky.pika.TestBase;
-import bigsky.pika.models.SampleEgb;
 import bigsky.pika.models.SampleModel;
 import org.junit.jupiter.api.Test;
 

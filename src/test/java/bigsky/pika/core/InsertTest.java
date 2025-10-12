@@ -1,9 +1,7 @@
 package bigsky.pika.core;
 
 import bigsky.pika.TestBase;
-import bigsky.pika.models.OptimisticBean;
 import bigsky.pika.models.SampleModel;
-import bigsky.pika.models.SampleEgb;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Date;
@@ -55,11 +53,11 @@ public class InsertTest extends TestBase {
             SampleModel sampleModel4= new SampleModel("hoo", 10, true, new Date(2021, 1, 1));
             SampleModel sampleModel5 = new SampleModel("daw", 10, true, new Date(2021, 1, 1));
             SampleModel sampleModel6 = new SampleModel("jaw", 10, true, new Date(2021, 1, 1));
-            OptimisticBean sampleModel7 = new OptimisticBean();
+            Object sampleModel7 = new Object();
             orm.insertAll(sampleModel, sampleModel2, sampleModel3, sampleModel4, sampleModel5, sampleModel6, sampleModel7);
             fail("Should fail as there are more than one class being mass inserted at once");
         } catch (IllegalStateException e){
-            assertEquals("All values passed to insertAll() must be the same type!  Expected SampleModel but found OptimisticBean", e.getMessage());
+            assertEquals("All values passed to insertAll() must be the same type!  Expected SampleModel but found Object", e.getMessage());
         }
     }
 

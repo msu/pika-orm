@@ -1,7 +1,7 @@
 package bigsky.pika.features;
 
 import bigsky.pika.TestBase;
-import bigsky.pika.models.OptimisticBean;
+import bigsky.pika.features.model.OptimisticBean;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

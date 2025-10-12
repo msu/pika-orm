@@ -1,7 +1,7 @@
 package bigsky.pika.features;
 
 import bigsky.pika.TestBase;
-import bigsky.pika.models.TransactionDemo;
+import bigsky.pika.features.model.TransactionDemo;
 import org.junit.jupiter.api.Test;
 
 

@@ -1,6 +1,6 @@
 package bigsky.pika;
 
-import bigsky.pika.models.SampleEgb;
+import bigsky.pika.models.SampleEPB;
 import bigsky.pika.models.SampleModel;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +15,7 @@ public class StreamTest extends TestBase{
 
     @Test
     void testStream() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
         long id = orm.insert(sampleModel);
         try (var conn = orm.establishConnection()) {
@@ -35,7 +35,7 @@ public class StreamTest extends TestBase{
 
     @Test
     void testFindAll() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         for (int i = 0; i < 10 ; i++) {
             SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
             long id = orm.insert(sampleModel);

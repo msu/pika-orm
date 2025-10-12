@@ -1,6 +1,6 @@
 package bigsky.pika.query;
 
-import bigsky.pika.models.chinook.pojos.Album;
+import bigsky.pika.integration.model.pojos.Album;
 import org.junit.jupiter.api.Test;
 
 import static bigsky.pika.PikaORM.*;

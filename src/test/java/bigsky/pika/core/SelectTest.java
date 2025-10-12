@@ -4,7 +4,7 @@ import bigsky.pika.PikaORM;
 import bigsky.pika.PikaORM.QueryResult;
 import bigsky.pika.TestBase;
 import bigsky.pika.models.SampleModel;
-import bigsky.pika.models.SampleEgb;
+import bigsky.pika.models.SampleEPB;
 import org.junit.jupiter.api.Test;
 
 import java.time.temporal.ChronoUnit;
@@ -18,7 +18,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testFind() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
         long id = orm.insert(sampleModel);
 
@@ -36,7 +36,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testFindFirst() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
         SampleModel sampleModel2 = new SampleModel("bar", 11, true, new Date());
         orm.insertAll(sampleModel, sampleModel2);
@@ -47,7 +47,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testFindAll() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         for (int i = 0; i < 10 ; i++) {
             SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
             long id = orm.insert(sampleModel);
@@ -73,7 +73,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testSelectWhere() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         SampleModel m2  = new SampleModel("bar", 10, true, new Date());
         SampleModel m3 = new SampleModel("baz", 10, true, new Date());
@@ -90,7 +90,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testGenericSelect() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         SampleModel m2  = new SampleModel("bar", 10, true, new Date());
         SampleModel m3 = new SampleModel("baz", 10, true, new Date());
@@ -125,7 +125,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testGenericSelectWitRecord() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
 
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         SampleModel m2  = new SampleModel("bar", 10, true, new Date());
@@ -151,14 +151,14 @@ public class SelectTest extends TestBase {
 
     @Test
     void testFindByIdReturnsNull() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel result = orm.find(SampleModel.class).byId(999L);
         assertNull(result);
     }
 
     @Test
     void testFindFirstReturnsNullWhenNoMatch() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
         orm.insert(sampleModel);
 
@@ -168,7 +168,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testWhereWithMultipleConditions() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         SampleModel m2 = new SampleModel("foo", 20, true, new Date());
         SampleModel m3 = new SampleModel("bar", 10, true, new Date());
@@ -185,7 +185,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testWhereWithBooleanCondition() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         SampleModel m2 = new SampleModel("bar", 20, false, new Date());
         SampleModel m3 = new SampleModel("baz", 30, true, new Date());
@@ -201,14 +201,14 @@ public class SelectTest extends TestBase {
 
     @Test
     void testSelectWithEmptyResult() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         var results = orm.select("SELECT * FROM sample_models WHERE int_val=:x", Map.of("x", 999)).toList();
         assertEquals(0, results.size());
     }
 
     @Test
     void testSelectWithNoParameters() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         orm.insert(m1);
 
@@ -218,14 +218,14 @@ public class SelectTest extends TestBase {
 
     @Test
     void testFindAllReturnsEmptyListWhenTableEmpty() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         List<SampleModel> results = orm.find(SampleModel.class).all().toList();
         assertEquals(0, results.size());
     }
 
     @Test
     void testWhereWithInClauseEmptyList() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         orm.insert(m1);
 
@@ -238,7 +238,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testWhereWithLikePattern() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel m1 = new SampleModel("football", 10, true, new Date());
         SampleModel m2 = new SampleModel("basket", 20, true, new Date());
         SampleModel m3 = new SampleModel("foodie", 30, true, new Date());
@@ -254,7 +254,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testWhereWithNumericComparison() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         for (int i = 1; i <= 5; i++) {
             orm.insert(new SampleModel("test", i * 10, true, new Date()));
         }
@@ -269,7 +269,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testSelectPreservesOrder() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel m1 = new SampleModel("charlie", 30, true, new Date());
         SampleModel m2 = new SampleModel("alice", 10, true, new Date());
         SampleModel m3 = new SampleModel("bob", 20, true, new Date());
@@ -285,7 +285,7 @@ public class SelectTest extends TestBase {
 
     @Test
     void testMultipleInClauses() {
-        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         SampleModel m2 = new SampleModel("bar", 20, true, new Date());
         SampleModel m3 = new SampleModel("baz", 30, true, new Date());
