@@ -1,4 +1,4 @@
-package bigsky.pika.models;
+package bigsky.pika.relationships.models;
 
 import bigsky.pika.PikaORM;
 
