@@ -60,8 +60,9 @@ public class PikaORM {
     // Default mapping logic
     private Function<Class, String> defaultClassToTableMapping = aClass -> {
         String className = aClass.getSimpleName();
-        String plural = TextTools.pluralize(className);
-        return TextTools.snakeCase(plural);
+        String snakeCase = TextTools.snakeCase(className);
+        String plural = TextTools.pluralize(snakeCase);
+        return plural;
     };
     private Function<Field, String> defaultFieldToColumnMapping = field -> TextTools.snakeCase(field.getName());
 
@@ -1293,7 +1294,11 @@ public class PikaORM {
             for (int i = 0; i < charArray.length; i++) {
                 char c = charArray[i];
                 if (Character.isUpperCase(c)) {
+                    // new uppercase
                     if (!lastCharWasUppercase) {
+                        result.append("_");
+                        // last uppercase in a series
+                    } else if (i > 0 && i + 1 < charArray.length && Character.isLowerCase(charArray[i + 1])) {
                         result.append("_");
                     }
                     result.append(Character.toLowerCase(c));
@@ -2473,6 +2478,7 @@ public class PikaORM {
                 recordComponents = classForTable.getRecordComponents();
                 Constructor[] constructors = classForTable.getDeclaredConstructors();
                 constructor = constructors[0];
+                constructor.setAccessible(true);
             } else {
                 recordComponents = null;
                 Constructor[] constructors = classForTable.getDeclaredConstructors();

@@ -1,5 +1,6 @@
-package bigsky.pika;
+package bigsky.pika.core;
 
+import bigsky.pika.TestBase;
 import bigsky.pika.models.HasDate;
 import bigsky.pika.models.HasEnum;
 import org.junit.jupiter.api.Test;

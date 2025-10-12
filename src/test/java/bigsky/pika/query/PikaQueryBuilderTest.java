@@ -1,12 +1,12 @@
-package bigsky.pika;
+package bigsky.pika.query;
 
 import bigsky.pika.models.chinook.pojos.Album;
 import org.junit.jupiter.api.Test;
 
 import static bigsky.pika.PikaORM.*;
+import static bigsky.pika.integration.ChinookTest.configureOrm;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static bigsky.pika.ChinookTest.configureOrm;
 
 public class PikaQueryBuilderTest {
 

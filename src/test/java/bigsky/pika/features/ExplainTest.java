@@ -1,4 +1,4 @@
-package bigsky.pika;
+package bigsky.pika.features;
 
 import bigsky.pika.models.SampleEgb;
 import org.junit.jupiter.api.Test;

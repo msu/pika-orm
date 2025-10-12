@@ -1,5 +1,6 @@
-package bigsky.pika;
+package bigsky.pika.customization;
 
+import bigsky.pika.TestBase;
 import bigsky.pika.models.BadModel;
 import bigsky.pika.models.SampleEgb;
 import org.junit.jupiter.api.Test;

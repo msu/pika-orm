@@ -1,5 +1,6 @@
-package bigsky.pika;
+package bigsky.pika.features;
 
+import bigsky.pika.TestBase;
 import bigsky.pika.models.TransactionDemo;
 import org.junit.jupiter.api.Test;
 

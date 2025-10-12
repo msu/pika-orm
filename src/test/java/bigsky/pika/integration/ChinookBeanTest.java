@@ -1,5 +1,6 @@
-package bigsky.pika;
+package bigsky.pika.integration;
 
+import bigsky.pika.PikaORM;
 import bigsky.pika.models.chinook.beans.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

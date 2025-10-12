@@ -1,5 +1,6 @@
-package bigsky.pika;
+package bigsky.pika.customization;
 
+import bigsky.pika.TestBase;
 import bigsky.pika.models.HasUUID;
 import org.junit.jupiter.api.Test;
 

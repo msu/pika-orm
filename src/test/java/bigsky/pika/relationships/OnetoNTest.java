@@ -1,5 +1,6 @@
-package bigsky.pika;
+package bigsky.pika.relationships;
 
+import bigsky.pika.TestBase;
 import bigsky.pika.models.Foo;
 import bigsky.pika.models.FooContainer;
 import org.junit.jupiter.api.Test;
