@@ -172,6 +172,64 @@ public class ChinookBeanTest {
         assertEquals(newTrack.getTrackId(), newTrackLoaded.getTrackId());
     }
 
+    @Test
+    void testTrackValidationFailsWithNullName() {
+        TrackBean track = new TrackBean();
+        track.setMilliseconds(100L);
+        track.save();
+        assertTrue(track.hasErrors());
+    }
+
+    @Test
+    void testTrackValidationFailsWithNegativeMilliseconds() {
+        TrackBean track = new TrackBean();
+        track.setName("Test Track");
+        track.setMilliseconds(-100L);
+        track.save();
+        assertTrue(track.hasErrors());
+    }
+
+    @Test
+    void testTrackValidationPassesWithValidData() {
+        TrackBean existing = TrackBean.find().byId(1);
+        TrackBean track = new TrackBean();
+        track.setName("Valid Track");
+        track.setMilliseconds(180000L);
+        track.setUnitPrice(99L);
+        track.setGenreId(existing.getGenreId());
+        track.setMediaTypeId(existing.getMediaTypeId());
+        track.save();
+        assertFalse(track.hasErrors());
+    }
+
+    @Test
+    void testCustomerValidationFailsWithInvalidEmail() {
+        CustomerBean customer = new CustomerBean();
+        customer.setFirstName("John");
+        customer.setLastName("Doe");
+        customer.setEmail("invalid-email");
+        customer.save();
+        assertTrue(customer.hasErrors());
+    }
+
+    @Test
+    void testCustomerValidationFailsWithEmptyName() {
+        CustomerBean customer = new CustomerBean();
+        customer.setFirstName("");
+        customer.setLastName("Doe");
+        customer.setEmail("john@example.com");
+        customer.save();
+        assertTrue(customer.hasErrors());
+    }
+
+    @Test
+    void testArtistValidationFailsWithEmptyName() {
+        ArtistBean artist = new ArtistBean();
+        artist.setName("");
+        artist.save();
+        assertTrue(artist.hasErrors());
+    }
+
     public static PikaORM configureOrm() {
         copyFileTo("dbs/chinook.original", "test/chinook.db");
         return new PikaORM("jdbc:sqlite:test/chinook.db")

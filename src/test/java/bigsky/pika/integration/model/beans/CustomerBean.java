@@ -123,4 +123,17 @@ public class CustomerBean extends PikaORM.EnterprisePikaBean {
     public static PikaORM.PikaClassFinder<CustomerBean> find() {
         return find(CustomerBean.class);
     }
+
+    @Override
+    protected void validation() {
+        if (firstName == null || firstName.trim().isEmpty()) {
+            addError("firstName", "First name cannot be null or empty");
+        }
+        if (lastName == null || lastName.trim().isEmpty()) {
+            addError("lastName", "Last name cannot be null or empty");
+        }
+        if (email != null && !email.contains("@")) {
+            addError("email", "Email must contain '@' symbol");
+        }
+    }
 }

@@ -26,4 +26,11 @@ public class ArtistBean extends EnterprisePikaBean {
     public static PikaClassFinder<ArtistBean> find() {
         return find(ArtistBean.class);
     }
+
+    @Override
+    protected void validation() {
+        if (name == null || name.trim().isEmpty()) {
+            addError("name", "Name cannot be null or empty");
+        }
+    }
 }

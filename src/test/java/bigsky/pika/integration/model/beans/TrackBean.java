@@ -87,4 +87,17 @@ public class TrackBean extends PikaORM.EnterprisePikaBean {
         return find(TrackBean.class);
     }
 
+    @Override
+    protected void validation() {
+        if (name == null || name.trim().isEmpty()) {
+            addError("name", "Name cannot be null or empty");
+        }
+        if (milliseconds != null && milliseconds < 0) {
+            addError("milliseconds", "Milliseconds must be non-negative");
+        }
+        if (unitPrice != null && unitPrice < 0) {
+            addError("unitPrice", "Unit price must be non-negative");
+        }
+    }
+
 }
