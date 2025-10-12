@@ -43,6 +43,14 @@ public class SampleEPB extends EnterprisePikaBean {
         return orm().find(SampleEPB.class);
     }
 
+    public Long getId() {
+        return id;
+    }
+
+    public String getStrVal() {
+        return strVal;
+    }
+
     public void setStrVal(String s) {
         this.strVal = s;
     }

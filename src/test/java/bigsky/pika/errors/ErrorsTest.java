@@ -6,10 +6,7 @@ import bigsky.pika.models.SampleModel;
 import org.junit.jupiter.api.Test;
 
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -174,8 +171,10 @@ public class ErrorsTest extends TestBase {
         orm.insert(model);
 
         // Should handle null parameter gracefully
+        HashMap<String, Object> args = new HashMap<>();
+        args.put("val", null);
         var results = orm.find(SampleModel.class)
-            .where("str_val = :val", Map.of("val", (String) null))
+            .where("str_val = :val", args)
             .toList();
 
         assertNotNull(results);

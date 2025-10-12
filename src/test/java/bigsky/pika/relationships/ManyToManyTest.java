@@ -137,10 +137,6 @@ public class ManyToManyTest extends TestBase {
         course.save();
 
         student.getCourses().addAndSave(course);
-
-        var all = Enrollment.find().where("student_id=1 AND course_id=1");
-        System.out.println(all.toList());
-
         Course found = student.getCourses().findById(course.getCourseId());
         assertNotNull(found);
         assertEquals("Art", found.getTitle());

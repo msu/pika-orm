@@ -225,6 +225,12 @@ public class SelectTest extends TestBase {
 
     @Test
     void testWhereWithInClauseEmptyList() {
+
+        if (getMode() != DatabaseMode.SQLITE) {
+            // only SQLite allows empty in clauses
+            return;
+        }
+
         var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
         SampleModel m1 = new SampleModel("foo", 10, true, new Date());
         orm.insert(m1);
@@ -275,12 +281,12 @@ public class SelectTest extends TestBase {
         SampleModel m3 = new SampleModel("bob", 20, true, new Date());
         orm.insertAll(m1, m2, m3);
 
-        var results = orm.select("SELECT * FROM sample_models ORDER BY str_val ASC").toList();
+        var results = orm.select("SELECT str_val FROM sample_models ORDER BY str_val ASC").toList();
 
         assertEquals(3, results.size());
-        assertEquals("alice", results.get(0).get("str_val"));
-        assertEquals("bob", results.get(1).get("str_val"));
-        assertEquals("charlie", results.get(2).get("str_val"));
+        assertEquals("alice", results.get(0).toCaseInsensitiveMap().get("str_val"));
+        assertEquals("bob", results.get(1).toCaseInsensitiveMap().get("str_val"));
+        assertEquals("charlie", results.get(2).toCaseInsensitiveMap().get("str_val"));
     }
 
     @Test
