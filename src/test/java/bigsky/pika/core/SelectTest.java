@@ -12,9 +12,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
-public class FindTest extends TestBase {
+public class SelectTest extends TestBase {
 
     @Test
     void testFind() {
@@ -147,6 +147,157 @@ public class FindTest extends TestBase {
         SampleModelGroupByQuery second = results.get(1);
         assertEquals("foo", second.strVal());
         assertEquals(20, second.sum());
+    }
+
+    @Test
+    void testFindByIdReturnsNull() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        SampleModel result = orm.find(SampleModel.class).byId(999L);
+        assertNull(result);
+    }
+
+    @Test
+    void testFindFirstReturnsNullWhenNoMatch() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
+        orm.insert(sampleModel);
+
+        SampleModel result = orm.find(SampleModel.class).firstWhere("str_val=:val", Map.of("val", "nonexistent"));
+        assertNull(result);
+    }
+
+    @Test
+    void testWhereWithMultipleConditions() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        SampleModel m1 = new SampleModel("foo", 10, true, new Date());
+        SampleModel m2 = new SampleModel("foo", 20, true, new Date());
+        SampleModel m3 = new SampleModel("bar", 10, true, new Date());
+        orm.insertAll(m1, m2, m3);
+
+        var results = orm.find(SampleModel.class)
+                .where("str_val=:str AND int_val=:int", Map.of("str", "foo", "int", 10))
+                .toList();
+
+        assertEquals(1, results.size());
+        assertEquals("foo", results.get(0).getStrVal());
+        assertEquals(10, results.get(0).getIntVal());
+    }
+
+    @Test
+    void testWhereWithBooleanCondition() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        SampleModel m1 = new SampleModel("foo", 10, true, new Date());
+        SampleModel m2 = new SampleModel("bar", 20, false, new Date());
+        SampleModel m3 = new SampleModel("baz", 30, true, new Date());
+        orm.insertAll(m1, m2, m3);
+
+        var results = orm.find(SampleModel.class)
+                .where("bool_val=:val", Map.of("val", true))
+                .toList();
+
+        assertEquals(2, results.size());
+        assertTrue(results.stream().allMatch(SampleModel::getBoolVal));
+    }
+
+    @Test
+    void testSelectWithEmptyResult() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        var results = orm.select("SELECT * FROM sample_models WHERE int_val=:x", Map.of("x", 999)).toList();
+        assertEquals(0, results.size());
+    }
+
+    @Test
+    void testSelectWithNoParameters() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        SampleModel m1 = new SampleModel("foo", 10, true, new Date());
+        orm.insert(m1);
+
+        var results = orm.select("SELECT * FROM sample_models").toList();
+        assertEquals(1, results.size());
+    }
+
+    @Test
+    void testFindAllReturnsEmptyListWhenTableEmpty() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        List<SampleModel> results = orm.find(SampleModel.class).all().toList();
+        assertEquals(0, results.size());
+    }
+
+    @Test
+    void testWhereWithInClauseEmptyList() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        SampleModel m1 = new SampleModel("foo", 10, true, new Date());
+        orm.insert(m1);
+
+        var results = orm.find(SampleModel.class)
+                .where("str_val in :strs", Map.of("strs", List.of()))
+                .toList();
+
+        assertEquals(0, results.size());
+    }
+
+    @Test
+    void testWhereWithLikePattern() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        SampleModel m1 = new SampleModel("football", 10, true, new Date());
+        SampleModel m2 = new SampleModel("basket", 20, true, new Date());
+        SampleModel m3 = new SampleModel("foodie", 30, true, new Date());
+        orm.insertAll(m1, m2, m3);
+
+        var results = orm.find(SampleModel.class)
+                .where("str_val like :pattern", Map.of("pattern", "foo%"))
+                .toList();
+
+        assertEquals(2, results.size());
+        assertTrue(results.stream().allMatch(m -> m.getStrVal().startsWith("foo")));
+    }
+
+    @Test
+    void testWhereWithNumericComparison() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        for (int i = 1; i <= 5; i++) {
+            orm.insert(new SampleModel("test", i * 10, true, new Date()));
+        }
+
+        var results = orm.find(SampleModel.class)
+                .where("int_val > :val", Map.of("val", 30))
+                .toList();
+
+        assertEquals(2, results.size());
+        assertTrue(results.stream().allMatch(m -> m.getIntVal() > 30));
+    }
+
+    @Test
+    void testSelectPreservesOrder() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        SampleModel m1 = new SampleModel("charlie", 30, true, new Date());
+        SampleModel m2 = new SampleModel("alice", 10, true, new Date());
+        SampleModel m3 = new SampleModel("bob", 20, true, new Date());
+        orm.insertAll(m1, m2, m3);
+
+        var results = orm.select("SELECT * FROM sample_models ORDER BY str_val ASC").toList();
+
+        assertEquals(3, results.size());
+        assertEquals("alice", results.get(0).get("str_val"));
+        assertEquals("bob", results.get(1).get("str_val"));
+        assertEquals("charlie", results.get(2).get("str_val"));
+    }
+
+    @Test
+    void testMultipleInClauses() {
+        var orm = initTestDb(SampleModel.DDL, SampleEgb.DDL);
+        SampleModel m1 = new SampleModel("foo", 10, true, new Date());
+        SampleModel m2 = new SampleModel("bar", 20, true, new Date());
+        SampleModel m3 = new SampleModel("baz", 30, true, new Date());
+        SampleModel m4 = new SampleModel("foo", 40, true, new Date());
+        orm.insertAll(m1, m2, m3, m4);
+
+        var results = orm.find(SampleModel.class)
+                .where("str_val in :strs AND int_val in :ints",
+                        Map.of("strs", List.of("foo", "bar"), "ints", List.of(10, 20)))
+                .toList();
+
+        assertEquals(2, results.size());
     }
 
 }
