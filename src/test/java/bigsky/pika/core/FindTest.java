@@ -1,6 +1,8 @@
-package bigsky.pika;
+package bigsky.pika.core;
 
+import bigsky.pika.PikaORM;
 import bigsky.pika.PikaORM.QueryResult;
+import bigsky.pika.TestBase;
 import bigsky.pika.models.SampleModel;
 import bigsky.pika.models.SampleEgb;
 import org.junit.jupiter.api.Test;
