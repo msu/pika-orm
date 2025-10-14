@@ -9,7 +9,7 @@ public class SampleModel implements PikaRecordLifecycle {
     public static String DDL = """
             CREATE TABLE IF NOT EXISTS sample_models (
                 id INTEGER PRIMARY KEY,
-                str_val TEXT NOT NULL,
+                str_val TEXT,
                 int_val INTEGER NOT NULL,
                 bool_val BOOLEAN NOT NULL,
                 date_val DATETIME NOT NULL

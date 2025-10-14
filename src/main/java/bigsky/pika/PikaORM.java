@@ -4,7 +4,9 @@ import bigsky.pika.PikaORM.Interfaces.PikaLogger;
 import bigsky.pika.PikaORM.Interfaces.PikaRecordLifecycle;
 import bigsky.pika.PikaORM.Interfaces.SafeAutoCloseable;
 
+import java.io.Closeable;
 import java.io.Console;
+import java.io.IOException;
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -12,9 +14,9 @@ import java.net.URL;
 import java.sql.*;
 import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.*;
 import java.util.Date;
 import java.util.concurrent.Callable;
@@ -31,6 +33,7 @@ import java.util.stream.StreamSupport;
 public class PikaORM {
 
     public static final String SQL_VARS_PATTERN = "(:[\\w][\\w]*)";
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd[[ ]['T']HH:mm[:ss][XXX]]");
 
     private static PikaORM DEFAULT_ORM = null;
 
@@ -57,12 +60,19 @@ public class PikaORM {
     // Default mapping logic
     private Function<Class, String> defaultClassToTableMapping = aClass -> {
         String className = aClass.getSimpleName();
-        String plural = TextTools.pluralize(className);
-        return TextTools.snakeCase(plural);
+        String snakeCase = TextTools.snakeCase(className);
+        String plural = TextTools.pluralize(snakeCase);
+        return plural;
     };
     private Function<Field, String> defaultFieldToColumnMapping = field -> TextTools.snakeCase(field.getName());
+
     private Function<Class, String> defaultIdFieldName = aClass -> "id";
+
+    private Function<Class, String> defaultUUIDFieldName = aClass -> "uuid";
+    private Function<Class, Supplier<Object>> defaultUUIDGenerator = aClass -> () -> UUID.randomUUID().toString();
+
     private Function<Class, String> defaultFkColumnName = aClass -> TextTools.snakeCase(aClass.getSimpleName()) + "_id";
+
     private Function<Class, String> defaultVersionFieldName = aClass -> "version";
     private Function<Class, Function<Object, Object>> defaultVersionIncrementer = aClass -> previousValue -> {
         if (previousValue == null) {
@@ -132,6 +142,11 @@ public class PikaORM {
 
     public PikaORM withDefaultIdField(Function<Class, String> val) {
         defaultIdFieldName = val;
+        return this;
+    }
+
+    public PikaORM withDefaultUUIDField(Function<Class, String> val) {
+        defaultUUIDFieldName = val;
         return this;
     }
 
@@ -241,6 +256,7 @@ public class PikaORM {
                     value.getClass().getSimpleName() + " with value " + value + " to class " +
                     targetClass.getSimpleName());
         }
+        if (result == NULL_SENTINEL) result = null;
         return (T) result;
     }
 
@@ -267,6 +283,8 @@ public class PikaORM {
             return Enum.valueOf(targetType, String.valueOf(value).toUpperCase());
         } else if (targetType == String.class) {
             return String.valueOf(value);
+        } else if (Number.class.isAssignableFrom(targetType) && ("".equals(value) || "null".equals(value))) {
+            return NULL_SENTINEL;
         } else if ((targetType == Short.class || targetType == short.class) && value instanceof String s) {
             return Short.valueOf(s);
         } else if ((targetType == Integer.class || targetType == int.class) && value instanceof String s) {
@@ -289,12 +307,36 @@ public class PikaORM {
             return new BigInteger(s);
         } else if (targetType == BigDecimal.class && value instanceof String s) {
             return new BigDecimal(s);
+        } else if (targetType == LocalDateTime.class && value instanceof String s) {
+            return safely(() -> {
+                return LocalDateTime.parse(s, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
+            });
         } else if (targetType == Date.class && value instanceof String s) {
             try {
                 return new Date(Long.parseLong(s));
             } catch (NumberFormatException nfe) {
                 // if the value is not a long, try to parse it as a date string
-                return safely(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(s));
+                TemporalAccessor parsedDate = DATE_TIME_FORMATTER.parse(s);
+                try {
+                    // Try to convert to Instant first (works if all fields present)
+                    Instant instant = Instant.from(parsedDate);
+                    return Date.from(instant);
+                } catch (DateTimeException e) {
+                    // If that fails, try LocalDateTime
+                    try {
+                        LocalDateTime localDateTime = LocalDateTime.from(parsedDate);
+                        return Date.from(localDateTime.atZone(ZoneId.systemDefault()).toInstant());
+                    } catch (DateTimeException e2) {
+                        // If that fails, try LocalDate (date only, no time)
+                        try {
+                            LocalDate localDate = LocalDate.from(parsedDate);
+                            return Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+                        } catch (DateTimeException e3) {
+                            throw new IllegalArgumentException("Unable to convert temporal to Date: " + parsedDate);
+                        }
+                    }
+                }
+
             }
         } else if (targetType == Boolean.class) {
             if (value == null) {
@@ -386,6 +428,12 @@ public class PikaORM {
         }
     }
 
+    public SafeAutoCloseable suppressQueries() {
+        boolean originalValue = logQueries;
+        logQueries = false;
+        return () -> logQueries = originalValue;
+    }
+
     public class PikaClassFinder<T> {
         Class<T> classToFind;
 
@@ -394,6 +442,9 @@ public class PikaORM {
         }
 
         public T byId(Object id) {
+            if(id == null) {
+                throw new IllegalArgumentException("id cannot be null");
+            }
             Mapping mapping = getMapping(classToFind);
             String column = mapping.getIdColumn();
             Mapping mapping1 = getMapping(classToFind);
@@ -422,6 +473,10 @@ public class PikaORM {
             String selectClause = "SELECT * FROM " + tableName + "\nWHERE ";
             String sql = selectClause + column + "=:val ";
             return select(sql, Map.of("val", val), classToFind);
+        }
+
+        public QueryResult<T> where(String whereClause) {
+            return where(whereClause, Map.of());
         }
 
         public QueryResult<T> where(String whereClause, String arg, Object val) {
@@ -464,6 +519,13 @@ public class PikaORM {
             return query(classToFind);
         }
 
+        public T first() {
+            return byQuery().first();
+        }
+
+        public long totalCount() {
+            return byQuery().totalCount();
+        }
     }
 
     public class PikaStreamFinder<T> {
@@ -877,6 +939,16 @@ public class PikaORM {
             return null;
         }
         Object newVersionValue = null;
+        Object uuid = null;
+        FieldMapping uuidFieldMapping = null;
+        if (mapping.hasUUIDColumn()) {
+            uuidFieldMapping = mapping.getUUIDMapping();
+            String uuidColumn = uuidFieldMapping.getColumnName();
+            if(values.get(uuidColumn) == null) {
+                uuid = uuidFieldMapping.generateUUID();
+                values.putIfAbsent(uuidColumn, uuid);
+            }
+        }
         // TODO - remove this?  It's an insert...
         if (mapping.hasVersionColumn()) {
             newVersionValue = mapping.incrementVersion(values);
@@ -892,6 +964,9 @@ public class PikaORM {
         }
         if (!mapping.isReadOnly() && id != null) {
             mapping.setId(object, id);
+        }
+        if (uuidFieldMapping != null && uuid != null) {
+            uuidFieldMapping.setFieldValue(object, uuid);
         }
         if (object instanceof PikaRecordLifecycle lifecycle) {
             lifecycle.afterInsert();
@@ -909,7 +984,7 @@ public class PikaORM {
         }
 
         // Metadata
-        Object templateItem = items.getFirst();
+        Object templateItem = items.get(0);
         Class<?> templateClass = templateItem.getClass();
         Mapping mapping = getMapping(templateClass);
         Set<String> columns = mapping.toDatabaseMap(templateItem).keySet();
@@ -1223,14 +1298,21 @@ public class PikaORM {
         public static String snakeCase(String camelCaseString) {
             StringBuilder result = new StringBuilder();
             char[] charArray = camelCaseString.toCharArray();
+            boolean lastCharWasUppercase = true;
             for (int i = 0; i < charArray.length; i++) {
                 char c = charArray[i];
                 if (Character.isUpperCase(c)) {
-                    if (i != 0) {
+                    // new uppercase
+                    if (!lastCharWasUppercase) {
+                        result.append("_");
+                        // last uppercase in a series
+                    } else if (i > 0 && i + 1 < charArray.length && Character.isLowerCase(charArray[i + 1])) {
                         result.append("_");
                     }
                     result.append(Character.toLowerCase(c));
+                    lastCharWasUppercase = true;
                 } else {
+                    lastCharWasUppercase = false;
                     result.append(c);
                 }
             }
@@ -1287,6 +1369,18 @@ public class PikaORM {
                 }
             }
             return noun + "s"; // default to appending 's'
+        }
+
+        public static String humanize(String string) {
+            String[] splitString = string.split("(?=\\p{Lu})|_");
+            StringBuilder result = new StringBuilder();
+            for (String str : splitString) {
+                if (!result.isEmpty()) {
+                    result.append(" ");
+                }
+                result.append(capitalize(str));
+            }
+            return result.toString();
         }
     }
 
@@ -1477,7 +1571,7 @@ public class PikaORM {
     public static class EnterprisePikaBean implements PikaRecordLifecycle {
 
         private transient boolean persisted;
-        private final transient Map<String, List<String>> errors = new LinkedHashMap<>();
+        private final transient Map<String, PikaList<String>> errors = new LinkedHashMap<>();
         private transient Map<String, Object> originalValues = Collections.emptyMap();
 
         public boolean hasErrors() {
@@ -1502,12 +1596,20 @@ public class PikaORM {
             errorList.add(error);
         }
 
-        public List<String> getGeneralErrors() {
+        public PikaList<String> getGeneralErrors() {
             return getErrorList(null);
         }
 
-        public List<String> getErrors(String field) {
+
+        public PikaList<String> getErrors(String field) {
             return getErrorList(field);
+        }
+
+        public Map<String, PikaList<String>> getAllFieldErrors() {
+            var copy = new HashMap<>(errors);
+            copy.remove(null);
+            var ordered = new TreeMap<>(copy);
+            return ordered;
         }
 
         public String getErrorString(String field) {
@@ -1522,10 +1624,9 @@ public class PikaORM {
             return errors.containsKey(field);
         }
 
-        private List<String> getErrorList(String key) {
-            return errors.computeIfAbsent(key, val -> new ArrayList<>());
+        private PikaList<String> getErrorList(String key) {
+            return errors.computeIfAbsent(key, val -> new PikaList<>());
         }
-
 
         public final boolean validate() {
             clearErrors();
@@ -1535,6 +1636,20 @@ public class PikaORM {
 
         protected void validation() {
             // override in subclasses
+        }
+
+        protected void require(String... fields) {
+            Arrays.stream(fields).forEach(this::require);
+        }
+
+        protected void require(String field) {
+            var mapping = orm().getMapping(getClass());
+            var fieldMapping = mapping.getFieldMappingForFieldName(field);
+            Object fieldValue = fieldMapping.getFieldValue(this);
+            if(fieldValue == null || (fieldValue instanceof String s && s.isEmpty() )) {
+                // TODO pluggable error messages
+                this.addError(field, TextTools.humanize(field) + " is required");
+            }
         }
 
         public void afterSelect() {
@@ -1562,7 +1677,7 @@ public class PikaORM {
                 String key = keys.next();
                 if (originalValues.containsKey(key)) {
                     // remove any elements that are equal to their original value, making update unnecessary
-                    if(originalValues.get(key).equals(valuesToUpdate.get(key))) {
+                    if(Objects.equals(originalValues.get(key), valuesToUpdate.get(key))) {
                         keys.remove();
                     }
                 }
@@ -1594,6 +1709,34 @@ public class PikaORM {
             } else {
                 return insert() != null;
             }
+        }
+
+        public void saveOrThrow() {
+            if (!save()) {
+                throw new IllegalStateException("This record has not been persisted!\n" + getErrorString());
+            }
+        }
+
+        private String getErrorString() {
+            PikaList<String> errorKeys = new PikaList<>(errors.keySet());
+            errorKeys.removeIf(s -> s == null);
+            if(!errorKeys.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                if (errorKeys.contains(null)) {
+                    sb.append("  Errors:\n");
+                    sb.append("    ").append(getErrorList(null).toString(", ")).append("\n");
+                    errorKeys.remove(null);
+                }
+                if (!errorKeys.isEmpty()) {
+                    sb.append("  Field Errors:\n");
+                    errorKeys.sort(Comparator.naturalOrder());
+                    for (String errorKey : errorKeys) {
+                        sb.append("    ").append(errorKey).append(": ").append(getErrorString(errorKey)).append("\n");
+                    }
+                }
+                return sb.toString();
+            }
+            return "";
         }
 
         public boolean delete() {
@@ -1641,7 +1784,7 @@ public class PikaORM {
             if (fieldMapping == null) {
                 fieldMapping = mapping.getFieldMappingForFieldName(TextTools.camelCase(col));
                 if(fieldMapping == null) {
-                    throw new IllegalArgumentException("No field '" + str + "' found on " + this.getClass().getSimpleName());
+                    throw new IllegalArgumentException("No field '" + col + "' found on " + this.getClass().getSimpleName());
                 }
             }
             Class fieldType = fieldMapping.getType();
@@ -1883,6 +2026,16 @@ public class PikaORM {
             }
         }
 
+        // SOURCE: STOLEN FROM JAVA 18 SRC
+        private static long ceilDiv(long x, long y) {
+            final long q = x / y;
+            // if the signs are the same and modulo not zero, round up
+            if ((x ^ y) >= 0 && (q * y != x)) {
+                return q + 1;
+            }
+            return q;
+        }
+
         public long totalPages() {
             if (page > 0) {
                 long totalCount = totalCount();
@@ -1890,7 +2043,7 @@ public class PikaORM {
                 if (finalPageSize == -1) {
                     finalPageSize = defaultPageSize;
                 }
-                return Math.ceilDiv(totalCount, finalPageSize);
+                return ceilDiv(totalCount, finalPageSize);
             } else {
                 return 1;
             }
@@ -2208,27 +2361,46 @@ public class PikaORM {
             val = e.name();
         }
 
-        switch (val) {
-            case Boolean b -> ps.setBoolean(parameterIndex, b);
-            case Short s -> ps.setShort(parameterIndex, s);
-            case Integer i -> ps.setInt(parameterIndex, i);
-            case Long l -> ps.setLong(parameterIndex, l);
-            case Float f -> ps.setDouble(parameterIndex, f);
-            case Double d -> ps.setDouble(parameterIndex, d);
-            case BigDecimal bd -> ps.setBigDecimal(parameterIndex, bd);
-            case String str -> ps.setString(parameterIndex, str);
-            case Time d -> ps.setTime(parameterIndex, d);
-            case Timestamp ts -> ps.setTimestamp(parameterIndex, ts);
-            case Date d -> ps.setTimestamp(parameterIndex, new Timestamp(d.getTime()));
-            case LocalDate ld -> ps.setDate(parameterIndex, java.sql.Date.valueOf(ld));
-            case LocalDateTime ldt -> ps.setTimestamp(parameterIndex, Timestamp.valueOf(ldt));
-            case Blob blob -> ps.setBlob(parameterIndex, blob);
-            case NClob nclob -> ps.setNClob(parameterIndex, nclob);
-            case Clob clob -> ps.setClob(parameterIndex, clob);
-            case Byte b -> ps.setByte(parameterIndex, b);
-            case byte[] bytes -> ps.setBytes(parameterIndex, bytes);
-            case URL url -> ps.setURL(parameterIndex, url);
-            default -> ps.setObject(parameterIndex, val);
+        if (val instanceof Boolean b) {
+            ps.setBoolean(parameterIndex, b);
+        } else if (val instanceof Short s) {
+            ps.setShort(parameterIndex, s);
+        } else if (val instanceof Integer i) {
+            ps.setInt(parameterIndex, i);
+        } else if (val instanceof Long l) {
+            ps.setLong(parameterIndex, l);
+        } else if (val instanceof Float f) {
+            ps.setDouble(parameterIndex, f);
+        } else if (val instanceof Double d) {
+            ps.setDouble(parameterIndex, d);
+        } else if (val instanceof BigDecimal bd) {
+            ps.setBigDecimal(parameterIndex, bd);
+        } else if (val instanceof String str) {
+            ps.setString(parameterIndex, str);
+        } else if (val instanceof Time d) {
+            ps.setTime(parameterIndex, d);
+        } else if (val instanceof Timestamp ts) {
+            ps.setTimestamp(parameterIndex, ts);
+        } else if (val instanceof Date d) {
+            ps.setTimestamp(parameterIndex, new Timestamp(d.getTime()));
+        } else if (val instanceof LocalDate ld) {
+            ps.setDate(parameterIndex, java.sql.Date.valueOf(ld));
+        } else if (val instanceof LocalDateTime ldt) {
+            ps.setTimestamp(parameterIndex, Timestamp.valueOf(ldt));
+        } else if (val instanceof Blob blob) {
+            ps.setBlob(parameterIndex, blob);
+        } else if (val instanceof NClob nclob) {
+            ps.setNClob(parameterIndex, nclob);
+        } else if (val instanceof Clob clob) {
+            ps.setClob(parameterIndex, clob);
+        } else if (val instanceof Byte b) {
+            ps.setByte(parameterIndex, b);
+        } else if (val instanceof byte[] bytes) {
+            ps.setBytes(parameterIndex, bytes);
+        } else if (val instanceof URL url) {
+            ps.setURL(parameterIndex, url);
+        } else {
+            ps.setObject(parameterIndex, val);
         }
     }
 
@@ -2274,9 +2446,11 @@ public class PikaORM {
         private Class classForTable;
         private RecordComponent[] recordComponents;
         private String tableName;
+        private Set<String> columnsInDb;
         private Map<String, FieldMapping> fieldNameToMapping;
         private Map<String, FieldMapping> columnToMapping;
         private FieldMapping idMapping;
+        private FieldMapping uuidMapping;
         private Constructor constructor;
         private FieldMapping versionMapping;
 
@@ -2293,6 +2467,10 @@ public class PikaORM {
                 return; // special case
             } else {
                 this.tableName = mapToTable();
+                // for epb's we validate that the columns are in the database at metadata generation time
+                if(EnterprisePikaBean.class.isAssignableFrom(aClass)) {
+                    columnsInDb = getColumnsInDb(tableName);
+                }
                 fieldNameToMapping = new LinkedHashMap<>();
                 columnToMapping = new LinkedHashMap<>();
                 for (Field field : getAllFields(aClass)) {
@@ -2308,6 +2486,7 @@ public class PikaORM {
                 recordComponents = classForTable.getRecordComponents();
                 Constructor[] constructors = classForTable.getDeclaredConstructors();
                 constructor = constructors[0];
+                constructor.setAccessible(true);
             } else {
                 recordComponents = null;
                 Constructor[] constructors = classForTable.getDeclaredConstructors();
@@ -2324,7 +2503,38 @@ public class PikaORM {
             }
 
             idMapping = resolveIdMapping();
+            uuidMapping = resolveUUIDMapping();
             versionMapping = resolveVersionMapping();
+        }
+
+        private Set<String> getColumnsInDb(String tableName) {
+            Set<String> columnNames = new HashSet<>();
+            try {
+                try (Connection connection = orm.getNewRawConnection()) {
+                    DatabaseMetaData metaData = connection.getMetaData();
+                    try (ResultSet columns = metaData.getColumns(null, null, tableName, null)) {
+                        while (columns.next()) {
+                            columnNames.add(columns.getString("COLUMN_NAME").toLowerCase());
+                        }
+                        if (columnNames.isEmpty()) {
+                            try {
+                                // try again with the upper case table name (H2, etc.)
+                                columnNames = getColumnsInDb(tableName.toUpperCase());
+                            } catch (Exception e) {
+                                // ignore
+                            }
+                            if(columnNames.isEmpty()) {
+                                orm.logger.log(PikaLogger.Level.WARN, "Unable to determine column names in table : {}", tableName);
+                                return null;
+                            }
+                        }
+                        return columnNames;
+                    }
+                }
+            } catch (SQLException e) {
+                orm.logger.log(PikaLogger.Level.ERROR, "Unable to determine column names in table {} : {}", tableName, e.getSQLState());
+                return null;
+            }
         }
 
         private FieldMapping resolveVersionMapping() {
@@ -2365,6 +2575,25 @@ public class PikaORM {
             return idMapping;
         }
 
+        private FieldMapping resolveUUIDMapping() {
+            FieldMapping uuidMapping = null;
+            for (FieldMapping mapping : fieldNameToMapping.values()) {
+                if (mapping.isUUID()) {
+                    if (uuidMapping == null) {
+                        uuidMapping = mapping;
+                    } else {
+                        throw new IllegalStateException("Cannot have more than one field as the uuid column: " + uuidMapping.getFieldName() +
+                                " and " + mapping.getFieldName() + " are both uuids!");
+                    }
+                }
+            }
+            if (uuidMapping == null) {
+                String idFieldName = orm.defaultUUIDFieldName.apply(classForTable);
+                uuidMapping = fieldNameToMapping.get(idFieldName);
+            }
+            return uuidMapping;
+        }
+
         protected final FieldMapping ignore(Field field) {
             return null;
         }
@@ -2377,8 +2606,18 @@ public class PikaORM {
             if (shouldIgnore(field)) {
                 return ignore(field);
             } else {
-                return map(field);
+                FieldMapping map = map(field);
+                if (columnExists(map.getColumnName())) {
+                    return map;
+                } else {
+                    orm.logger.log(PikaLogger.Level.WARN, "The field {} on class {} does not map to a database column.  Available options: {}", field.getName(), classForTable.getName(), columnsInDb);
+                    return ignore(field);
+                }
             }
+        }
+
+        private boolean columnExists(String columnName) {
+            return columnsInDb == null || columnsInDb.contains(columnName.toLowerCase());
         }
 
         protected FieldMapping mapField(Field field) {
@@ -2501,11 +2740,22 @@ public class PikaORM {
             return getIdMapping().getColumnName();
         }
 
+        public String getUUIDColumn() {
+            return getUUIDMapping().getColumnName();
+        }
+
         private FieldMapping getIdMapping() {
             if (idMapping == null) {
                 throw new IllegalStateException("The class " + classForTable.getName() + " has no id column");
             } else {
                 return idMapping;
+            }
+        }
+        private FieldMapping getUUIDMapping() {
+            if (uuidMapping == null) {
+                throw new IllegalStateException("The class " + classForTable.getName() + " has no id column");
+            } else {
+                return uuidMapping;
             }
         }
 
@@ -2552,6 +2802,10 @@ public class PikaORM {
             return idMapping != null;
         }
 
+        public boolean hasUUIDColumn() {
+            return uuidMapping != null;
+        }
+
         public FieldMapping getFieldMappingForFieldName(String field) {
             return fieldNameToMapping.get(field);
         }
@@ -2574,11 +2828,13 @@ public class PikaORM {
         Field mappedField;
         String columnName;
         boolean idColumn;
+        boolean uuidColumn;
         boolean versionColumn;
         Function<Object, Object> toDatabaseValue;
         Function<Object, Object> fromDatabaseValue;
         Class dbStorageType;
         Function<Object, Object> versionIncrementer;
+        Supplier<Object> uuidGenerator;
 
         public FieldMapping(PikaORM orm, Field mappedField) {
             mappedField.setAccessible(true);
@@ -2586,6 +2842,7 @@ public class PikaORM {
             this.mappedField = mappedField;
             this.columnName = orm.defaultFieldToColumnMapping.apply(mappedField);
             this.versionIncrementer = orm.defaultVersionIncrementer.apply(mappedField.getDeclaringClass());
+            this.uuidGenerator = orm.defaultUUIDGenerator.apply(mappedField.getDeclaringClass());
             this.dbStorageType = mappedField.getType();
         }
 
@@ -2630,7 +2887,7 @@ public class PikaORM {
             return value;
         }
 
-        private static Object getValueFromResultSet(String columnName, Class targetType, ResultSet resultSet) {
+        private Object getValueFromResultSet(String columnName, Class targetType, ResultSet resultSet) {
             Object fieldVal = null;
             try {
                 if (targetType == String.class) {
@@ -2646,7 +2903,9 @@ public class PikaORM {
                 } else if (targetType.isEnum()) {
                     // enums deserialize as strings
                     String strValue = resultSet.getString(columnName);
-                    fieldVal = Enum.valueOf(targetType, strValue);
+                    if (strValue != null && !strValue.isEmpty()) {
+                        fieldVal = Enum.valueOf(targetType, strValue);
+                    }
                 } else if (targetType == Date.class) {
                     Timestamp timestamp = resultSet.getTimestamp(columnName);
                     if (timestamp != null) {
@@ -2677,6 +2936,11 @@ public class PikaORM {
             return this;
         }
 
+        public FieldMapping withUUIDGenerator(Supplier<Object> uuidGenerator) {
+            this.uuidGenerator = uuidGenerator;
+            return this;
+        }
+
         public FieldMapping toColumn(String columnName) {
             this.columnName = columnName;
             return this;
@@ -2701,6 +2965,10 @@ public class PikaORM {
             return idColumn;
         }
 
+        public boolean isUUID() {
+            return uuidColumn;
+        }
+
         public boolean isVersionProperty() {
             return versionColumn;
         }
@@ -2710,6 +2978,10 @@ public class PikaORM {
             Object updatedValue = versionIncrementer.apply(value);
             values.put(columnName, updatedValue);
             return updatedValue;
+        }
+
+        public Object generateUUID() {
+            return uuidGenerator.get();
         }
 
         public Object getValueFromDBMap(Map<String, Object> values) {
@@ -2916,17 +3188,23 @@ public class PikaORM {
          * Applies all outstanding migrations in the order they are declared
          */
         public void applyAll() {
-            orm.logger.log(PikaLogger.Level.INFO, "Applying migrations");
             orm.withTransaction(()-> {
+                orm.logger.log(PikaLogger.Level.INFO, "Applying migrations");
                 orm.exec(PikaMigration.DDL);
                 var mergedMigrations = loadMigrations(orm);
+                int migrationCount = 0;
                 for (PikaMigration migration : mergedMigrations.values()) {
                     if (!migration.isApplied()) {
                         orm.logger.log(PikaLogger.Level.INFO, "Applying migration " + migration.name);
+                        migrationCount++;
                         migration.runUp(orm);
                     }
                 }
-                orm.logger.log(PikaLogger.Level.INFO, "Done applying migrations");
+                if (migrationCount > 0) {
+                    orm.logger.log(PikaLogger.Level.INFO, "Done applying "  + migrationCount + " migration" + (migrationCount == 1 ? "" : "s"));
+                } else {
+                    orm.logger.log(PikaLogger.Level.INFO, "No pending migrations found");
+                }
             });
         }
 
@@ -3291,12 +3569,13 @@ public class PikaORM {
             if (this.size() == 0) {
                 return null;
             } else {
-                return this.getLast();
+                return this.get(this.size() - 1);
             }
         }
 
         public T lastWhere(Predicate<? super T> predicate) {
-            for (T t : this.reversed()) {
+            for (int i = this.size() - 1; i >= 0; i--) {
+                var t = this.get(i);
                 if (predicate.test(t)) {
                     return t;
                 }
@@ -3351,6 +3630,9 @@ public class PikaORM {
                 throw new IllegalStateException(one + " must be saved to the database to add " + newMember);
             }
             FieldMapping fieldMapping = mappingForMany.getFieldMappingForColumn(manyFk);
+            if (fieldMapping == null) {
+                throw new IllegalStateException(" I don't know how to map " + newMember + " to a many relationship with " + one);
+            }
             fieldMapping.setFieldValue(newMember, id);
         }
 
@@ -3416,6 +3698,10 @@ public class PikaORM {
         private T findBy(String col, Object val) {
             return toClassQuery().where(col + "=:val", Map.of("val", val)).fetchFirst();
         }
+
+        public long totalCount() {
+            return toClassQuery().totalCount();
+        }
     }
 
     public static class PikaManyThroughQuery<J, T> implements Interfaces.PikaIterable<T> {
@@ -3455,12 +3741,12 @@ public class PikaORM {
         public J add(T newMember) {
             Object initialObjectId = oneMapping.getId(one);
             if (initialObjectId == null) {
-                throw new IllegalStateException(one + " must be saved to the database to add " + newMember);
+                throw new IllegalStateException(" The owning object of a 1-to-Many relationship must be saved to the database to add elements to it.");
             }
             Mapping newMemberMapping = orm.getMapping(newMember.getClass());
             Object idOfNewMember = newMemberMapping.getId(newMember);
             if (idOfNewMember == null) {
-                throw new IllegalStateException(newMember + " must be saved to the database to add");
+                throw new IllegalStateException("The object being added to a 1-to-Many relationship through another table must be saved to the database before it can be added");
             }
             Mapping joinObjectMapping = orm.getMapping(joinClass);
 
@@ -3499,7 +3785,7 @@ public class PikaORM {
         public T findById(long manyId) {
             Mapping mappingForMany = orm.getMapping(classOfMany);
             String idCol = mappingForMany.getIdColumn();
-            return findBy(idCol, manyId);
+            return findBy(mappingForMany.getTableName() + "." + idCol, manyId);
         }
 
         private T findBy(String col, Object val) {

@@ -1,0 +1,64 @@
+package bigsky.pika;
+
+import bigsky.pika.models.SampleEPB;
+import bigsky.pika.models.SampleModel;
+import org.junit.jupiter.api.Test;
+
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class StreamTest extends TestBase{
+
+    @Test
+    void testStream() {
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
+        SampleModel sampleModel = new SampleModel("bar", 10, true, new Date());
+        long id = orm.insert(sampleModel);
+        try (var conn = orm.establishConnection()) {
+            var stream = orm.stream(SampleModel.class).all();
+            var fromDb = stream.findFirst().get();
+
+            assertEquals(id, sampleModel.getId());
+            assertEquals(fromDb.getStrVal(), sampleModel.getStrVal());
+            Date dateFromDb = fromDb.getDateVal();
+            Date dateFromModel = sampleModel.getDateVal();
+            // mariadb rounds DATETIME to the nearest second
+            assertEquals(dateFromDb.toInstant().truncatedTo(ChronoUnit.SECONDS), dateFromModel.toInstant().truncatedTo(ChronoUnit.SECONDS));
+            assertEquals(fromDb.getBoolVal(), sampleModel.getBoolVal());
+            assertEquals(fromDb.getIntVal(), sampleModel.getIntVal());
+        }
+    }
+
+    @Test
+    void testFindAll() {
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
+        for (int i = 0; i < 10 ; i++) {
+            SampleModel sampleModel = new SampleModel("bar", 10, true, new Date(2021, 1, 1));
+            long id = orm.insert(sampleModel);
+            sampleModel.setId(id);
+        }
+        try (var conn = orm.establishConnection()) {
+
+            List<SampleModel> results =
+                    orm.stream(SampleModel.class).where("int_val=:val", Map.of("val", 10)).toList();
+
+            assertEquals(10, results.size());
+
+            results = orm.stream(SampleModel.class).where("date_val > :val", Map.of("val", new Date(2050, 1, 1)))
+                    .toList();
+
+            assertEquals(0, results.size());
+
+            results = orm.stream(SampleModel.class).where("str_val like :val", Map.of("val", "%b%"))
+                    .toList();
+            assertEquals(10, results.size());
+
+            results = orm.stream(SampleModel.class).all().toList();
+            assertEquals(10, results.size());
+        }
+    }
+}
