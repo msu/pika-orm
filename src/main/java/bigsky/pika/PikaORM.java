@@ -1183,7 +1183,12 @@ public class PikaORM {
 
     public boolean exec(String sql, Map<String, Object> args) {
         ArrayList<Object> vals = new ArrayList<>();
-        String updatedSql = updateSqlVars(sql, args, vals);
+        String updatedSql;
+        if (args.isEmpty()) {
+            updatedSql = sql;
+        } else {
+            updatedSql = updateSqlVars(sql, args, vals);
+        }
         if (sql.isBlank()) {
             logger.log(PikaLogger.Level.WARN, "SQL is blank, will not be executed!");
             return false;
@@ -1257,8 +1262,7 @@ public class PikaORM {
                 }
                 matcher.appendReplacement(finalSql, replacementSb.toString());
             } else {
-                // if there is no var just pass the value through to the SQL (avoids escaping or tokenizing, obvious enough)
-                matcher.appendReplacement(finalSql, match);
+                throw new IllegalStateException("No value found for variable :" + match + " in " + args);
             }
         }
         matcher.appendTail(finalSql);
