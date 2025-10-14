@@ -1182,7 +1182,8 @@ public class PikaORM {
                 }
                 matcher.appendReplacement(finalSql, replacementSb.toString());
             } else {
-                throw new IllegalStateException("No value found for variable :" + match + " in " + args);
+                // if there is no var just pass the value through to the SQL (avoids escaping or tokenizing, obvious enough)
+                matcher.appendReplacement(finalSql, match);
             }
         }
         matcher.appendTail(finalSql);
