@@ -4,16 +4,13 @@ import bigsky.pika.PikaORM.Interfaces.PikaLogger;
 import bigsky.pika.PikaORM.Interfaces.PikaRecordLifecycle;
 import bigsky.pika.PikaORM.Interfaces.SafeAutoCloseable;
 
-import java.io.Closeable;
 import java.io.Console;
-import java.io.IOException;
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URL;
 import java.sql.*;
 import java.text.MessageFormat;
-import java.text.SimpleDateFormat;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
@@ -32,7 +29,7 @@ import java.util.stream.StreamSupport;
 
 public class PikaORM {
 
-    public static final String SQL_VARS_PATTERN = "(:[\\w][\\w]*)";
+    public static final Pattern SQL_VARS_PATTERN = Pattern.compile("(?<!\\\\):(\\w+)");
     public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd[[ ]['T']HH:mm[:ss][XXX]]");
 
     private static PikaORM DEFAULT_ORM = null;
@@ -1182,16 +1179,17 @@ public class PikaORM {
     }
 
     public boolean exec(String sql, Map<String, Object> args) {
+        if (sql.isBlank()) {
+            logger.log(PikaLogger.Level.WARN, "SQL is blank, will not be executed!");
+            return false;
+        }
+
         ArrayList<Object> vals = new ArrayList<>();
         String updatedSql;
         if (args.isEmpty()) {
             updatedSql = sql;
         } else {
             updatedSql = updateSqlVars(sql, args, vals);
-        }
-        if (sql.isBlank()) {
-            logger.log(PikaLogger.Level.WARN, "SQL is blank, will not be executed!");
-            return false;
         }
         logQuery("Executing Raw SQL:", updatedSql, args);
         try (var session = getOrCreateSession();
@@ -1236,11 +1234,10 @@ public class PikaORM {
     }
 
     private String updateSqlVars(String sql, Map<String, Object> args, List<Object> argList) {
-        Pattern compile = Pattern.compile(SQL_VARS_PATTERN);
-        Matcher matcher = compile.matcher(sql);
+        Matcher matcher = SQL_VARS_PATTERN.matcher(sql);
         StringBuilder finalSql = new StringBuilder();
         while (matcher.find()) {
-            String match = matcher.group().substring(1);
+            String match = matcher.group(1);
             if (args.containsKey(match)) {
                 Object valueForMatch = args.get(match);
                 StringBuilder replacementSb = new StringBuilder();
@@ -1541,6 +1538,14 @@ public class PikaORM {
                     return t;
                 }
                 return null;
+            }
+
+            default T firstOrThrow(String msg) {
+                T val = first();
+                if (val != null) {
+                    return val;
+                }
+                throw new IllegalStateException("no record found: " + msg);
             }
 
             default T firstWhere(Predicate<? super T> predicate) {
