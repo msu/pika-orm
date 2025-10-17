@@ -1713,15 +1713,23 @@ public class PikaORM {
         }
 
         public boolean save() {
-            if (persisted) {
-                return update();
-            } else {
-                return insert() != null;
+            try {
+                saveOrThrow();
+                return true;
+            } catch (Exception e) {
+                return false;
             }
         }
 
         public void saveOrThrow() {
-            if (!save()) {
+            boolean ok;
+            if (persisted) {
+                ok = update();
+            } else {
+                ok = insert() != null;
+            }
+
+            if (!ok) {
                 throw new IllegalStateException("This record has not been persisted!\n" + getErrorString());
             }
         }
