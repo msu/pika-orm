@@ -38,8 +38,6 @@ public class PikaORM {
 
     private static final ThreadLocal<AtomicLong> QUERY_COUNT = new ThreadLocal<>();
 
-    private static final Consumer<Exception> FORCE_THROWER = generateForceThrower();
-
     private final Callable<Connection> connectionSource;
 
     // Logger stuff
@@ -2484,10 +2482,6 @@ public class PikaORM {
                 return; // special case
             } else {
                 this.tableName = mapToTable();
-                // for epb's we validate that the columns are in the database at metadata generation time
-                if(EnterprisePikaBean.class.isAssignableFrom(aClass)) {
-                    columnsInDb = getColumnsInDb(tableName);
-                }
                 fieldNameToMapping = new LinkedHashMap<>();
                 columnToMapping = new LinkedHashMap<>();
                 for (Field field : getAllFields(aClass)) {
@@ -2524,35 +2518,6 @@ public class PikaORM {
             versionMapping = resolveVersionMapping();
         }
 
-        private Set<String> getColumnsInDb(String tableName) {
-            Set<String> columnNames = new HashSet<>();
-            try {
-                try (Connection connection = orm.getNewRawConnection()) {
-                    DatabaseMetaData metaData = connection.getMetaData();
-                    try (ResultSet columns = metaData.getColumns(null, null, tableName, null)) {
-                        while (columns.next()) {
-                            columnNames.add(columns.getString("COLUMN_NAME").toLowerCase());
-                        }
-                        if (columnNames.isEmpty()) {
-                            try {
-                                // try again with the upper case table name (H2, etc.)
-                                columnNames = getColumnsInDb(tableName.toUpperCase());
-                            } catch (Exception e) {
-                                // ignore
-                            }
-                            if(columnNames.isEmpty()) {
-                                orm.logger.log(PikaLogger.Level.WARN, "Unable to determine column names in table : {}", tableName);
-                                return null;
-                            }
-                        }
-                        return columnNames;
-                    }
-                }
-            } catch (SQLException e) {
-                orm.logger.log(PikaLogger.Level.ERROR, "Unable to determine column names in table {} : {}", tableName, e.getSQLState());
-                return null;
-            }
-        }
 
         private FieldMapping resolveVersionMapping() {
             FieldMapping versionMapping = null;
@@ -2933,9 +2898,22 @@ public class PikaORM {
                     fieldVal = resultSet.getObject(columnName, targetType);
                 }
             } catch (SQLException e) {
-                throw rethrow(e);
+                if (columnExists(resultSet, columnName)) {
+                    throw rethrow(e);
+                } else {
+                    orm.getLogger().log(PikaLogger.Level.WARN, "Cannot find column {} in table for {}", columnName, targetType);
+                }
             }
             return fieldVal;
+        }
+
+        private boolean columnExists(ResultSet resultSet, String columnName) {
+            try {
+                resultSet.findColumn(columnName);
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
         }
 
         public FieldMapping asId() {
@@ -3964,28 +3942,12 @@ public class PikaORM {
         }
     }
 
-    private static RuntimeException rethrow(Exception e) {
-        FORCE_THROWER.accept(e);
-        return new RuntimeException(e); // never hit
+    private static <E extends Throwable> RuntimeException rethrow(Throwable e) throws E {
+        throw (E) e;
     }
 
     public interface RunnableWithException {
         void run() throws Exception;
-    }
-
-    private static Consumer<Exception> generateForceThrower() {
-        var tmpClass = new ClassLoader(PikaORM.class.getClassLoader()) {
-            public Class defineClass() {
-                byte[] bytes = Base64.getDecoder().decode("yv66vgAAADQAEgEAHGJpZ3NreS9waWthL0ZvcmNlVGhyb3dlckltcGwHAAEBABBqYXZhL2xhbmcvT2JqZWN0BwADAQAbamF2YS91dGlsL2Z1bmN0aW9uL0NvbnN1bWVyBwAFAQAVRm9yY2VUaHJvd2VySW1wbC5qYXZhAQAGPGluaXQ+AQADKClWDAAIAAkKAAQACgEABmFjY2VwdAEAFShMamF2YS9sYW5nL09iamVjdDspVgEAE2phdmEvbGFuZy9UaHJvd2FibGUHAA4BAARDb2RlAQAKU291cmNlRmlsZQAhAAIABAABAAYAAAACAAEACAAJAAEAEAAAABEAAQABAAAABSq3AAuxAAAAAAABAAwADQABABAAAAARAAEAAgAAAAUrwAAPvwAAAAAAAQARAAAAAgAH");
-                return defineClass("bigsky.pika.ForceThrowerImpl", bytes, 0, bytes.length);
-            }
-        }.defineClass();
-        try {
-            //noinspection
-            return (Consumer) tmpClass.getDeclaredConstructor().newInstance();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public static class SQLString {
