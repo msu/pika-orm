@@ -37,6 +37,7 @@ public class PikaORM {
     private static final ThreadLocal<ConnectionSession> CURRENT_SESSION = new ThreadLocal<>();
 
     private static final ThreadLocal<AtomicLong> QUERY_COUNT = new ThreadLocal<>();
+    private static Object[] EMPTY_ARRAY = new Object[0];
 
     private final Callable<Connection> connectionSource;
 
@@ -76,6 +77,8 @@ public class PikaORM {
             return ((Long) previousValue) + 1;
         }
     };
+
+    private Reflector reflector = new StandardReflector();
 
     // paging configuration
     private int defaultPageSize = 20;
@@ -182,6 +185,11 @@ public class PikaORM {
 
     public PikaORM withCoercion(BiFunction<Class, Object, Object> coercion) {
         coercers.add(coercion);
+        return this;
+    }
+
+    public PikaORM withReflector(Reflector reflector) {
+        this.reflector = reflector;
         return this;
     }
 
@@ -2664,10 +2672,10 @@ public class PikaORM {
                         }
                         args[i] = val;
                     }
-                    object = (T) constructor.newInstance(args);
+                    object = (T) orm.reflector.make(constructor, args);
                 } else {
                     // otherwise use fields
-                    object = (T) constructor.newInstance();
+                    object = (T) orm.reflector.make(constructor, EMPTY_ARRAY);
                     for (FieldMapping fieldMapping : fieldNameToMapping.values()) {
                         try {
                             if (columnSpec.accept(getTableName(), fieldMapping.getColumnName())) {
@@ -2798,7 +2806,7 @@ public class PikaORM {
 
         public Object newInstance() {
             try {
-                return constructor.newInstance();
+                return orm.reflector.make(constructor, PikaORM.EMPTY_ARRAY);
             } catch (Exception e) {
                 throw rethrow(e);
             }
@@ -2841,7 +2849,7 @@ public class PikaORM {
         }
 
         public Object getValueForDatabaseFrom(Object object) {
-            Object o = safely(() -> mappedField.get(object));
+            Object o = orm.reflector.get(mappedField, object);
             if (toDatabaseValue != null) {
                 o = toDatabaseValue.apply(o);
             }
@@ -2849,11 +2857,11 @@ public class PikaORM {
         }
 
         public void setFieldValue(Object object, Object val) {
-            safely(() -> mappedField.set(object, val));
+            orm.reflector.set(mappedField, object, val);
         }
 
         public Object getFieldValue(Object object) {
-            return safely(() -> mappedField.get(object));
+            return orm.reflector.get(mappedField, object);
         }
 
         public void mapFromDatabase(Object object, ResultSet resultSet) {
@@ -3921,6 +3929,34 @@ public class PikaORM {
             }
         }
     }
+
+    //================================================================================================
+    // To make reflection pluggable for class loader shennanigans
+    //================================================================================================
+
+    public interface Reflector {
+        Object make(Constructor constructor, Object[] args);
+        Object get(Field field, Object from);
+        void set(Field field, Object object, Object val);
+    }
+
+    static class StandardReflector implements Reflector {
+        @Override
+        public Object make(Constructor constructor, Object[] args) {
+            return safely(() -> constructor.newInstance(args));
+        }
+
+        @Override
+        public Object get(Field field, Object from) {
+            return safely(() -> field.get(from));
+        }
+
+        @Override
+        public void set(Field field, Object object, Object val) {
+            safely(() -> field.set(object, val));
+        }
+    }
+
 
     //================================================================================================
     // Stuff to clean up java's checked exception garbage
