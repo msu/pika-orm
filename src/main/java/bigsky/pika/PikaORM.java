@@ -314,6 +314,12 @@ public class PikaORM {
             return safely(() -> {
                 return LocalDateTime.parse(s, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
             });
+        } else if (targetType == LocalDate.class && value instanceof String s) {
+            try {
+                return LocalDate.parse(s);
+            } catch (DateTimeException e) {
+                throw new IllegalArgumentException("Unable to convert string to LocalDate: " + value);
+            }
         } else if (targetType == Date.class && value instanceof String s) {
             try {
                 return new Date(Long.parseLong(s));
