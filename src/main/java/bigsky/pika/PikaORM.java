@@ -3268,6 +3268,7 @@ public class PikaORM {
                         name VARCHAR UNIQUE NOT NULL,
                         description VARCHAR,
                         up VARCHAR,
+                        extra_up VARCHAR,
                         down VARCHAR,
                         status VARCHAR
                     );
@@ -3279,6 +3280,7 @@ public class PikaORM {
             private String description;
             private String up;
             private String down;
+            private String extraUp;
             private MigrationStatus status = MigrationStatus.PENDING;
 
             private PikaMigration() {
@@ -3300,6 +3302,14 @@ public class PikaORM {
 
             public PikaMigration down(String down) {
                 this.down = down;
+                return this;
+            }
+
+            public PikaMigration extraUp(
+                    /* language=SQL */
+                    String extraUp
+            ) {
+                this.extraUp = extraUp;
                 return this;
             }
 
@@ -3330,6 +3340,9 @@ public class PikaORM {
                         if (!sql.isBlank()) {
                             orm.exec(sql);
                         }
+                    }
+                    if (extraUp != null && !extraUp.isBlank()) {
+                        orm.exec(extraUp);
                     }
                     this.status = MigrationStatus.APPLIED;
                     this.appliedAt = new Date().getTime();
