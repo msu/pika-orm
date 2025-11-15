@@ -208,7 +208,7 @@ public class PikaORM {
 
     public void clearMappings() {
         mappings.clear();
-        logger.log(PikaLogger.Level.DEBUG, "Cleared ORM mappings cache");
+        logger.log(PikaLogger.Level.INFO, "Cleared ORM mappings cache");
     }
 
     public PikaORM makeDefaultORM() {
