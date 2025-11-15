@@ -206,6 +206,11 @@ public class PikaORM {
         logQueries = false;
     }
 
+    public void clearMappings() {
+        mappings.clear();
+        logger.log(PikaLogger.Level.DEBUG, "Cleared ORM mappings cache");
+    }
+
     public PikaORM makeDefaultORM() {
         setDefaultORM(this);
         return this;
@@ -2900,7 +2905,7 @@ public class PikaORM {
                     // enums deserialize as strings
                     String strValue = resultSet.getString(columnName);
                     if (strValue != null && !strValue.isEmpty()) {
-                        fieldVal = Enum.valueOf(targetType, strValue);
+                        fieldVal = orm.reflector.enumValueOf(targetType, strValue);
                     }
                 } else if (targetType == Date.class) {
                     Timestamp timestamp = resultSet.getTimestamp(columnName);
@@ -3957,6 +3962,10 @@ public class PikaORM {
         Object make(Constructor constructor, Object[] args);
         Object get(Field field, Object from);
         void set(Field field, Object object, Object val);
+        // Resolve enum value, allowing for dynamic class reloading
+        default <T extends Enum<T>> T enumValueOf(Class<T> enumType, String name) {
+            return Enum.valueOf(enumType, name);
+        }
     }
 
     static class StandardReflector implements Reflector {
