@@ -525,7 +525,7 @@ public class PikaORM {
             return select(sql, args, classToFind).first();
         }
 
-        public QueryResult<T> bySQL(String sql, Map<String, Object> args) {
+        public QueryResult<T> bySQL(/* language=sql */ String sql, Map<String, Object> args) {
             return get().select(sql, args, classToFind);
         }
 
