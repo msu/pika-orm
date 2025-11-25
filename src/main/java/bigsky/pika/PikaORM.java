@@ -2103,9 +2103,9 @@ public class PikaORM {
                 return PikaORM.this.select(sql, valMap, resultClass, columns).first();
             });
             totalCountResult = new LazyVar<>(() -> {
-                String sql = "SELECT COUNT(*) as TOTAL FROM (" + generateSQLNoLimit() + ") T1";
+                String sql = "SELECT COUNT(*) as total FROM (" + generateSQLNoLimit() + ") T1";
                 var result = PikaORM.this.select(sql, valMap).first();
-                return result.asLong("TOTAL");
+                return result.asLong("total");
             });
         }
 
@@ -3250,7 +3250,7 @@ public class PikaORM {
                         ));
                     }
                     // update ID
-                    existingMigration.id = persistedMigration.id;
+                    existingMigration.uuid = persistedMigration.uuid;
                     existingMigration.status = persistedMigration.status;
                     persistedMigrations.remove(persistedMigration);
                 }
@@ -3268,24 +3268,22 @@ public class PikaORM {
 
             public static final String DDL = """
                     CREATE TABLE IF NOT EXISTS pika_migrations (
-                        id INTEGER PRIMARY KEY,
-                        applied_at DATETIME,
+                        uuid TEXT PRIMARY KEY,
+                        applied_at bigint,
                         name VARCHAR UNIQUE NOT NULL,
                         description VARCHAR,
                         up VARCHAR,
-                        extra_up VARCHAR,
                         down VARCHAR,
                         status VARCHAR
                     );
                     """;
 
-            private Long id;
+            private String uuid;
             private Long appliedAt;
             private String name;
             private String description;
             private String up;
             private String down;
-            private String extraUp;
             private MigrationStatus status = MigrationStatus.PENDING;
 
             private PikaMigration() {
@@ -3307,14 +3305,6 @@ public class PikaORM {
 
             public PikaMigration down(String down) {
                 this.down = down;
-                return this;
-            }
-
-            public PikaMigration extraUp(
-                    /* language=SQL */
-                    String extraUp
-            ) {
-                this.extraUp = extraUp;
                 return this;
             }
 
@@ -3346,12 +3336,10 @@ public class PikaORM {
                             orm.exec(sql);
                         }
                     }
-                    if (extraUp != null && !extraUp.isBlank()) {
-                        orm.exec(extraUp);
-                    }
                     this.status = MigrationStatus.APPLIED;
                     this.appliedAt = new Date().getTime();
-                    if (this.id == null) {
+                    if (this.uuid == null) {
+                        this.uuid = "" + UUID.randomUUID();
                         orm.insert(this);
                     } else {
                         orm.update(this);
@@ -3390,7 +3378,7 @@ public class PikaORM {
 
 
             public String toString() {
-                return "Migration{id=%d, appliedAt=%d, name='%s', description='%s', up='%s', down='%s', status=%s}".formatted(id, appliedAt, name, description, up, down, status);
+                return "Migration{id=%d, appliedAt=%d, name='%s', description='%s', up='%s', down='%s', status=%s}".formatted(uuid, appliedAt, name, description, up, down, status);
             }
 
             public Object getDebugString() {
