@@ -47,7 +47,7 @@ public class ClassQueryTest extends TestBase {
             long id = orm.insert(sampleModel);
         }
 
-        var query = SampleEPB.find().byQuery()
+        var query = SampleEPB.find()
                 .where("date_val < :val")
                 .withVar("val", new Date(2050, 1, 1));
 

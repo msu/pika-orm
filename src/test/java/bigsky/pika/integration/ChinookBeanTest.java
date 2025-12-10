@@ -37,7 +37,7 @@ public class ChinookBeanTest {
 
     @Test
     void testQueryJoin() {
-        var query = AlbumBean.find().byQuery()
+        var query = AlbumBean.find()
                 .join(ArtistBean.class)
                 .where("artists.name IN :artists")
                 .withVar("artists", List.of("AC/DC", "Santana"));
@@ -47,8 +47,7 @@ public class ChinookBeanTest {
 
     @Test
     void testPaging() {
-        var query = AlbumBean.find().byQuery()
-                .pageSize(20);
+        var query = AlbumBean.find().page(1).pageSize(20);
         var firstTwentyAlbums = query.fetch().toList();
         assertEquals(20, firstTwentyAlbums.size());
     }
@@ -56,9 +55,7 @@ public class ChinookBeanTest {
 
     @Test
     void testMultiPaging() {
-        var query = AlbumBean.find().byQuery()
-                .pageSize(20)
-                .page(2);
+        var query = AlbumBean.find().page(2).pageSize(20);
         var multiPageQuery = query.fetch();
         assertEquals("Prenda Minha",multiPageQuery.first().getTitle());
     }
@@ -66,7 +63,7 @@ public class ChinookBeanTest {
 
     @Test
     void testOrderBy() {
-        var query = AlbumBean.find().byQuery()
+        var query = AlbumBean.find()
                 .join(ArtistBean.class)
                 .where("artists.name IN :artists")
                 .withVar("artists", List.of("AC/DC", "Santana"))
@@ -77,7 +74,7 @@ public class ChinookBeanTest {
 
     @Test
     void testOrderByDesc() {
-        var query = AlbumBean.find().byQuery()
+        var query = AlbumBean.find()
                 .join(ArtistBean.class)
                 .where("artists.name IN :artists")
                 .withVar("artists", List.of("AC/DC", "Santana"))
@@ -95,7 +92,7 @@ public class ChinookBeanTest {
 
     @Test
     void testTwoWayJoin() {
-        var result = AlbumBean.find().byQuery()
+        var result = AlbumBean.find()
                 .join(TrackBean.class)
                 .join(ArtistBean.class)
                 .where("tracks.Name LIKE 'A%' AND artists.Name LIKE 'A%'")
