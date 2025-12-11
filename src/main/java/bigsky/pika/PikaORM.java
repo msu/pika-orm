@@ -474,39 +474,29 @@ public class PikaORM {
             return result.first();
         }
 
-        public QueryResult<T> all() {
-            Mapping metaData = getMapping(classToFind);
-            String tableName = metaData.getTableName();
-            String sql = "SELECT * FROM " + tableName;
-            return select(sql, Map.of(), classToFind);
+        public PikaClassQuery<T> all() {
+            return byQuery();
         }
 
-        public QueryResult<T> allBy(String column, Object val) {
-            Mapping metaData = getMapping(classToFind);
-            String tableName = metaData.getTableName();
-            String selectClause = "SELECT * FROM " + tableName + "\nWHERE ";
-            String sql = selectClause + column + "=:val ";
-            return select(sql, Map.of("val", val), classToFind);
+        public PikaClassQuery<T> allBy(String column, Object val) {
+            String sql = column + "=:val ";
+            return where(sql, Map.of("val", val));
         }
 
-        public QueryResult<T> where(String whereClause) {
+        public PikaClassQuery<T> where(String whereClause) {
             return where(whereClause, Map.of());
         }
 
-        public QueryResult<T> where(String whereClause, String arg, Object val) {
+        public PikaClassQuery<T> where(String whereClause, String arg, Object val) {
             return where(whereClause, Map.of(arg, val));
         }
 
-        public QueryResult<T> where(String whereClause, String arg, Object val, String arg2, Object val2) {
+        public PikaClassQuery<T> where(String whereClause, String arg, Object val, String arg2, Object val2) {
             return where(whereClause, Map.of(arg, val, arg2, val2));
         }
 
-        public QueryResult<T> where(String whereClause, Map<String, Object> args) {
-            Mapping metaData = getMapping(classToFind);
-            String tableName = metaData.getTableName();
-            String selectClause = "SELECT * FROM " + tableName + "\nWHERE ";
-            String sql = selectClause + whereClause;
-            return select(sql, args, classToFind);
+        public PikaClassQuery<T> where(String whereClause, Map<String, Object> args) {
+            return all().where(whereClause, args);
         }
 
         public T firstWhere(String whereClause, String arg, Object val) {
@@ -529,16 +519,24 @@ public class PikaORM {
             return get().select(sql, args, classToFind);
         }
 
-        public PikaClassQuery<T> byQuery() {
-            return query(classToFind);
-        }
-
         public T first() {
-            return byQuery().first();
+            return all().first();
         }
 
         public long totalCount() {
-            return byQuery().totalCount();
+            return all().totalCount();
+        }
+
+        public PikaClassQuery<T> page(long i) {
+            return all().page(i);
+        }
+
+        public PikaClassQuery<T> join(Class clazz) {
+            return all().join(clazz);
+        }
+
+        public PikaClassQuery<T> byQuery() {
+            return query(classToFind);
         }
     }
 
@@ -3612,7 +3610,6 @@ public class PikaORM {
         private final String manyFk;
         private final PikaORM orm;
         private QueryResult<T> result;
-        private final List<OrderBy> orderBys = new ArrayList<>();
 
         public PikaManyQuery(Object one,
                              Class<T> classOfMany,
@@ -3633,8 +3630,7 @@ public class PikaORM {
         @Override
         public Iterator<T> iterator() {
             if(result == null) {
-                Object id = mappingForOne.getId(one);
-                result = orm.find(classOfMany).allBy(manyFk, id);
+                result = toClassQuery().fetch();
             }
             return result.iterator();
         }
@@ -3669,7 +3665,6 @@ public class PikaORM {
         public PikaClassQuery<T> toClassQuery() {
             Object id = mappingForOne.getId(one);
             PikaClassQuery<T> classQuery = orm.query(classOfMany).where(manyFk + "=:pikaFKValue", "pikaFKValue", id);
-            orderBys.forEach(orderBy -> classQuery.orderBy(orderBy.col, orderBy.direction));
             return classQuery;
         }
 
@@ -3689,14 +3684,12 @@ public class PikaORM {
             return toClassQuery().where(condition, vals);
         }
 
-        public PikaManyQuery<T> orderBy(String col) {
-            orderBy(col, null);
-            return this;
+        public PikaClassQuery<T> orderBy(String col) {
+            return orderBy(col, null);
         }
 
-        public PikaManyQuery<T> orderBy(String col, SortOrder direction) {
-            orderBys.add(new OrderBy(col, direction));
-            return this;
+        public PikaClassQuery<T> orderBy(String col, SortOrder direction) {
+            return toClassQuery().orderBy(col, direction);
         }
 
         public T create() {
@@ -3717,6 +3710,14 @@ public class PikaORM {
         public long totalCount() {
             return toClassQuery().totalCount();
         }
+
+        public PikaClassQuery<T> page(long page) {
+            return toClassQuery().page(page);
+        }
+
+        public long totalPages() {
+            return toClassQuery().totalPages();
+        }
     }
 
     public static class PikaManyThroughQuery<J, T> implements Interfaces.PikaIterable<T> {
@@ -3729,7 +3730,6 @@ public class PikaORM {
         private final Class<T> classOfMany;
         private final String manyFk;
         private QueryResult<T> result;
-        private final List<OrderBy> orderBys = new ArrayList<>();
 
         public PikaManyThroughQuery(Object one, String oneFk, Class<J> joinClass, Class<T> classOfMany, String manyFk, PikaORM orm) {
             this.one = one;
@@ -3793,7 +3793,6 @@ public class PikaORM {
                     .thenJoin(one.getClass())
                     .where(oneMapping.tableName + "." + oneMapping.getIdColumn() + "=:pikaId")
                     .withVar("pikaId", oneMapping.getId(one));
-            orderBys.forEach(orderBy -> classQuery.orderBy(orderBy.col, orderBy.direction));
             return classQuery;
         }
 
@@ -3823,14 +3822,12 @@ public class PikaORM {
             return toClassQuery().where(condition, vals);
         }
 
-        public PikaManyThroughQuery<J, T> orderBy(String col) {
-            orderBy(col, null);
-            return this;
+        public PikaClassQuery<T> orderBy(String col) {
+            return orderBy(col, null);
         }
 
-        public PikaManyThroughQuery<J, T> orderBy(String col, SortOrder direction) {
-            orderBys.add(new OrderBy(col, direction));
-            return this;
+        public PikaClassQuery<T> orderBy(String col, SortOrder direction) {
+            return toClassQuery().orderBy(col, direction);
         }
 
         public void remove(T element) {

@@ -10,7 +10,7 @@ public class ExplainTest {
     @Test
     public void testBasicExplain() {
         initTestDb(SampleEPB.DDL);
-        var explain = SampleEPB.find().byQuery().where("str_val IS NOT NULL").explain();
+        var explain = SampleEPB.find().where("str_val IS NOT NULL").explain();
         System.out.println(explain.toString("\n"));
     }
 
