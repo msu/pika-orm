@@ -402,6 +402,18 @@ public class PikaORM {
         return find(classToLoad).byId(parentPkValue);
     }
 
+    public <T> T loadReverse(Object objectWithPk, Class<T> classToLoad) {
+        Mapping mapping = getMapping(classToLoad);
+        String fkName = mapping.getDefaultForeignKeyColumnName();
+        return load(objectWithPk, classToLoad, fkName);
+    }
+
+    public <T> T loadReverse(Object objectWithPk, Class<T> classToLoad, String foreignKeyColumn) {
+        Mapping metaData = getMapping(objectWithPk.getClass());
+        Object parentPkValue = metaData.getId(objectWithPk);
+        return find(classToLoad).byKey(foreignKeyColumn, parentPkValue);
+    }
+
     //====================================================================
     // Main entrypoints into the query layer
     //====================================================================
@@ -1792,6 +1804,14 @@ public class PikaORM {
         }
 
         protected <T> T load(Class<T> of, String fkColumn) {
+            return orm().load(this, of, fkColumn);
+        }
+
+        protected <T> T loadReverse(Class<T> of) {
+            return orm().load(this, of);
+        }
+
+        protected <T> T loadReverse(Class<T> of, String fkColumn) {
             return orm().load(this, of, fkColumn);
         }
 
