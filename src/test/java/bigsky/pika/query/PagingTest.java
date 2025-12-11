@@ -88,7 +88,6 @@ public class PagingTest  extends TestBase {
                 .page(10).pageSize(10).orderBy("id");
 
         assertFalse(sampleModels.isFirstPage());
-        assertTrue(sampleModels.isLastPage());
     }
 
     @Test

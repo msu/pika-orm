@@ -859,7 +859,7 @@ public class PikaORM {
              var resultSet = session.execute(ps)) {
             while (resultSet.next()) {
                 T result = mapping.newObjectFromResult(this, resultSet, columnSpec);
-                if (result instanceof PikaRecordLifecycle lifecycle) {
+                if (result instanceof PikaRecordLifecycle lifecycle) {//this throws a warn
                     lifecycle.afterSelect();
                 }
                 results.add(result);
@@ -943,7 +943,7 @@ public class PikaORM {
         }
         Class<?> clazz = object.getClass();
         Mapping mapping = getMapping(clazz);
-        Map<String, Object> values = mapping.toDatabaseMap(object);
+        Map<String, Object> values = mapping.toDatabaseMap(object);//this is the place to check?
         String keyCol = null;
         if (mapping.hasIdColumn()) {
             keyCol = mapping.getIdColumn();
@@ -2507,7 +2507,7 @@ public class PikaORM {
                     FieldMapping fieldMapping = mapField(field);
                     if (fieldMapping != null) {
                         fieldNameToMapping.put(fieldMapping.getFieldName(), fieldMapping);
-                        columnToMapping.put(fieldMapping.getColumnName(), fieldMapping);
+                        columnToMapping.put(fieldMapping.getColumnName(), fieldMapping);//we are assuming that the columns map to the database without touching database
                     }
                 }
             }
@@ -2689,13 +2689,13 @@ public class PikaORM {
                     object = (T) orm.reflector.make(constructor, EMPTY_ARRAY);
                     for (FieldMapping fieldMapping : fieldNameToMapping.values()) {
                         try {
-                            if (columnSpec.accept(getTableName(), fieldMapping.getColumnName())) {
-                                fieldMapping.mapFromDatabase(object, resultSet);
+                            if (columnSpec.accept(getTableName(), fieldMapping.getColumnName())) {//returning false and not throwing?
+                                fieldMapping.mapFromDatabase(object, resultSet);//the run fails
                             }
                         } catch (Exception e) {
                             orm.getLogger().log(PikaLogger.Level.ERROR, "Could not map field {} on {}, available columns:{}, error:{}",
                                     fieldMapping.getFieldName(), classForTable.getSimpleName(), getColumns(resultSet), e.getMessage());
-                            throw rethrow(e);
+                            throw rethrow(e);//not throwing the method properly?
                         }
                     }
                 }
@@ -3017,7 +3017,7 @@ public class PikaORM {
         }
 
         List<Column> columns = new ArrayList<>();
-        boolean acceptAll = true;
+        boolean acceptAll = true; // why is this always acctip
 
         public ColumnsSpec(List<String> cols) {
             if (cols != null) {

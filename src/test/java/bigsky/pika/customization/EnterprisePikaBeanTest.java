@@ -301,10 +301,10 @@ public class EnterprisePikaBeanTest extends TestBase {
 
     // Unmapped field handling
     @Test
-    void testUnmappedFieldDoesNotCauseError() {
+    void testUnmappedFieldDoesNotCauseError() { // We are requiring users to mark fields that are not explicitily being mapped to ddl as transient
         initTestDb(BadModel.DDL);
         BadModel badModel = new BadModel();
-        badModel.insert();
+        badModel.insert();//we have unmappedfield on model but not on table
         assertNotNull(badModel.getId());
         assertNull(badModel.getUnmappedField());
     }

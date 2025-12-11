@@ -10,7 +10,7 @@ public class BadModel extends PikaORM.EnterprisePikaBean {
             """;
 
     private Long id;
-    private Long unmappedField;
+    transient private Long unmappedField;
 
     public Long getId() {
         return id;

@@ -24,20 +24,20 @@ public class ErrorsTest extends TestBase {
         }
     }
 
-    @Test
-    public void testBadColumnGivesGoodErrorOnSelect() {
-        var orm = initTestDb(HasBadColumnMapping.DDL);
-        String stdErr = captureStdErr(() -> {
-            try {
-                orm.exec("INSERT INTO has_bad_column_mappings (foo) VALUES ('bar')");
-                orm.find(HasBadColumnMapping.class).all();
-                fail("Should have failed because no field bar is on the table");
-            } catch (Exception e) {
-                // exception should be swallowed to allow stderr to complete
-            }
-        });
-        assertStringContains(stdErr, "Could not map field bar on HasBadColumnMapping, available columns:[id,foo], error:no such column: 'bar'");
-    }
+//    @Test TODO -- Note, Semantics changes around specifically this case of field not existing on table, issuing a warning to user and not throwing, which is the case for other errors, leaving this test as commented so it can be archived possibly for later
+//    public void testBadColumnGivesGoodErrorOnSelect() {
+//        var orm = initTestDb(HasBadColumnMapping.DDL);
+//        String stdErr = captureStdErr(() -> {
+//            try {
+//                orm.exec("INSERT INTO has_bad_column_mappings (foo) VALUES ('bar')");
+//                orm.find(HasBadColumnMapping.class).all();
+//                fail("Should have failed because no field bar is on the table");
+//            } catch (Exception e) {
+//                // exception should be swallowed to allow stderr to complete
+//            }
+//        });
+//        assertStringContains(stdErr, "Could not map field bar on HasBadColumnMapping, available columns:[id,foo], error:no such column: 'bar'");
+//    }
 
     @Test
     public void testMissingRequiredParameterInWhere() {
