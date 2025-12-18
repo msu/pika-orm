@@ -1,6 +1,6 @@
 package bigsky.pika.models;
 
-import bigsky.pika.PikaORM.Interfaces.PikaRecordLifecycle;
+import bigsky.pika.bean.PikaRecordLifecycle;
 
 import java.util.Date;
 

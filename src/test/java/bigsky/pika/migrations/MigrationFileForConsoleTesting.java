@@ -1,8 +1,6 @@
 package bigsky.pika.migrations;
 
-import bigsky.pika.PikaORM;
-
-public class MigrationFileForConsoleTesting extends PikaORM.Migrations {
+public class MigrationFileForConsoleTesting extends Migrations {
 
     @Override
     public void migrations()

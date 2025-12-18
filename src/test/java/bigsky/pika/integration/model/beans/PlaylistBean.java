@@ -1,9 +1,10 @@
 package bigsky.pika.integration.model.beans;
 
-import bigsky.pika.PikaORM;
-import bigsky.pika.PikaORM.PikaClassFinder;
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
+import bigsky.pika.query.PikaManyThroughQuery;
 
-public class PlaylistBean extends PikaORM.EnterprisePikaBean {
+public class PlaylistBean extends EnterprisePikaBean {
 
     Long playlistId;
     String name;
@@ -21,7 +22,7 @@ public class PlaylistBean extends PikaORM.EnterprisePikaBean {
         this.name = name;
     }
 
-    public PikaORM.PikaManyThroughQuery<PlaylistTrackBean, TrackBean> getTracks() {
+    public PikaManyThroughQuery<PlaylistTrackBean, TrackBean> getTracks() {
         return loadManyThrough(PlaylistTrackBean.class, TrackBean.class);
     }
 

@@ -1,7 +1,8 @@
 package bigsky.pika.integration.model.beans;
 
-import bigsky.pika.PikaORM.EnterprisePikaBean;
-import bigsky.pika.PikaORM.PikaClassFinder;
+
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
 
 public class AlbumBean extends EnterprisePikaBean {
     Long artistId;

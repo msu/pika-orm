@@ -1,5 +1,7 @@
 package bigsky.pika.customization.model;
 
+import bigsky.pika.mapping.FieldMapping;
+import bigsky.pika.mapping.Mapping;
 import com.google.gson.Gson;
 import bigsky.pika.PikaORM.*;
 

@@ -1,6 +1,6 @@
 package bigsky.pika.features.model;
 
-import bigsky.pika.PikaORM.EnterprisePikaBean;
+import bigsky.pika.bean.EnterprisePikaBean;
 
 public class OptimisticBean extends EnterprisePikaBean {
 

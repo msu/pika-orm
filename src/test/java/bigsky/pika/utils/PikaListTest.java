@@ -1,6 +1,6 @@
 package bigsky.pika.utils;
 
-import bigsky.pika.PikaORM.PikaList;
+import bigsky.pika.query.PikaList;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;

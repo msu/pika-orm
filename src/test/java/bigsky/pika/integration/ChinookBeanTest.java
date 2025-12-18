@@ -2,16 +2,17 @@ package bigsky.pika.integration;
 
 import bigsky.pika.PikaORM;
 import bigsky.pika.integration.model.beans.*;
+import bigsky.pika.query.QueryResult;
+import bigsky.pika.util.TextTools;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Objects;
 
-import static bigsky.pika.PikaORM.Interfaces.PikaLogger.Level.DEBUG;
-import static bigsky.pika.PikaORM.*;
-import static bigsky.pika.PikaORM.SortOrder.*;
+import static bigsky.pika.logging.PikaLogger.Level.DEBUG;
 import static bigsky.pika.TestBase.copyFileTo;
+import static bigsky.pika.query.SortOrder.DESC;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ChinookBeanTest {

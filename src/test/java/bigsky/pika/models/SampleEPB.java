@@ -1,7 +1,8 @@
 package bigsky.pika.models;
 
-import bigsky.pika.PikaORM;
-import bigsky.pika.PikaORM.EnterprisePikaBean;
+
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
 
 import java.util.Date;
 
@@ -39,7 +40,7 @@ public class SampleEPB extends EnterprisePikaBean {
         }
     }
 
-    public static PikaORM.PikaClassFinder<SampleEPB> find() {
+    public static PikaClassFinder<SampleEPB> find() {
         return orm().find(SampleEPB.class);
     }
 

@@ -1,9 +1,9 @@
 package bigsky.pika.web;
 
-import bigsky.pika.PikaORM;
+import bigsky.pika.migrations.Migrations;
 import org.jetbrains.annotations.NotNull;
 
-public class WebAppMigrations extends PikaORM.Migrations {
+public class WebAppMigrations extends Migrations {
 
     @Override
     public void migrations() {

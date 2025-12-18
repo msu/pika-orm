@@ -1,10 +1,11 @@
 package bigsky.pika.integration.model.beans;
 
 import bigsky.pika.PikaORM;
+import bigsky.pika.bean.EnterprisePikaBean;
 
 import java.util.Map;
 
-public class PlaylistTrackBean extends PikaORM.EnterprisePikaBean {
+public class PlaylistTrackBean extends EnterprisePikaBean {
 
     Long playlistId;
     Long trackId;

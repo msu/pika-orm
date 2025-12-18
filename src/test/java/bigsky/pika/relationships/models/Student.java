@@ -1,8 +1,11 @@
 package bigsky.pika.relationships.models;
 
 import bigsky.pika.PikaORM;
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
+import bigsky.pika.query.PikaManyThroughQuery;
 
-public class Student extends PikaORM.EnterprisePikaBean {
+public class Student extends EnterprisePikaBean {
     Long id;
     String name;
 
@@ -18,11 +21,11 @@ public class Student extends PikaORM.EnterprisePikaBean {
         this.name = name;
     }
 
-    public PikaORM.PikaManyThroughQuery<Enrollment, Course> getCourses() {
+    public PikaManyThroughQuery<Enrollment, Course> getCourses() {
         return loadManyThrough(Enrollment.class, Course.class);
     }
 
-    public static PikaORM.PikaClassFinder<Student> find() {
+    public static PikaClassFinder<Student> find() {
         return find(Student.class);
     }
 

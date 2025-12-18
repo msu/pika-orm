@@ -1,6 +1,6 @@
 package bigsky.pika.features.model;
 
-import bigsky.pika.PikaORM.Interfaces.PikaRecordLifecycle;
+import bigsky.pika.bean.PikaRecordLifecycle;
 
 public class TransactionDemo implements PikaRecordLifecycle {
 

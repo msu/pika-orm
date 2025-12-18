@@ -1,7 +1,8 @@
 package bigsky.pika.web;
 
-import bigsky.pika.PikaORM.EnterprisePikaBean;
-import bigsky.pika.PikaORM.PikaClassFinder;
+
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
 
 import java.util.Date;
 

@@ -1,8 +1,10 @@
 package bigsky.pika.integration.model.beans;
 
 import bigsky.pika.PikaORM;
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
 
-public class InvoiceItemBean extends PikaORM.EnterprisePikaBean {
+public class InvoiceItemBean extends EnterprisePikaBean {
 
     int invoiceItemId;
     int invoiceId;
@@ -47,7 +49,7 @@ public class InvoiceItemBean extends PikaORM.EnterprisePikaBean {
         this.quantity = quantity;
     }
 
-    public static PikaORM.PikaClassFinder<InvoiceItemBean> find() {
+    public static PikaClassFinder<InvoiceItemBean> find() {
         return find(InvoiceItemBean.class);
     }
 }

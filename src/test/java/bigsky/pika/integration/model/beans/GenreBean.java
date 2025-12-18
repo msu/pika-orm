@@ -1,8 +1,10 @@
 package bigsky.pika.integration.model.beans;
 
 import bigsky.pika.PikaORM;
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
 
-public class GenreBean extends PikaORM.EnterprisePikaBean {
+public class GenreBean extends EnterprisePikaBean {
 
     int genreId;
     String name;
@@ -20,7 +22,7 @@ public class GenreBean extends PikaORM.EnterprisePikaBean {
         this.name = name;
     }
 
-    public static PikaORM.PikaClassFinder<GenreBean> find() {
+    public static PikaClassFinder<GenreBean> find() {
         return find(GenreBean.class);
     }
 }

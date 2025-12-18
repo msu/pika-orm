@@ -1,8 +1,9 @@
 package bigsky.pika.relationships.models;
 
-import bigsky.pika.PikaORM;
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
 
-public class Enrollment extends PikaORM.EnterprisePikaBean {
+public class Enrollment extends EnterprisePikaBean {
     Long id;
     Long studentId;
     Long courseId;
@@ -36,7 +37,7 @@ public class Enrollment extends PikaORM.EnterprisePikaBean {
         this.grade = grade;
     }
 
-    public static PikaORM.PikaClassFinder<Enrollment> find() {
+    public static PikaClassFinder<Enrollment> find() {
         return find(Enrollment.class);
     }
 

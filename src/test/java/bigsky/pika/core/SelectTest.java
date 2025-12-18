@@ -1,10 +1,11 @@
 package bigsky.pika.core;
 
 import bigsky.pika.PikaORM;
-import bigsky.pika.PikaORM.QueryResult;
 import bigsky.pika.TestBase;
 import bigsky.pika.models.SampleModel;
 import bigsky.pika.models.SampleEPB;
+import bigsky.pika.query.QueryResult;
+import bigsky.pika.query.ResultMap;
 import org.junit.jupiter.api.Test;
 
 import java.time.temporal.ChronoUnit;
@@ -102,10 +103,10 @@ public class SelectTest extends TestBase {
         System.out.println(results);
 
         assertEquals(3, results.size());
-        PikaORM.ResultMap first = results.get(0);
+        ResultMap first = results.get(0);
 
 
-        PikaORM.ResultMap insensitive = first.toCaseInsensitiveMap();
+        ResultMap insensitive = first.toCaseInsensitiveMap();
         assertEquals("foo", insensitive.get("str_val"));
         assertEquals(10, insensitive.get("int_val"));
         assertEquals(true, insensitive.asBoolean("bool_val"));

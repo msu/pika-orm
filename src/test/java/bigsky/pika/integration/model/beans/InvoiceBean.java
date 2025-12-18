@@ -2,11 +2,13 @@ package bigsky.pika.integration.model.beans;
 
 
 import bigsky.pika.PikaORM;
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
 
 import java.math.BigDecimal;
 import java.util.Date;
 
-public class InvoiceBean extends PikaORM.EnterprisePikaBean {
+public class InvoiceBean extends EnterprisePikaBean {
 
     int invoiceId;
     int customerId;
@@ -87,7 +89,7 @@ public class InvoiceBean extends PikaORM.EnterprisePikaBean {
         this.total = total;
     }
 
-    public static PikaORM.PikaClassFinder<InvoiceBean> find() {
+    public static PikaClassFinder<InvoiceBean> find() {
         return find(InvoiceBean.class);
     }
 }

@@ -1,8 +1,10 @@
 package bigsky.pika.integration.model.beans;
 
-import bigsky.pika.PikaORM;
 
-public class MediaTypeBean extends PikaORM.EnterprisePikaBean {
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
+
+public class MediaTypeBean extends EnterprisePikaBean {
 
     int mediaTypeId;
     String name;
@@ -20,7 +22,7 @@ public class MediaTypeBean extends PikaORM.EnterprisePikaBean {
         this.name = name;
     }
 
-    public static PikaORM.PikaClassFinder<MediaTypeBean> find() {
+    public static PikaClassFinder<MediaTypeBean> find() {
         return find(MediaTypeBean.class);
     }
 

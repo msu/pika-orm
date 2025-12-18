@@ -1,8 +1,8 @@
 package bigsky.pika.utils;
 
 import bigsky.pika.PikaORM;
-import bigsky.pika.PikaORM.ResultMap;
 import bigsky.pika.TestBase;
+import bigsky.pika.query.ResultMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

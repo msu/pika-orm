@@ -5,12 +5,12 @@ import bigsky.pika.integration.model.pojos.Album;
 import bigsky.pika.integration.model.pojos.Artist;
 import bigsky.pika.integration.model.pojos.Employee;
 import bigsky.pika.integration.model.pojos.Track;
+import bigsky.pika.util.TextTools;
 import org.junit.jupiter.api.Test;
 
-import static bigsky.pika.PikaORM.*;
-import static bigsky.pika.PikaORM.Interfaces.PikaLogger.Level.DEBUG;
-import static bigsky.pika.PikaORM.JoinType.LEFT;
 import static bigsky.pika.TestBase.copyFileTo;
+import static bigsky.pika.query.JoinType.LEFT;
+import static bigsky.pika.logging.PikaLogger.Level.DEBUG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ChinookTest {

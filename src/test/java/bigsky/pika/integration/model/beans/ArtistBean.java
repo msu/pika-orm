@@ -1,6 +1,9 @@
 package bigsky.pika.integration.model.beans;
 
 import bigsky.pika.PikaORM.*;
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
+import bigsky.pika.query.PikaManyQuery;
 
 public class ArtistBean extends EnterprisePikaBean {
 

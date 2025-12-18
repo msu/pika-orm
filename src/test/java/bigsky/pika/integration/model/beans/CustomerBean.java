@@ -1,9 +1,9 @@
 package bigsky.pika.integration.model.beans;
 
+import bigsky.pika.bean.EnterprisePikaBean;
+import bigsky.pika.query.PikaClassFinder;
 
-import bigsky.pika.PikaORM;
-
-public class CustomerBean extends PikaORM.EnterprisePikaBean {
+public class CustomerBean extends EnterprisePikaBean {
 
     int customerId;
     String firstName;
@@ -120,7 +120,7 @@ public class CustomerBean extends PikaORM.EnterprisePikaBean {
         this.supportRepId = supportRepId;
     }
 
-    public static PikaORM.PikaClassFinder<CustomerBean> find() {
+    public static PikaClassFinder<CustomerBean> find() {
         return find(CustomerBean.class);
     }
 

@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static bigsky.pika.PikaORM.Interfaces.PikaLogger.Level.TRACE;
+import static bigsky.pika.logging.PikaLogger.Level.TRACE;
 
 public class DemoServer {
 

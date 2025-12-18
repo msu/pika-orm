@@ -2,7 +2,7 @@ package bigsky.pika.utils;
 
 import org.junit.jupiter.api.Test;
 
-import static bigsky.pika.PikaORM.TextTools.*;
+import static bigsky.pika.util.TextTools.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TextToolTest {

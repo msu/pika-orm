@@ -1,8 +1,8 @@
 package bigsky.pika.customization.model;
 
-import bigsky.pika.PikaORM;
+import bigsky.pika.bean.EnterprisePikaBean;
 
-public class BadModel extends PikaORM.EnterprisePikaBean {
+public class BadModel extends EnterprisePikaBean {
     public static final String DDL = """
             CREATE TABLE IF NOT EXISTS bad_models (
                 id INTEGER PRIMARY KEY

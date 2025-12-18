@@ -14,7 +14,7 @@ import java.sql.DriverManager;
 import java.util.Arrays;
 import java.util.List;
 
-import static bigsky.pika.PikaORM.Interfaces.PikaLogger.Level.TRACE;
+import static bigsky.pika.logging.PikaLogger.Level.TRACE;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public abstract class TestBase {

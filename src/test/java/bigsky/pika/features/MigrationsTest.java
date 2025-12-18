@@ -1,7 +1,7 @@
 package bigsky.pika.features;
 
-import bigsky.pika.PikaORM.Migrations.PikaMigration;
-import bigsky.pika.PikaORM.Migrations.MigrationStatus;
+import bigsky.pika.migrations.Migrations.PikaMigration;
+import bigsky.pika.migrations.Migrations.MigrationStatus;
 import bigsky.pika.TestBase;
 import bigsky.pika.migrations.MigrationDemoModel;
 import bigsky.pika.migrations.MigrationsFile1;

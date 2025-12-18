@@ -1,8 +1,6 @@
 package bigsky.pika.migrations;
 
-import bigsky.pika.PikaORM;
-
-public class MultiStatementMigration extends PikaORM.Migrations {
+public class MultiStatementMigration extends Migrations {
 
     @Override
     public void migrations() {
