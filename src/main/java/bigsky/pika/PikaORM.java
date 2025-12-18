@@ -1,6 +1,7 @@
 package bigsky.pika;
 
 import bigsky.pika.bean.PikaRecordLifecycle;
+import bigsky.pika.cache.*;
 import bigsky.pika.logging.DefaultLogger;
 import bigsky.pika.logging.PikaLogger;
 import bigsky.pika.mapping.*;
@@ -43,8 +44,9 @@ public class PikaORM {
     private static PikaORM DEFAULT_ORM = null;
 
     private static final ThreadLocal<ConnectionSession> CURRENT_SESSION = new ThreadLocal<>();
-
     private static final ThreadLocal<AtomicLong> QUERY_COUNT = new ThreadLocal<>();
+    private static final ThreadLocal<QueryCache> QUERY_CACHE = new ThreadLocal<>();
+
     public static Object[] EMPTY_ARRAY = new Object[0];
 
     private final Callable<Connection> connectionSource;
@@ -507,11 +509,13 @@ public class PikaORM {
     //====================================================================
 
     public <J, T> PikaManyThroughQuery<J, T> loadManyThrough(Object one, Class<J> joinClass, Class<T> classOfMany) {
-        Mapping oneMapping = getMapping(one.getClass());
-        String oneFk = oneMapping.getDefaultForeignKeyColumnName();
-        Mapping manyMapping = getMapping(classOfMany);
-        String manyFk = manyMapping.getDefaultForeignKeyColumnName();
-        return new PikaManyThroughQuery<>(one, oneFk, joinClass, classOfMany, manyFk, this);
+        return maybeCache(new LoadManyThroughKey(one, joinClass, classOfMany), () -> {
+            Mapping oneMapping = getMapping(one.getClass());
+            String oneFk = oneMapping.getDefaultForeignKeyColumnName();
+            Mapping manyMapping = getMapping(classOfMany);
+            String manyFk = manyMapping.getDefaultForeignKeyColumnName();
+            return new PikaManyThroughQuery<>(one, oneFk, joinClass, classOfMany, manyFk, this);
+        });
     }
 
     public <T> PikaManyQuery<T> loadMany(Object one, Class<T> classOfMany) {
@@ -521,7 +525,7 @@ public class PikaORM {
     }
 
     public <T> PikaManyQuery<T> loadMany(Object one, Class<T> classOfMany, String manyFk) {
-        return new PikaManyQuery<>(one, classOfMany, manyFk, this);
+        return maybeCache(new LoadManyKey(one, classOfMany, manyFk), () -> new PikaManyQuery<>(one, classOfMany, manyFk, this));
     }
 
     public <T> T load(Object objectWithFk, Class<T> classToLoad) {
@@ -531,9 +535,11 @@ public class PikaORM {
     }
 
     public <T> T load(Object objectWithFk, Class<T> classToLoad, String foreignKeyColumn) {
-        Mapping metaData = getMapping(objectWithFk.getClass());
-        Object parentPkValue = metaData.getValueForColumn(objectWithFk, foreignKeyColumn);
-        return find(classToLoad).byId(parentPkValue);
+        return maybeCache(new LoadKey(objectWithFk, classToLoad, foreignKeyColumn), () -> {
+            Mapping metaData = getMapping(objectWithFk.getClass());
+            Object parentPkValue = metaData.getValueForColumn(objectWithFk, foreignKeyColumn);
+            return find(classToLoad).byId(parentPkValue);
+        });
     }
 
     public <T> T loadReverse(Object objectWithPk, Class<T> classToLoad) {
@@ -543,9 +549,20 @@ public class PikaORM {
     }
 
     public <T> T loadReverse(Object objectWithPk, Class<T> classToLoad, String foreignKeyColumn) {
-        Mapping metaData = getMapping(objectWithPk.getClass());
-        Object parentPkValue = metaData.getId(objectWithPk);
-        return find(classToLoad).byKey(foreignKeyColumn, parentPkValue);
+        return maybeCache(new LoadReverseKey(objectWithPk, classToLoad, foreignKeyColumn), () -> {
+            Mapping metaData = getMapping(objectWithPk.getClass());
+            Object parentPkValue = metaData.getId(objectWithPk);
+            return find(classToLoad).byKey(foreignKeyColumn, parentPkValue);
+        });
+    }
+
+    private <T> T maybeCache(Object key, Supplier<T> supplier) {
+        QueryCache queryCache = getQueryCache();
+        if (queryCache != null) {
+            return queryCache.cache(key, supplier);
+        } else {
+            return supplier.get();
+        }
     }
 
     //====================================================================
@@ -586,6 +603,29 @@ public class PikaORM {
         } else {
             return count.longValue();
         }
+    }
+
+    //====================================================================
+    // Cache management
+    //====================================================================
+
+    public void startQueryCaching() {
+        QUERY_CACHE.set(new QueryCache());
+    }
+
+    public void endQueryCaching() {
+        QUERY_CACHE.remove();
+    }
+
+    public void clearQueryCache() {
+        QueryCache queryCache = QUERY_CACHE.get();
+        if(queryCache != null) {
+            queryCache.clear();
+        };
+    }
+
+    public QueryCache getQueryCache() {
+        return QUERY_CACHE.get();
     }
 
     public SafeAutoCloseable suppressQueries() {
