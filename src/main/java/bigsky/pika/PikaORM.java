@@ -1819,15 +1819,16 @@ public class PikaORM {
             orm().reload(this);
         }
 
-        public void setFieldsFrom(Map<String, String> map, String... fields) {
-            setFieldsFrom(map::get, fields);
+        public <T extends EnterprisePikaBean> T setFieldsFrom(Map<String, String> map, String... fields) {
+            return setFieldsFrom(map::get, fields);
         }
 
-        public void setFieldsFrom(UnaryOperator<String> supplier, String... fields) {
+        public <T extends EnterprisePikaBean> T setFieldsFrom(UnaryOperator<String> supplier, String... fields) {
             for (String col : fields) {
                 String str = supplier.apply(col);
                 setValueFromString(col, str);
             }
+            return (T) this;
         }
 
         private void setValueFromString(String col, String str) {
