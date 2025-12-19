@@ -88,6 +88,13 @@ public class EnterprisePikaBean implements PikaRecordLifecycle {
         Arrays.stream(fields).forEach(this::require);
     }
 
+    protected void requireUnique(String field) {
+        Object existingBean = find(this.getClass()).byKey(field, this.getValueForField(field));
+        if (existingBean != null && !this.isIdEquivalent(existingBean)) {
+            addError(field, field + " already exists");
+        }
+    }
+
     protected void require(String field) {
         var mapping = orm().getMapping(getClass());
         var fieldMapping = mapping.getFieldMappingForFieldName(field);
@@ -218,11 +225,11 @@ public class EnterprisePikaBean implements PikaRecordLifecycle {
     }
 
     protected <T> T loadReverse(Class<T> of) {
-        return orm().load(this, of);
+        return orm().loadReverse(this, of);
     }
 
     protected <T> T loadReverse(Class<T> of, String fkColumn) {
-        return orm().load(this, of, fkColumn);
+        return orm().loadReverse(this, of, fkColumn);
     }
 
     public void reload() {
@@ -252,6 +259,23 @@ public class EnterprisePikaBean implements PikaRecordLifecycle {
         }
         Class fieldType = fieldMapping.getType();
         fieldMapping.setFieldValue(this, orm().coerce(fieldType, str));
+    }
+
+    protected Object getValueForField(String col) {
+        Mapping mapping = orm().getMapping(this.getClass());
+        return mapping.getFieldMappingForFieldName(col).getFieldValue(this);
+    }
+
+    public boolean isIdEquivalent(Object object) {
+        if(object instanceof EnterprisePikaBean) {
+            if(object.getClass().equals(this.getClass())) {
+                Mapping mapping = orm().getMapping(this.getClass());
+                Object myId = mapping.getId(this);
+                Object thatId = mapping.getId(object);
+                return myId != null && myId.equals(thatId);
+            }
+        }
+        return false;
     }
 
     public boolean isPersisted() {

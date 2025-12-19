@@ -306,6 +306,9 @@ public class Mapping {
 
     public Object getValueForColumn(Object child, String foreignKeyColumn) {
         FieldMapping mapping = columnToMapping.get(foreignKeyColumn);
+        if(mapping == null) {
+            throw new IllegalArgumentException(foreignKeyColumn + " is not a valid foreign key column on " + child);
+        }
         return mapping.getFieldValue(child);
     }
 

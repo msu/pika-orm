@@ -543,9 +543,9 @@ public class PikaORM {
     }
 
     public <T> T loadReverse(Object objectWithPk, Class<T> classToLoad) {
-        Mapping mapping = getMapping(classToLoad);
+        Mapping mapping = getMapping(objectWithPk.getClass());
         String fkName = mapping.getDefaultForeignKeyColumnName();
-        return load(objectWithPk, classToLoad, fkName);
+        return loadReverse(objectWithPk, classToLoad, fkName);
     }
 
     public <T> T loadReverse(Object objectWithPk, Class<T> classToLoad, String foreignKeyColumn) {
