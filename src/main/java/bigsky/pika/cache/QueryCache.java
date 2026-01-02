@@ -1,7 +1,6 @@
 package bigsky.pika.cache;
 
 import bigsky.pika.logging.PikaLogger;
-import org.slf4j.event.Level;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -23,9 +22,9 @@ public class QueryCache {
 
         if (logCacheHits && logger != null) {
             if (wasInCache) {
-                logger.log(Level.DEBUG, "Cache HIT: {}", key);
+                logger.log(PikaLogger.Level.INFO, "Cache HIT: {}", key);
             } else {
-                logger.log(Level.DEBUG, "Cache MISS: {}", key);
+                logger.log(PikaLogger.Level.INFO, "Cache MISS: {}", key);
             }
         }
 
