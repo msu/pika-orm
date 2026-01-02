@@ -610,7 +610,7 @@ public class PikaORM {
     //====================================================================
 
     public void startQueryCaching() {
-        QUERY_CACHE.set(new QueryCache());
+        QUERY_CACHE.set(new QueryCache(logger, logQueries));
     }
 
     public void endQueryCaching() {
