@@ -307,4 +307,47 @@ public class SelectTest extends TestBase {
         assertEquals(2, results.size());
     }
 
+    @Test
+    void testWhereWithSingleValueConvenience() {
+        // Test the where(String condition, Object val) convenience method
+        // This tests the bug fix where variable names were incorrectly prefixed with ':'
+        var orm = initTestDb(SampleModel.DDL, SampleEPB.DDL);
+        SampleModel m1 = new SampleModel("foo", 10, true, new Date());
+        SampleModel m2 = new SampleModel("bar", 20, true, new Date());
+        SampleModel m3 = new SampleModel("baz", 30, true, new Date());
+        orm.insertAll(m1, m2, m3);
+
+        // Test with LIKE operator by calling the method via toQuery()
+        var results = orm.find(SampleModel.class)
+                .where("str_val LIKE", "%a%")
+                .toList();
+        assertEquals(2, results.size());
+        assertTrue(results.stream().allMatch(m -> ((SampleModel) m).getStrVal().contains("a")));
+
+        // Test with = operator
+        results = orm.find(SampleModel.class)
+                .where("str_val =", "foo")
+                .toList();
+        assertEquals(1, results.size());
+        assertEquals("foo", ((SampleModel) results.get(0)).getStrVal());
+
+        // Test with > operator using Integer (not int primitive)
+        results = orm.find(SampleModel.class)
+                .where("int_val >", Integer.valueOf(15))
+                .toList();
+        assertEquals(2, results.size());
+        assertTrue(results.stream().allMatch(m -> ((SampleModel) m).getIntVal() > 15));
+
+        // Test chaining multiple where calls with convenience method
+        results = orm.find(SampleModel.class)
+                .where("int_val >=", 10)
+                .where("int_val <", 30)
+                .toList();
+        assertEquals(2, results.size());
+        assertTrue(results.stream().allMatch(m -> {
+            SampleModel model = (SampleModel) m;
+            return model.getIntVal() >= 10 && model.getIntVal() < 30;
+        }));
+    }
+
 }

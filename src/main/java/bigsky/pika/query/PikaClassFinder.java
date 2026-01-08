@@ -59,6 +59,10 @@ public class PikaClassFinder<T> {
         return all().where(whereClause, args);
     }
 
+    public PikaClassQuery<T> where(String whereClause, Object arg) {
+        return all().where(whereClause, arg);
+    }
+
     public T firstWhere(String whereClause, String arg, Object val) {
         return firstWhere(whereClause, Map.of(arg, val));
     }
