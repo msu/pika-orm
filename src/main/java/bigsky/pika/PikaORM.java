@@ -1,5 +1,7 @@
 package bigsky.pika;
 
+import bigsky.pika.bean.PikaManyRelation;
+import bigsky.pika.bean.PikaManyThroughRelation;
 import bigsky.pika.bean.PikaRecordLifecycle;
 import bigsky.pika.cache.*;
 import bigsky.pika.logging.DefaultLogger;
@@ -508,24 +510,24 @@ public class PikaORM {
     // One to Many & Many to One & Many to Many functionality
     //====================================================================
 
-    public <J, T> PikaManyThroughQuery<J, T> loadManyThrough(Object one, Class<J> joinClass, Class<T> classOfMany) {
+    public <J, T> PikaManyThroughRelation<J, T> loadManyThrough(Object one, Class<J> joinClass, Class<T> classOfMany) {
         return maybeCache(new LoadManyThroughKey(one, joinClass, classOfMany), () -> {
             Mapping oneMapping = getMapping(one.getClass());
             String oneFk = oneMapping.getDefaultForeignKeyColumnName();
             Mapping manyMapping = getMapping(classOfMany);
             String manyFk = manyMapping.getDefaultForeignKeyColumnName();
-            return new PikaManyThroughQuery<>(one, oneFk, joinClass, classOfMany, manyFk, this);
+            return new PikaManyThroughRelation<>(one, oneFk, joinClass, classOfMany, manyFk, this);
         });
     }
 
-    public <T> PikaManyQuery<T> loadMany(Object one, Class<T> classOfMany) {
+    public <T> PikaManyRelation<T> loadMany(Object one, Class<T> classOfMany) {
         Mapping mapping = getMapping(one.getClass());
         String fkName = mapping.getDefaultForeignKeyColumnName();
         return loadMany(one, classOfMany, fkName);
     }
 
-    public <T> PikaManyQuery<T> loadMany(Object one, Class<T> classOfMany, String manyFk) {
-        return maybeCache(new LoadManyKey(one, classOfMany, manyFk), () -> new PikaManyQuery<>(one, classOfMany, manyFk, this));
+    public <T> PikaManyRelation<T> loadMany(Object one, Class<T> classOfMany, String manyFk) {
+        return maybeCache(new LoadManyKey(one, classOfMany, manyFk), () -> new PikaManyRelation<>(one, classOfMany, manyFk, this));
     }
 
     public <T> T load(Object objectWithFk, Class<T> classToLoad) {

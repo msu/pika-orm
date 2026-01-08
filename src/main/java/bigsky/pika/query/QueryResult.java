@@ -54,4 +54,8 @@ public class QueryResult<T> implements PikaIterable<T> {
     public List<T> getAsReadOnlyList() {
         return readOnlyResults;
     }
+
+    public int size() {
+        return  results.size();
+    }
 }

@@ -138,13 +138,13 @@ public class OnetoNTest extends TestBase {
         orm.insert(fooContainer);
 
         fooContainer.getFoos().addAndSave(new Foo());
-        assertEquals(1, fooContainer.getFoos().totalCount());
+        assertEquals(1, fooContainer.getFoos().size());
 
         fooContainer.getFoos().addAndSave(new Foo());
-        assertEquals(2, fooContainer.getFoos().totalCount());
+        assertEquals(2, fooContainer.getFoos().size());
 
         fooContainer.getFoos().addAndSave(new Foo());
-        assertEquals(3, fooContainer.getFoos().totalCount());
+        assertEquals(3, fooContainer.getFoos().size());
     }
 
     @Test

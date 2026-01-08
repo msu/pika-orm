@@ -1,9 +1,8 @@
 package bigsky.pika.integration.model.beans;
 
-import bigsky.pika.PikaORM;
 import bigsky.pika.bean.EnterprisePikaBean;
 import bigsky.pika.query.PikaClassFinder;
-import bigsky.pika.query.PikaManyQuery;
+import bigsky.pika.bean.PikaManyRelation;
 
 import java.util.Date;
 
@@ -141,7 +140,7 @@ public class EmployeeBean extends EnterprisePikaBean {
         this.email = email;
     }
 
-    public PikaManyQuery<EmployeeBean> getReports() {
+    public PikaManyRelation<EmployeeBean> getReports() {
         return loadMany(EmployeeBean.class, "ReportsTo");
     }
 

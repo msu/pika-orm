@@ -1,15 +1,16 @@
-package bigsky.pika.query;
+package bigsky.pika.bean;
 
 import bigsky.pika.PikaORM;
+import bigsky.pika.query.PikaClassQuery;
+import bigsky.pika.query.QueryResult;
 import bigsky.pika.util.PikaIterable;
-import bigsky.pika.bean.EnterprisePikaBean;
 import bigsky.pika.mapping.FieldMapping;
 import bigsky.pika.mapping.Mapping;
 
 import java.util.Iterator;
 import java.util.Map;
 
-public class PikaManyQuery<T> implements PikaIterable<T> {
+public class PikaManyRelation<T> implements PikaIterable<T> {
 
     private final Mapping mappingForOne;
     private final Mapping mappingForMany;
@@ -19,10 +20,10 @@ public class PikaManyQuery<T> implements PikaIterable<T> {
     private final PikaORM orm;
     private QueryResult<T> result;
 
-    public PikaManyQuery(Object one,
-                         Class<T> classOfMany,
-                         String manyFk,
-                         PikaORM orm) {
+    public PikaManyRelation(Object one,
+                            Class<T> classOfMany,
+                            String manyFk,
+                            PikaORM orm) {
         this.mappingForOne = orm.getMapping(one.getClass());
         this.mappingForMany = orm.getMapping(classOfMany);
         this.one = one;
@@ -37,9 +38,7 @@ public class PikaManyQuery<T> implements PikaIterable<T> {
 
     @Override
     public Iterator<T> iterator() {
-        if(result == null) {
-            result = toClassQuery().fetch();
-        }
+        maybeLoadResult();
         return result.iterator();
     }
 
@@ -70,34 +69,10 @@ public class PikaManyQuery<T> implements PikaIterable<T> {
         reload();
     }
 
-    public PikaClassQuery<T> toClassQuery() {
+    public PikaClassQuery<T> toQuery() {
         Object id = mappingForOne.getId(one);
         PikaClassQuery<T> classQuery = orm.query(classOfMany).where(manyFk + "=:pikaFKValue", "pikaFKValue", id);
         return classQuery;
-    }
-
-    public PikaClassQuery<T> where(String condition) {
-        return toClassQuery().where(condition);
-    }
-
-    public PikaClassQuery<T> where(String whereClause, String arg, Object val) {
-        return toClassQuery().where(whereClause, arg, val);
-    }
-
-    public PikaClassQuery<T> where(String whereClause, String arg, Object val, String arg2, Object val2) {
-        return toClassQuery().where(whereClause, arg, val, arg2, val2);
-    }
-
-    public PikaClassQuery<T> where(String condition, Map<String, Object> vals) {
-        return toClassQuery().where(condition, vals);
-    }
-
-    public PikaClassQuery<T> orderBy(String col) {
-        return orderBy(col, null);
-    }
-
-    public PikaClassQuery<T> orderBy(String col, SortOrder direction) {
-        return toClassQuery().orderBy(col, direction);
     }
 
     public T create() {
@@ -112,18 +87,18 @@ public class PikaManyQuery<T> implements PikaIterable<T> {
     }
 
     private T findBy(String col, Object val) {
-        return toClassQuery().where(col + "=:val", Map.of("val", val)).fetchFirst();
+        return toQuery().where(col + "=:val", Map.of("val", val)).fetchFirst();
     }
 
-    public long totalCount() {
-        return toClassQuery().totalCount();
+    public int size() {
+        maybeLoadResult(); // load results
+        return result.size();
     }
 
-    public PikaClassQuery<T> page(long page) {
-        return toClassQuery().page(page);
+    private void maybeLoadResult() {
+        if(result == null) {
+            result = toQuery().fetch();
+        }
     }
 
-    public long totalPages() {
-        return toClassQuery().totalPages();
-    }
 }

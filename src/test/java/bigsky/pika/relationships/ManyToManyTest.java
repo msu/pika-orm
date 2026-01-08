@@ -161,7 +161,7 @@ public class ManyToManyTest extends TestBase {
         student.getCourses().addAndSave(math);
         student.getCourses().addAndSave(art);
 
-        var mathCourses = student.getCourses()
+        var mathCourses = student.getCourses().toQuery()
             .where("courses.title = :title", "title", "Mathematics")
             .fetch();
 

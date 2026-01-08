@@ -4,8 +4,6 @@ import bigsky.pika.PikaORM;
 import bigsky.pika.mapping.FieldMapping;
 import bigsky.pika.mapping.Mapping;
 import bigsky.pika.query.PikaClassFinder;
-import bigsky.pika.query.PikaManyQuery;
-import bigsky.pika.query.PikaManyThroughQuery;
 import bigsky.pika.query.PikaList;
 import bigsky.pika.util.TextTools;
 
@@ -204,15 +202,15 @@ public class EnterprisePikaBean implements PikaRecordLifecycle {
         return orm().delete(this);
     }
 
-    protected <J, T> PikaManyThroughQuery<J, T> loadManyThrough(Class<J> through, Class<T> to) {
+    protected <J, T> PikaManyThroughRelation<J, T> loadManyThrough(Class<J> through, Class<T> to) {
         return orm().loadManyThrough(this, through, to);
     }
 
-    protected <T> PikaManyQuery<T> loadMany(Class<T> of) {
+    protected <T> PikaManyRelation<T> loadMany(Class<T> of) {
         return orm().loadMany(this, of);
     }
 
-    protected <T> PikaManyQuery<T> loadMany(Class<T> of, String fkColumn) {
+    protected <T> PikaManyRelation<T> loadMany(Class<T> of, String fkColumn) {
         return orm().loadMany(this, of, fkColumn);
     }
 

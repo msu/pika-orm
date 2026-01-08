@@ -1,7 +1,7 @@
 package bigsky.pika.relationships.models;
 
 import bigsky.pika.PikaORM;
-import bigsky.pika.query.PikaManyQuery;
+import bigsky.pika.bean.PikaManyRelation;
 
 public class FooContainer {
     public static final String DDL = """
@@ -12,7 +12,7 @@ public class FooContainer {
 
     private long id;
 
-    public PikaManyQuery<Foo> getFoos() {
+    public PikaManyRelation<Foo> getFoos() {
         return PikaORM.get().loadMany(this, Foo.class);
     }
 

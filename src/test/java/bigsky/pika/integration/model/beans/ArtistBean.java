@@ -1,9 +1,8 @@
 package bigsky.pika.integration.model.beans;
 
-import bigsky.pika.PikaORM.*;
 import bigsky.pika.bean.EnterprisePikaBean;
 import bigsky.pika.query.PikaClassFinder;
-import bigsky.pika.query.PikaManyQuery;
+import bigsky.pika.bean.PikaManyRelation;
 
 public class ArtistBean extends EnterprisePikaBean {
 
@@ -22,7 +21,7 @@ public class ArtistBean extends EnterprisePikaBean {
         this.name = name;
     }
 
-    public PikaManyQuery<AlbumBean> getAlbums() {
+    public PikaManyRelation<AlbumBean> getAlbums() {
         return loadMany(AlbumBean.class);
     }
 

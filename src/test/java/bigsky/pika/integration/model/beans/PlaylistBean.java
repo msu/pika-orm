@@ -2,7 +2,7 @@ package bigsky.pika.integration.model.beans;
 
 import bigsky.pika.bean.EnterprisePikaBean;
 import bigsky.pika.query.PikaClassFinder;
-import bigsky.pika.query.PikaManyThroughQuery;
+import bigsky.pika.bean.PikaManyThroughRelation;
 
 public class PlaylistBean extends EnterprisePikaBean {
 
@@ -22,7 +22,7 @@ public class PlaylistBean extends EnterprisePikaBean {
         this.name = name;
     }
 
-    public PikaManyThroughQuery<PlaylistTrackBean, TrackBean> getTracks() {
+    public PikaManyThroughRelation<PlaylistTrackBean, TrackBean> getTracks() {
         return loadManyThrough(PlaylistTrackBean.class, TrackBean.class);
     }
 

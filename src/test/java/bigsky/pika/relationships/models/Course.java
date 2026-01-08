@@ -1,9 +1,8 @@
 package bigsky.pika.relationships.models;
 
-import bigsky.pika.PikaORM;
 import bigsky.pika.bean.EnterprisePikaBean;
 import bigsky.pika.query.PikaClassFinder;
-import bigsky.pika.query.PikaManyThroughQuery;
+import bigsky.pika.bean.PikaManyThroughRelation;
 
 public class Course extends EnterprisePikaBean {
     Long id;
@@ -21,7 +20,7 @@ public class Course extends EnterprisePikaBean {
         this.title = title;
     }
 
-    public PikaManyThroughQuery<Enrollment, Student> getStudents() {
+    public PikaManyThroughRelation<Enrollment, Student> getStudents() {
         return loadManyThrough(Enrollment.class, Student.class);
     }
 
