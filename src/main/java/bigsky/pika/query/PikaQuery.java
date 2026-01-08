@@ -62,8 +62,8 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
     }
 
     public PikaQuery<T> where(String condition, Object val) {
-        String varName = ":VAR_" + integer.getAndIncrement();
-        return where(condition + " " + varName).withVar(varName, val);
+        String varName = "VAR_" + integer.getAndIncrement();
+        return where(condition + " :" + varName).withVar(varName, val);
     }
 
     public PikaQuery<T> select(String... columns) {
