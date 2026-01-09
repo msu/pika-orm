@@ -386,6 +386,9 @@ public class PikaORM {
         if (value == null) {
             return null;
         }
+        if (targetClass != String.class && value instanceof String s && s.isEmpty()) {
+            return null; // empty string means null for all non-string types
+        }
         for (BiFunction<Class, Object, Object> coercer : coercers) {
             Object result = coercer.apply(targetClass, value);
             if (result != null) {

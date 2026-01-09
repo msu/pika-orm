@@ -241,7 +241,11 @@ public class EnterprisePikaBean implements PikaRecordLifecycle {
     public <T extends EnterprisePikaBean> T setFieldsFrom(UnaryOperator<String> supplier, String... fields) {
         for (String col : fields) {
             String str = supplier.apply(col);
-            setValueFromString(col, str);
+            try {
+                setValueFromString(col, str);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Could not set " + col + " to " + str + ":" + e.getMessage(), e);
+            }
         }
         return (T) this;
     }
