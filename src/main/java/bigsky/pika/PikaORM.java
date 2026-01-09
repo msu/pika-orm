@@ -57,6 +57,7 @@ public class PikaORM {
     private PikaLogger.Level internalLoggerLevel = PikaLogger.Level.INFO;
     private PikaLogger logger = null;  // Initialized in constructor
     private boolean logQueries = false;
+    private boolean logCaching = false;
 
     // Mapping stuff
     private final ConcurrentHashMap<Class, Mapping> mappings = new ConcurrentHashMap<>();
@@ -217,6 +218,19 @@ public class PikaORM {
 
     public void doNotLogQueries() {
         logQueries = false;
+    }
+
+    public PikaORM logCaching() {
+        this.logCaching = true;
+        return this;
+    }
+
+    public boolean getLogCaching() {
+        return logCaching;
+    }
+
+    public void doNotLogCaching() {
+        logCaching = false;
     }
 
     public void clearMappings() {
@@ -540,11 +554,9 @@ public class PikaORM {
     }
 
     public <T> T load(Object objectWithFk, Class<T> classToLoad, String foreignKeyColumn) {
-        return maybeCache(new LoadKey(objectWithFk, classToLoad, foreignKeyColumn), () -> {
-            Mapping metaData = getMapping(objectWithFk.getClass());
-            Object parentPkValue = metaData.getValueForColumn(objectWithFk, foreignKeyColumn);
-            return find(classToLoad).byId(parentPkValue);
-        });
+        Mapping metaData = getMapping(objectWithFk.getClass());
+        Object parentPkValue = metaData.getValueForColumn(objectWithFk, foreignKeyColumn);
+        return maybeCache(new LoadKey(parentPkValue, classToLoad, foreignKeyColumn), () -> find(classToLoad).byId(parentPkValue));
     }
 
     public <T> T loadReverse(Object objectWithPk, Class<T> classToLoad) {
@@ -615,7 +627,7 @@ public class PikaORM {
     //====================================================================
 
     public void startQueryCaching() {
-        QUERY_CACHE.set(new QueryCache(logger, logQueries));
+        QUERY_CACHE.set(new QueryCache(logger, logCaching));
     }
 
     public void endQueryCaching() {
