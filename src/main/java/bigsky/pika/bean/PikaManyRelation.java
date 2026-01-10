@@ -71,8 +71,13 @@ public class PikaManyRelation<T> implements PikaIterable<T> {
 
     public PikaClassQuery<T> toQuery() {
         Object id = mappingForOne.getId(one);
-        PikaClassQuery<T> classQuery = orm.query(classOfMany).where(manyFk + "=:pikaFKValue", "pikaFKValue", id);
-        return classQuery;
+        PikaClassQuery<T> query = orm.query(classOfMany);
+        if (id == null) {
+            query.where("false");
+        } else {
+            query.where(manyFk + "=:pikaFKValue", "pikaFKValue", id);
+        }
+        return query;
     }
 
     public T create() {
@@ -98,7 +103,7 @@ public class PikaManyRelation<T> implements PikaIterable<T> {
     private void maybeLoadResult() {
         // only load for persisted elements
         Object id = mappingForOne.getId(one);
-        if(result == null && id != null) {
+        if(result == null) {
             result = toQuery().fetch();
         }
     }
