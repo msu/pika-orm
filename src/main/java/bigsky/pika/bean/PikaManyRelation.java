@@ -96,7 +96,9 @@ public class PikaManyRelation<T> implements PikaIterable<T> {
     }
 
     private void maybeLoadResult() {
-        if(result == null) {
+        // only load for persisted elements
+        Object id = mappingForOne.getId(one);
+        if(result == null && id != null) {
             result = toQuery().fetch();
         }
     }

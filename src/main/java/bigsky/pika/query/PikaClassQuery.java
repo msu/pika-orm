@@ -5,6 +5,7 @@ import bigsky.pika.util.PikaIterable;
 import bigsky.pika.mapping.Mapping;
 
 import java.text.MessageFormat;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
