@@ -141,7 +141,9 @@ public class EnterprisePikaBean implements PikaRecordLifecycle {
             throw new IllegalStateException("This record is already persisted!");
         }
         Long id = orm().insert(this);
-        markPersisted();
+        if(id != null) {
+            markPersisted();
+        }
         return id;
     }
 
