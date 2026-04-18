@@ -159,7 +159,7 @@ public class BlogPost {
     public void setVersion(Integer version) { this.version = version; }
     
     // Custom mapping inner class
-    public static class Mapping extends PikaORM.Mapping {
+    public static class MyMapping extends Mapping {
         @Override
         protected FieldMapping mapField(Field field) {
             switch (field.getName()) {

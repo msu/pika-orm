@@ -11,7 +11,7 @@ You are encouraged to play around to get comfortable using the method-builder de
 > Below is a standard implementation of a migration setup done all in code. We use simple notion of extensions to allow users to customize there migration setup, and have full control over there migrations with method tools
 
 ``````java
-public class MigrationsFile1 extends PikaORM.Migrations {
+public class MigrationsFile1 extends Migrations {
 
     @Override
     public void migrations() {   
@@ -213,7 +213,7 @@ Now that we have navigated our migrations, and gotten a hint as to how to start 
 
 
 ```java
-public class WebAppMigrations extends PikaORM.Migrations {
+public class WebAppMigrations extends Migrations {
 
     @Override
     public void migrations() {

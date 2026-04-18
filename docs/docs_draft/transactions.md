@@ -35,7 +35,7 @@
 Additionally we recommend using the `PikaRecordLifeCycle` interface to ensure even safety with transactions, and put users in the habit of validation more. An example of the `TransactionDemo` class is shown below
 
 ```java
-public class TransactionDemo extends PikaORM.Migrations implements PikaRecordLifecycle  {
+public class TransactionDemo extends Migrations implements PikaRecordLifecycle  {
 
     public long id;
     public String name;
@@ -63,7 +63,7 @@ public class TransactionDemo extends PikaORM.Migrations implements PikaRecordLif
         add(this::addTranscationDemoTable);
     }
 
-    public PikaORM.Migrations.PikaMigration addTranscationDemoTable() {
+    public PikaMigration addTranscationDemoTable() {
         return makeMigration("transactionDemo")
                 .up(""" 
                     CREATE TABLE IF NOT EXISTS transaction_demos (

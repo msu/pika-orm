@@ -1,6 +1,6 @@
 # Query types in PikaORM
 
-> This page as just been dedicated to more specific details about the several query types using the different query classes `PikaQuery` `PikaClassFinder` `PikaQueryBuilder` `PikaManyThroughQuery` ` PikaManyQuery` ` PikaClassQuery` what they are, how to use them, and why!
+> This page as just been dedicated to more specific details about the several query types using the different query classes `PikaQuery` `PikaClassFinder` `PikaQueryBuilder` `PikaManyThroughQuery` ` PikaManyRelation` ` PikaClassQuery` what they are, how to use them, and why!
 
 ### Collection Parameter Handling
 
@@ -21,8 +21,8 @@ var results = orm.find(SampleModel.class)
 For dynamic result handling with type conversion utilities:
 
 ```java
-PikaORM.ResultMap first = results.getFirst();
-PikaORM.ResultMap insensitive = first.toCaseInsensitiveMap();
+ResultMap first = results.getFirst();
+ResultMap insensitive = first.toCaseInsensitiveMap();
 assertEquals("foo", insensitive.get("str_val"));
 assertEquals(10, insensitive.get("int_val"));
 assertEquals(true, insensitive.asBoolean("bool_val"));
@@ -256,15 +256,15 @@ var query = orm.queryBuilder("Albums")
 
 **Usage Patterns**:
 
-#### Generic `PikaORM.ResultMap` output Query
+#### Generic `ResultMap` output Query
 
 ```java
 var results = orm.select(
     "SELECT * FROM sample_models WHERE int_val=:x ORDER BY id", 
     Map.of("x", 10))
     .toList();
-PikaORM.ResultMap first = results.getFirst();
-PikaORM.ResultMap insensitive = first.toCaseInsensitiveMap();
+ResultMap first = results.getFirst();
+ResultMap insensitive = first.toCaseInsensitiveMap();
 ```
 
 #### Record-Based Mapping
@@ -531,7 +531,7 @@ Declare relationships using `loadMany()` in the parent entity:
 public class FooContainer {
     private long id;
     
-    public PikaORM.PikaManyQuery<Foo> getFoos() {
+    public PikaManyRelation<Foo> getFoos() {
         return PikaORM.get().loadMany(this, Foo.class); //Foo.class being the other side of 1-N
     }
 }

@@ -78,7 +78,7 @@ if (!user.validate()) {
 
 ```java
 // Load one-to-many relationship
-PikaManyQuery<Order> orders = user.loadMany(Order.class);
+PikaManyRelation<Order> orders = user.loadMany(Order.class);
 
 // Load many-to-many through join table
 PikaManyThroughQuery<UserRole, Role> roles = 
