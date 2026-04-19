@@ -20,6 +20,8 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
     private List<String> columns;
     private String columnPrefix;
     private final StringBuilder whereClause = new StringBuilder();
+    private boolean needsConnective = false;
+    private int groupDepth = 0;
     private final Map<String, Object> valMap = new TreeMap<>();
     private final List<String> joins = new ArrayList<>();
     private final List<OrderBy> orderBys = new ArrayList<>();
@@ -42,10 +44,7 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
     }
 
     public PikaQuery<T> where(String condition) {
-        if (!whereClause.isEmpty()) {
-            whereClause.append(" AND ");
-        }
-        whereClause.append(condition);
+        appendClause(" AND ", condition);
         return this;
     }
 
@@ -64,6 +63,113 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
     public PikaQuery<T> where(String condition, Object val) {
         String varName = "VAR_" + integer.getAndIncrement();
         return where(condition + " :" + varName).withVar(varName, val);
+    }
+
+    public PikaQuery<T> orWhere(String condition) {
+        appendClause(" OR ", condition);
+        return this;
+    }
+
+    public PikaQuery<T> orWhere(String whereClause, String arg, Object val) {
+        return orWhere(whereClause, Map.of(arg, val));
+    }
+
+    public PikaQuery<T> orWhere(String whereClause, String arg, Object val, String arg2, Object val2) {
+        return orWhere(whereClause, Map.of(arg, val, arg2, val2));
+    }
+
+    public PikaQuery<T> orWhere(String condition, Map<String, Object> vars) {
+        return orWhere(condition).withVars(vars);
+    }
+
+    public PikaQuery<T> orWhere(String condition, Object val) {
+        String varName = "VAR_" + integer.getAndIncrement();
+        return orWhere(condition + " :" + varName).withVar(varName, val);
+    }
+
+    public PikaQuery<T> whereIn(String column, Collection<?> values) {
+        return addInClause(" AND ", column, "IN", values);
+    }
+
+    public PikaQuery<T> whereNotIn(String column, Collection<?> values) {
+        return addInClause(" AND ", column, "NOT IN", values);
+    }
+
+    public PikaQuery<T> orWhereIn(String column, Collection<?> values) {
+        return addInClause(" OR ", column, "IN", values);
+    }
+
+    public PikaQuery<T> orWhereNotIn(String column, Collection<?> values) {
+        return addInClause(" OR ", column, "NOT IN", values);
+    }
+
+    public PikaQuery<T> whereLike(String column, String pattern) {
+        String varName = "VAR_" + integer.getAndIncrement();
+        return where(column + " LIKE :" + varName).withVar(varName, pattern);
+    }
+
+    public PikaQuery<T> orWhereLike(String column, String pattern) {
+        String varName = "VAR_" + integer.getAndIncrement();
+        return orWhere(column + " LIKE :" + varName).withVar(varName, pattern);
+    }
+
+    public PikaQuery<T> group() {
+        openGroup(" AND ");
+        return this;
+    }
+
+    public PikaQuery<T> orGroup() {
+        openGroup(" OR ");
+        return this;
+    }
+
+    public PikaQuery<T> endGroup() {
+        if (groupDepth == 0) {
+            throw new IllegalStateException("endGroup() called without a matching group() or orGroup().");
+        }
+        whereClause.append(")");
+        needsConnective = true;
+        groupDepth--;
+        return this;
+    }
+
+    private void openGroup(String connective) {
+        if (needsConnective) {
+            whereClause.append(connective);
+        }
+        whereClause.append("(");
+        needsConnective = false;
+        groupDepth++;
+    }
+
+    private void appendClause(String connective, String condition) {
+        if (needsConnective) {
+            whereClause.append(connective);
+        }
+        whereClause.append(condition);
+        needsConnective = true;
+    }
+
+    private PikaQuery<T> addInClause(String connective, String column, String op, Collection<?> values) {
+        if (values.isEmpty()) {
+            // IN () is invalid SQL; emit a constant so the query still executes predictably
+            appendClause(connective, op.equals("IN") ? "1=0" : "1=1");
+            return this;
+        }
+        StringBuilder sb = new StringBuilder(column).append(' ').append(op).append(" (");
+        boolean first = true;
+        for (Object v : values) {
+            if (!first) {
+                sb.append(", ");
+            }
+            first = false;
+            String varName = "VAR_" + integer.getAndIncrement();
+            sb.append(':').append(varName);
+            withVar(varName, v);
+        }
+        sb.append(')');
+        appendClause(connective, sb.toString());
+        return this;
     }
 
     public PikaQuery<T> select(String... columns) {
@@ -111,6 +217,10 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
     }
 
     private String generateSQLNoLimit() {
+        if (groupDepth != 0) {
+            throw new IllegalStateException(
+                    "Unbalanced query groups: " + groupDepth + " group()/orGroup() call(s) are missing a matching endGroup().");
+        }
         String sql = generateSelectClause();
         if (!joins.isEmpty()) {
             sql += "\n" + String.join("\n", joins);
@@ -256,6 +366,31 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
 
     public long totalCount() {
         return totalCountResult.get();
+    }
+
+    public long count() {
+        return totalCount();
+    }
+
+    public Double sum(String column) {
+        return aggregate("SUM", column).asDouble("agg");
+    }
+
+    public Double avg(String column) {
+        return aggregate("AVG", column).asDouble("agg");
+    }
+
+    public Object min(String column) {
+        return aggregate("MIN", column).get("agg");
+    }
+
+    public Object max(String column) {
+        return aggregate("MAX", column).get("agg");
+    }
+
+    private ResultMap aggregate(String func, String column) {
+        String sql = "SELECT " + func + "(" + column + ") as agg FROM (" + generateSQLNoLimit() + ") T" + integer.getAndIncrement();
+        return orm.select(sql, valMap).first();
     }
 
     public QueryResult<T> fetch() {

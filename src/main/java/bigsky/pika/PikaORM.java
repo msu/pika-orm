@@ -109,7 +109,7 @@ public class PikaORM {
 
     public PikaORM(Callable<Connection> connectionSource) {
         this.connectionSource = connectionSource;
-        this.logger = new DefaultLogger(internalLoggerLevel);
+        this.logger = new DefaultLogger(() -> internalLoggerLevel);
         getMapping(Migrations.PikaMigration.class); // register pika migrations before any customizations are made
     }
 

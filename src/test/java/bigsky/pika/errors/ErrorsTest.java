@@ -44,7 +44,7 @@ public class ErrorsTest extends TestBase {
         var orm = initTestDb(SampleModel.DDL);
 
         try {
-            orm.find(SampleModel.class).where("str_val = :name", Map.of());
+            orm.find(SampleModel.class).where("str_val = :name", Map.of()).toList();
             fail("Should throw exception for missing parameter");
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("No value found for variable :name"));
@@ -56,7 +56,7 @@ public class ErrorsTest extends TestBase {
         var orm = initTestDb(SampleModel.DDL);
 
         try {
-            orm.find(SampleModel.class).where("str_val = :name AND int_val = :value", Map.of());
+            orm.find(SampleModel.class).where("str_val = :name AND int_val = :value", Map.of()).toList();
             fail("Should throw exception for missing parameters");
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("No value found for variable"));
@@ -68,7 +68,7 @@ public class ErrorsTest extends TestBase {
         var orm = initTestDb(SampleModel.DDL);
 
         try {
-            orm.find(SampleModel.class).where("str_val = :name", Map.of("wrong_name", "value"));
+            orm.find(SampleModel.class).where("str_val = :name", Map.of("wrong_name", "value")).toList();
             fail("Should throw exception for wrong parameter name");
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("No value found for variable :name"));
@@ -185,8 +185,8 @@ public class ErrorsTest extends TestBase {
         var orm = initTestDb(SampleModel.DDL);
 
         try {
-            // Missing colon before parameter name
-            orm.find(SampleModel.class).where("str_val = name", Map.of("name", "test"));
+            // Missing colon before parameter name — "name" is parsed as a column identifier
+            orm.find(SampleModel.class).where("str_val = name", Map.of("name", "test")).toList();
             fail("Should handle malformed parameter syntax");
         } catch (Exception e) {
             assertInstanceOf(SQLException.class, e);

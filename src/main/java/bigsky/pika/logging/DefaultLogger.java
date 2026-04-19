@@ -2,19 +2,24 @@ package bigsky.pika.logging;
 
 import java.text.MessageFormat;
 import java.time.Instant;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DefaultLogger implements PikaLogger {
-    private final PikaLogger.Level internalLoggerLevel;
+    private final Supplier<PikaLogger.Level> internalLoggerLevel;
     final Pattern parens = Pattern.compile("\\{}");
 
     public DefaultLogger(PikaLogger.Level internalLoggerLevel) {
+        this(() -> internalLoggerLevel);
+    }
+
+    public DefaultLogger(Supplier<PikaLogger.Level> internalLoggerLevel) {
         this.internalLoggerLevel = internalLoggerLevel;
     }
 
     public void log(Level level, String msg, Object... args) {
-        if (level.ordinal() <= internalLoggerLevel.ordinal()) {
+        if (level.ordinal() <= internalLoggerLevel.get().ordinal()) {
             String logMsg = "[" + Instant.now() + "] " + level + ": " + msg;
             if (args.length > 0) {
                 int index = 0;

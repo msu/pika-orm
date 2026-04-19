@@ -5,6 +5,7 @@ import bigsky.pika.util.PikaIterable;
 import bigsky.pika.mapping.Mapping;
 
 import java.text.MessageFormat;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -104,6 +105,96 @@ public class PikaClassQuery<T> implements Callable<QueryResult<T>>, PikaIterable
     public PikaClassQuery<T> where(String condition, Map<String, Object> vals) {
         query.where(condition, vals);
         return this;
+    }
+
+    public PikaClassQuery<T> orWhere(String condition) {
+        query.orWhere(condition);
+        return this;
+    }
+
+    public PikaClassQuery<T> orWhere(String whereClause, Object val) {
+        query.orWhere(whereClause, val);
+        return this;
+    }
+
+    public PikaClassQuery<T> orWhere(String whereClause, String arg, Object val) {
+        query.orWhere(whereClause, arg, val);
+        return this;
+    }
+
+    public PikaClassQuery<T> orWhere(String whereClause, String arg, Object val, String arg2, Object val2) {
+        query.orWhere(whereClause, arg, val, arg2, val2);
+        return this;
+    }
+
+    public PikaClassQuery<T> orWhere(String condition, Map<String, Object> vals) {
+        query.orWhere(condition, vals);
+        return this;
+    }
+
+    public PikaClassQuery<T> whereIn(String column, Collection<?> values) {
+        query.whereIn(column, values);
+        return this;
+    }
+
+    public PikaClassQuery<T> whereNotIn(String column, Collection<?> values) {
+        query.whereNotIn(column, values);
+        return this;
+    }
+
+    public PikaClassQuery<T> orWhereIn(String column, Collection<?> values) {
+        query.orWhereIn(column, values);
+        return this;
+    }
+
+    public PikaClassQuery<T> orWhereNotIn(String column, Collection<?> values) {
+        query.orWhereNotIn(column, values);
+        return this;
+    }
+
+    public PikaClassQuery<T> whereLike(String column, String pattern) {
+        query.whereLike(column, pattern);
+        return this;
+    }
+
+    public PikaClassQuery<T> orWhereLike(String column, String pattern) {
+        query.orWhereLike(column, pattern);
+        return this;
+    }
+
+    public PikaClassQuery<T> group() {
+        query.group();
+        return this;
+    }
+
+    public PikaClassQuery<T> orGroup() {
+        query.orGroup();
+        return this;
+    }
+
+    public PikaClassQuery<T> endGroup() {
+        query.endGroup();
+        return this;
+    }
+
+    public long count() {
+        return query.count();
+    }
+
+    public Double sum(String column) {
+        return query.sum(column);
+    }
+
+    public Double avg(String column) {
+        return query.avg(column);
+    }
+
+    public Object min(String column) {
+        return query.min(column);
+    }
+
+    public Object max(String column) {
+        return query.max(column);
     }
 
     public QueryResult<T> fetch() {

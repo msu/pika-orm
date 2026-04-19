@@ -91,6 +91,26 @@ public class PikaClassFinder<T> {
         return all().totalCount();
     }
 
+    public long count() {
+        return all().count();
+    }
+
+    public Double sum(String column) {
+        return all().sum(column);
+    }
+
+    public Double avg(String column) {
+        return all().avg(column);
+    }
+
+    public Object min(String column) {
+        return all().min(column);
+    }
+
+    public Object max(String column) {
+        return all().max(column);
+    }
+
     public PikaClassQuery<T> page(long i) {
         return all().page(i);
     }
