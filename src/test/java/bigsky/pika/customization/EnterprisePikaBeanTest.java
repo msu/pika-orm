@@ -2,10 +2,12 @@ package bigsky.pika.customization;
 
 import bigsky.pika.TestBase;
 import bigsky.pika.customization.model.BadModel;
+import bigsky.pika.models.BindableEPB;
 import bigsky.pika.models.SampleEPB;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -363,6 +365,94 @@ public class EnterprisePikaBeanTest extends TestBase {
 
         assertNull(id);
         assertTrue(model.hasErrors());
+    }
+
+    // setFieldsFrom
+    @Test
+    void testSetFieldsFromMapBasic() {
+        initTestDb(BindableEPB.DDL);
+        BindableEPB b = new BindableEPB();
+        b.setFieldsFrom(Map.of("firstName", "Alice", "age", "30"), "firstName", "age");
+        assertEquals("Alice", b.getFirstName());
+        assertEquals(30, b.getAge());
+        assertFalse(b.hasErrors());
+    }
+
+    @Test
+    void testSetFieldsFromIsCaseInsensitive() {
+        initTestDb(BindableEPB.DDL);
+        BindableEPB b = new BindableEPB();
+        b.setFieldsFrom(Map.of("FIRSTNAME", "Alice"), "FIRSTNAME");
+        assertEquals("Alice", b.getFirstName());
+        assertFalse(b.hasErrors());
+    }
+
+    @Test
+    void testSetFieldsFromAcceptsSnakeCase() {
+        initTestDb(BindableEPB.DDL);
+        BindableEPB b = new BindableEPB();
+        b.setFieldsFrom(Map.of("first_name", "Alice"), "first_name");
+        assertEquals("Alice", b.getFirstName());
+        assertFalse(b.hasErrors());
+    }
+
+    @Test
+    void testSetFieldsFromDelegatesToSetter() {
+        initTestDb(BindableEPB.DDL);
+        BindableEPB b = new BindableEPB();
+        b.setFieldsFrom(Map.of("firstName", "  Alice  "), "firstName");
+        assertTrue(b.firstNameSetterCalled);
+        assertEquals("Alice", b.getFirstName());
+    }
+
+    @Test
+    void testSetFieldsFromAccumulatesErrors() {
+        initTestDb(BindableEPB.DDL);
+        BindableEPB b = new BindableEPB();
+        b.setFieldsFrom(Map.of("firstName", "Alice", "age", "not-a-number"), "firstName", "age");
+        assertEquals("Alice", b.getFirstName());
+        assertNull(b.getAge());
+        assertTrue(b.hasErrors());
+        assertTrue(b.hasError("age"));
+    }
+
+    @Test
+    void testSetFieldsFromUnknownFieldAccumulatesError() {
+        initTestDb(BindableEPB.DDL);
+        BindableEPB b = new BindableEPB();
+        b.setFieldsFrom(Map.of("notAField", "whatever"), "notAField");
+        assertTrue(b.hasErrors());
+        assertTrue(b.hasError("notAField"));
+    }
+
+    @Test
+    void testSetFieldsFromRespectsExplicitWhitelist() {
+        initTestDb(BindableEPB.DDL);
+        BindableEPB b = new BindableEPB();
+        Map<String, String> attackerParams = new HashMap<>();
+        attackerParams.put("firstName", "Alice");
+        attackerParams.put("admin", "true");
+        b.setFieldsFrom(attackerParams, "firstName");
+        assertEquals("Alice", b.getFirstName());
+        assertNull(b.getAdmin());
+    }
+
+    @Test
+    void testSetFieldsFromMissingValueIsNoOp() {
+        initTestDb(BindableEPB.DDL);
+        BindableEPB b = new BindableEPB();
+        b.setFieldsFrom(Map.of(), "firstName");
+        assertNull(b.getFirstName());
+        assertFalse(b.hasErrors());
+    }
+
+    @Test
+    void testSetFieldsFromUsesSupplier() {
+        initTestDb(BindableEPB.DDL);
+        BindableEPB b = new BindableEPB();
+        Map<String, String> req = Map.of("firstName", "Alice");
+        b.setFieldsFrom((java.util.function.UnaryOperator<String>) req::get, "firstName");
+        assertEquals("Alice", b.getFirstName());
     }
 
 }

@@ -358,6 +358,24 @@ public class Mapping {
         return fieldNameToMapping.get(field);
     }
 
+    public FieldMapping getFieldMappingForFieldNameIgnoreCase(String field) {
+        FieldMapping exact = fieldNameToMapping.get(field);
+        if (exact != null) {
+            return exact;
+        }
+        String normalized = normalizeFieldKey(field);
+        for (Map.Entry<String, FieldMapping> entry : fieldNameToMapping.entrySet()) {
+            if (normalizeFieldKey(entry.getKey()).equals(normalized)) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    private static String normalizeFieldKey(String s) {
+        return s.toLowerCase(Locale.ROOT).replace("_", "");
+    }
+
     public FieldMapping getFieldMappingForColumn(String field) {
         return columnToMapping.get(field);
     }

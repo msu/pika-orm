@@ -4,6 +4,8 @@ import bigsky.pika.PikaORM;
 import bigsky.pika.logging.PikaLogger;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -61,6 +63,56 @@ public class FieldMapping {
 
     public void setFieldValue(Object object, Object val) {
         orm.getReflector().set(mappedField, object, val);
+    }
+
+    public boolean trySetViaSetter(Object target, Object value) {
+        String fieldName = mappedField.getName();
+        String setterName = "set" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+        Method match = null;
+        for (Method method : target.getClass().getMethods()) {
+            if (!method.getName().equals(setterName) || method.getParameterCount() != 1) {
+                continue;
+            }
+            Class<?> paramType = method.getParameterTypes()[0];
+            if (isAcceptableArgument(paramType, value)) {
+                match = method;
+                break;
+            }
+        }
+        if (match == null) {
+            return false;
+        }
+        try {
+            match.setAccessible(true);
+            match.invoke(target, value);
+            return true;
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw rethrow(cause);
+        } catch (IllegalAccessException e) {
+            throw rethrow(e);
+        }
+    }
+
+    private static boolean isAcceptableArgument(Class<?> paramType, Object value) {
+        if (value == null) {
+            return !paramType.isPrimitive();
+        }
+        if (paramType.isInstance(value)) {
+            return true;
+        }
+        if (!paramType.isPrimitive()) {
+            return false;
+        }
+        if (paramType == int.class) return value instanceof Integer;
+        if (paramType == long.class) return value instanceof Long;
+        if (paramType == double.class) return value instanceof Double;
+        if (paramType == boolean.class) return value instanceof Boolean;
+        if (paramType == float.class) return value instanceof Float;
+        if (paramType == short.class) return value instanceof Short;
+        if (paramType == byte.class) return value instanceof Byte;
+        if (paramType == char.class) return value instanceof Character;
+        return false;
     }
 
     public Object getFieldValue(Object object) {

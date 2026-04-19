@@ -237,32 +237,40 @@ public class EnterprisePikaBean implements PikaRecordLifecycle {
     }
 
     public <T extends EnterprisePikaBean> T setFieldsFrom(Map<String, String> map, String... fields) {
-        return setFieldsFrom(map::get, fields);
+        return setFieldsFrom((UnaryOperator<String>) map::get, fields);
     }
 
     public <T extends EnterprisePikaBean> T setFieldsFrom(UnaryOperator<String> supplier, String... fields) {
         for (String col : fields) {
             String str = supplier.apply(col);
-            try {
-                setValueFromString(col, str);
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Could not set " + col + " to " + str + ":" + e.getMessage(), e);
-            }
+            setValueFromString(col, str);
         }
         return (T) this;
     }
 
     private void setValueFromString(String col, String str) {
         Mapping mapping = orm().getMapping(this.getClass());
-        FieldMapping fieldMapping = mapping.getFieldMappingForFieldName(col);
+        FieldMapping fieldMapping = mapping.getFieldMappingForFieldNameIgnoreCase(col);
         if (fieldMapping == null) {
-            fieldMapping = mapping.getFieldMappingForFieldName(TextTools.camelCase(col));
-            if(fieldMapping == null) {
-                throw new IllegalArgumentException("No field '" + col + "' found on " + this.getClass().getSimpleName());
-            }
+            addError(col, "No field '" + col + "' found on " + this.getClass().getSimpleName());
+            return;
         }
-        Class fieldType = fieldMapping.getType();
-        fieldMapping.setFieldValue(this, orm().coerce(fieldType, str));
+        String resolvedName = fieldMapping.getFieldName();
+        Class<?> fieldType = fieldMapping.getType();
+        Object coerced;
+        try {
+            coerced = orm().coerce(fieldType, str);
+        } catch (Exception e) {
+            addError(resolvedName, TextTools.humanize(resolvedName) + " could not be set to \"" + str + "\": " + e.getMessage());
+            return;
+        }
+        try {
+            if (!fieldMapping.trySetViaSetter(this, coerced)) {
+                fieldMapping.setFieldValue(this, coerced);
+            }
+        } catch (Exception e) {
+            addError(resolvedName, TextTools.humanize(resolvedName) + " could not be set: " + e.getMessage());
+        }
     }
 
     protected Object getValueForField(String col) {
