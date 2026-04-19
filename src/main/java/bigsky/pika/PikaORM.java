@@ -715,6 +715,64 @@ public class PikaORM {
         }
     }
 
+    public void inTransaction(Runnable runnable) {
+        withTransaction(runnable);
+    }
+
+    public <T> T inTransaction(Callable<T> callable) {
+        return withTransaction(callable);
+    }
+
+    public void joinTransaction(Runnable runnable) {
+        requireActiveTransaction();
+        withTransaction(runnable);
+    }
+
+    public <T> T joinTransaction(Callable<T> callable) {
+        requireActiveTransaction();
+        return withTransaction(callable);
+    }
+
+    public void forceTransaction(Runnable runnable) {
+        try (var session = establishConnection()) {
+            try {
+                startTransaction();
+                runnable.run();
+                commitTransaction();
+            } catch (Exception e) {
+                rollBackTransaction();
+                throw rethrow(e);
+            }
+        }
+    }
+
+    public <T> T forceTransaction(Callable<T> callable) {
+        try (var session = establishConnection()) {
+            try {
+                startTransaction();
+                T result = callable.call();
+                commitTransaction();
+                return result;
+            } catch (Exception e) {
+                rollBackTransaction();
+                throw rethrow(e);
+            }
+        }
+    }
+
+    public boolean isInTransaction() {
+        ConnectionSession cs = getCurrentSession();
+        return cs != null && cs.isInTransaction();
+    }
+
+    private void requireActiveTransaction() {
+        ConnectionSession cs = getCurrentSession();
+        if (cs == null || !cs.isInTransaction()) {
+            throw new IllegalStateException(
+                    "joinTransaction() requires an active transaction on the current thread — use inTransaction() or forceTransaction() instead.");
+        }
+    }
+
     public void startTransaction() {
         ConnectionSession connectionSession = getOrCreateSession();
         connectionSession.startTransaction();
