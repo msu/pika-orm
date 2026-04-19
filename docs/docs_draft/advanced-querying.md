@@ -609,6 +609,97 @@ List<Foo> allFoos = container.getFoos().toList(); // Returns 10 entities
 - `toList()` executes a query each time called
 - `addAndSave()` provides automatic foreign key management
 
+## Avoiding N+1: Bulk-Loading Children
+
+When you iterate a list of parents and ask each one for its children, the ORM fires one query per parent. A hundred parents becomes a hundred-and-one queries — the classic N+1.
+
+```java
+// BAD: 1 query for albums, then 1 query per album for its tracks. 101 queries total.
+for (Album album : orm.find(Album.class).all()) {
+    for (Track track : album.getTracks()) {
+        System.out.println(track.getName());
+    }
+}
+```
+
+PikaORM intentionally does not provide a magic `.include()` eager-loader. The underlying pattern is short and worth knowing — a bulk `WHERE ... IN (...)` followed by a partition by foreign key:
+
+```java
+// GOOD: 2 queries total.
+PikaList<Album> albums = orm.find(Album.class).all().fetchList();
+
+// 1) bulk fetch every track whose album is in the parent set
+var albumIds = albums.map(Album::getAlbumId);
+Map<Long, List<Track>> tracksByAlbumId = orm.find(Track.class)
+    .whereIn("album_id", albumIds)
+    .toMap(Track::getAlbumId);
+
+// 2) walk the parents and read children from the local map
+for (Album album : albums) {
+    List<Track> tracks = tracksByAlbumId.getOrDefault(album.getAlbumId(), List.of());
+    for (Track track : tracks) {
+        System.out.println(track.getName());
+    }
+}
+```
+
+The pieces:
+
+- **`.whereIn(column, collection)`** builds a safe `IN (?, ?, ...)` with one bound parameter per value. An empty collection is rendered as `1=0`, so an empty parent list trivially yields zero children instead of an SQL syntax error.
+- **`.toMap(keyFn)`** on any `PikaIterable` (including `QueryResult`, `PikaList`, `PikaClassQuery`) buckets rows into a `Map<K, List<T>>`. Use `toOrderedMap` if you want the buckets sorted by key, or `toDistinctMap` if each key is unique (one-to-one).
+- For a parent-of-one relationship (belongs_to / has_one), use `toDistinctMap` since each child has exactly one parent id.
+
+### Belongs-to inverse (child → parent)
+
+Same shape, flipped direction. Load a page of tracks, then bulk-fetch their albums:
+
+```java
+PikaList<Track> tracks = orm.find(Track.class).page(1).pageSize(50).fetchList();
+
+var albumIds = tracks.map(Track::getAlbumId).toSet();   // dedupe
+Map<Long, Album> albumById = orm.find(Album.class)
+    .whereIn("id", albumIds)
+    .toDistinctMap(Album::getAlbumId);
+
+for (Track track : tracks) {
+    Album album = albumById.get(track.getAlbumId());
+    // ...
+}
+```
+
+### Many-to-many (through a join table)
+
+Load students, then memberships, then courses — three queries instead of N+1:
+
+```java
+PikaList<Student> students = orm.find(Student.class).all().fetchList();
+var studentIds = students.map(Student::getStudentId);
+
+Map<Long, List<Enrollment>> enrollmentsByStudent = orm.find(Enrollment.class)
+    .whereIn("student_id", studentIds)
+    .toMap(Enrollment::getStudentId);
+
+var courseIds = enrollmentsByStudent.values().stream()
+    .flatMap(List::stream)
+    .map(Enrollment::getCourseId)
+    .collect(java.util.stream.Collectors.toSet());
+
+Map<Long, Course> coursesById = orm.find(Course.class)
+    .whereIn("id", courseIds)
+    .toDistinctMap(Course::getId);
+
+for (Student s : students) {
+    for (Enrollment e : enrollmentsByStudent.getOrDefault(s.getStudentId(), List.of())) {
+        Course c = coursesById.get(e.getCourseId());
+        // ...
+    }
+}
+```
+
+### When a JOIN is a better fit
+
+If you only need a projection of child columns (not full child objects) and you're happy to denormalize the result, a single JOIN via `PikaQueryBuilder` may be simpler than the partition pattern. Reach for partitioning when you want to hydrate full child objects and navigate the graph in code.
+
 ## Joins in Queries
 
 ### Basic Entity Joins

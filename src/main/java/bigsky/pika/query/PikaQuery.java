@@ -5,6 +5,9 @@ import bigsky.pika.util.PikaIterable;
 import bigsky.pika.mapping.ColumnsSpec;
 import bigsky.pika.util.LazyVar;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -313,6 +316,108 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
         } else {
             return false;
         }
+    }
+
+    public boolean hasNextPage() {
+        return page > 0 && !isLastPage();
+    }
+
+    public boolean hasPreviousPage() {
+        return page > 1;
+    }
+
+    public long nextPageNumber() {
+        return page <= 0 ? 1 : page + 1;
+    }
+
+    public long previousPageNumber() {
+        return Math.max(1, page - 1);
+    }
+
+    public String nextPageURL(String url) {
+        return nextPageURL(url, "page");
+    }
+
+    public String nextPageURL(String url, String paramName) {
+        return updateQueryParam(url, paramName, nextPageNumber());
+    }
+
+    public String nextPageURL(URL url) {
+        return nextPageURL(url.toString(), "page");
+    }
+
+    public String nextPageURL(URL url, String paramName) {
+        return nextPageURL(url.toString(), paramName);
+    }
+
+    public String previousPageURL(String url) {
+        return previousPageURL(url, "page");
+    }
+
+    public String previousPageURL(String url, String paramName) {
+        return updateQueryParam(url, paramName, previousPageNumber());
+    }
+
+    public String previousPageURL(URL url) {
+        return previousPageURL(url.toString(), "page");
+    }
+
+    public String previousPageURL(URL url, String paramName) {
+        return previousPageURL(url.toString(), paramName);
+    }
+
+    private static String updateQueryParam(String url, String paramName, long newValue) {
+        if (url == null) {
+            throw new IllegalArgumentException("url cannot be null");
+        }
+        URI uri;
+        try {
+            uri = new URI(url);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Invalid URL: " + url, e);
+        }
+        String newQuery = replaceOrAppendQueryParam(uri.getRawQuery(), paramName, String.valueOf(newValue));
+
+        StringBuilder sb = new StringBuilder();
+        if (uri.getScheme() != null) {
+            sb.append(uri.getScheme()).append(':');
+        }
+        if (uri.getRawAuthority() != null) {
+            sb.append("//").append(uri.getRawAuthority());
+        }
+        if (uri.getRawPath() != null) {
+            sb.append(uri.getRawPath());
+        }
+        sb.append('?').append(newQuery);
+        if (uri.getRawFragment() != null) {
+            sb.append('#').append(uri.getRawFragment());
+        }
+        return sb.toString();
+    }
+
+    private static String replaceOrAppendQueryParam(String rawQuery, String paramName, String newValue) {
+        StringBuilder out = new StringBuilder();
+        boolean replaced = false;
+        if (rawQuery != null && !rawQuery.isEmpty()) {
+            for (String part : rawQuery.split("&")) {
+                int eq = part.indexOf('=');
+                String key = eq >= 0 ? part.substring(0, eq) : part;
+                if (key.equals(paramName)) {
+                    if (replaced) continue; // drop duplicates
+                    if (out.length() > 0) out.append('&');
+                    out.append(paramName).append('=').append(newValue);
+                    replaced = true;
+                } else {
+                    if (out.length() > 0) out.append('&');
+                    out.append(part);
+                }
+            }
+        }
+        if (!replaced) {
+            if (out.length() > 0) out.append('&');
+            out.append(paramName).append('=').append(newValue);
+        }
+        return out.toString();
     }
 
     // SOURCE: STOLEN FROM JAVA 18 SRC

@@ -4,6 +4,7 @@ import bigsky.pika.PikaORM;
 import bigsky.pika.util.PikaIterable;
 import bigsky.pika.mapping.Mapping;
 
+import java.net.URL;
 import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Collections;
@@ -285,6 +286,54 @@ public class PikaClassQuery<T> implements Callable<QueryResult<T>>, PikaIterable
 
     public boolean isLastPage() {
         return this.query.isLastPage();
+    }
+
+    public boolean hasNextPage() {
+        return this.query.hasNextPage();
+    }
+
+    public boolean hasPreviousPage() {
+        return this.query.hasPreviousPage();
+    }
+
+    public long nextPageNumber() {
+        return this.query.nextPageNumber();
+    }
+
+    public long previousPageNumber() {
+        return this.query.previousPageNumber();
+    }
+
+    public String nextPageURL(String url) {
+        return this.query.nextPageURL(url);
+    }
+
+    public String nextPageURL(String url, String paramName) {
+        return this.query.nextPageURL(url, paramName);
+    }
+
+    public String nextPageURL(URL url) {
+        return this.query.nextPageURL(url);
+    }
+
+    public String nextPageURL(URL url, String paramName) {
+        return this.query.nextPageURL(url, paramName);
+    }
+
+    public String previousPageURL(String url) {
+        return this.query.previousPageURL(url);
+    }
+
+    public String previousPageURL(String url, String paramName) {
+        return this.query.previousPageURL(url, paramName);
+    }
+
+    public String previousPageURL(URL url) {
+        return this.query.previousPageURL(url);
+    }
+
+    public String previousPageURL(URL url, String paramName) {
+        return this.query.previousPageURL(url, paramName);
     }
 
     public long totalPages() {

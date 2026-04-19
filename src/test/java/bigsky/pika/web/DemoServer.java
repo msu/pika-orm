@@ -13,19 +13,21 @@ public class DemoServer {
 
     public static void main(String[] args) throws Exception {
 
-        clearOldDb();
+        ensureDbDir();
 
-        // init the ORM
+        // init the ORM; migrations are idempotent so this is safe on every restart
         PikaORM orm = new PikaORM("jdbc:sqlite:test/web.db")
                 .withLogLevel(TRACE)
                 .makeDefaultORM()
                 .withMigrations(new WebAppMigrations())
                 .applyMigrations();
 
-        // insert some data
-        orm.insertAll(new Todo("Todo 1", "This is todo 1"),
-                new Todo("Todo 2", "This is todo 2"),
-                new Todo("Todo 3", "This is todo 3"));
+        // seed demo data only when the table is empty so restarts don't duplicate it
+        if (Todo.find().count() == 0) {
+            orm.insertAll(new Todo("Todo 1", "This is todo 1"),
+                    new Todo("Todo 2", "This is todo 2"),
+                    new Todo("Todo 3", "This is todo 3"));
+        }
 
         // create the web app
         var app = Javalin.create()
@@ -41,13 +43,8 @@ public class DemoServer {
                 .start(7070);
     }
 
-    private static void clearOldDb() throws IOException {
-        // remove old db if it exists
-        Path path = Path.of("test", "web.db");
-        if (Files.exists(path)) {
-            Files.delete(path);
-        }
-        path.toFile().getParentFile().mkdirs();
+    private static void ensureDbDir() throws IOException {
+        Files.createDirectories(Path.of("test"));
     }
 
     private static String renderTodos() {
