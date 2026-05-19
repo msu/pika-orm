@@ -1,0 +1,20 @@
+title: PikaORM Documentation
+description: >-
+  The lightweight MicroORM for Java — no config files, no magic,
+  just clean builder-style API over plain SQL.
+url: "https://pika.cs.montana.edu"
+baseurl: ""
+
+# Build settings
+markdown: kramdown
+kramdown:
+  input: GFM
+
+# Exclude non-site files from the build
+exclude:
+  - docs_draft/
+  - "template inspo/"
+  - GroupedMethodExtractor.java
+  - checklist.md
+  - Gemfile
+  - Gemfile.lock

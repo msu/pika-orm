@@ -2,3 +2,13 @@
 /test/
 /target/
 /tmp/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Jekyll build output & local server files
+docs/_site/
+docs/.jekyll-cache/
+docs/.jekyll-metadata
+docs/Gemfile.lock

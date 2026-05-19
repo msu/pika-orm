@@ -1,0 +1,134 @@
+---
+layout: default
+title: Web QuickStart
+description: "PikaORM Web QuickStart — get your first project up and running in minutes with migrations, CRUD, and joins."
+active_page: quickstart
+---
+
+            <span class="kicker">🚀 Getting Started</span>
+            <h1>PikaORM Web QuickStart</h1>
+
+            <div class="callout">
+                <p>This page is your one-stop shop for getting started with Pika 🐁! The writing convention is to write
+                    descriptions and references to code <em>below</em> code blocks unless specified otherwise.</p>
+            </div>
+
+            <p>You are encouraged to play around to get comfortable with the method-builder design style we have
+                chosen. Almost everything can be stumbled into with Pika, and all core elements of the API use an object
+                method to execute features — no external configs.</p>
+
+            <!-- Step flow -->
+            <div class="step-flow">
+                <span class="node start">1. Migrate</span>
+                <span class="arr">→</span>
+                <span class="node">2. Init ORM</span>
+                <span class="arr">→</span>
+                <span class="node">3. Insert</span>
+                <span class="arr">→</span>
+                <span class="node">4. Query</span>
+                <span class="arr">→</span>
+                <span class="node end">Done ✓</span>
+            </div>
+
+            <h2>Getting your project migrated</h2>
+            <p>Below is a standard implementation of a migration setup done entirely in code. We use simple extension
+                classes to allow users to customize their migration setup and have full control over migrations with
+                method tools.</p>
+
+<pre><code>public class MigrationsFile1 extends PikaORM.Migrations {
+
+    @Override
+    public void migrations() {
+        add(this::addMigrationDemoTable);
+    }
+
+    public PikaMigration addMigrationDemoTable() {
+        return makeMigration("migration1")
+            .up("""
+                CREATE TABLE IF NOT EXISTS migration_demo_models (
+                    id       INTEGER PRIMARY KEY,
+                    str_val  TEXT,
+                    int_val  INTEGER,
+                    bool_val BOOLEAN,
+                    date_val DATETIME
+                );
+            """)
+            .down("""
+                DROP TABLE migration_demo_models;
+            """);
+    }
+}</code></pre>
+
+            <div class="callout">
+                <p>Let's break this down 🧀. We override the <code>migrations()</code> method which is left blank in the ORM by default,
+                    so we can add each new migration as a <code>PikaMigration</code> object — enabling us to easily
+                    manipulate our migrations with methods when we need to.</p>
+            </div>
+
+            <h2>Default Database Mapping</h2>
+            <p>You probably notice a discrepancy in the naming conventions between the POJO model names and our
+                migration DDL. Not to fret! We have a default mapping that follows a standard database format:</p>
+            <ul>
+                <li><code>ClassName</code> &rarr; <code>class_name</code></li>
+                <li><code>fieldName</code> &rarr; <code>field_name</code></li>
+                <li><code>id</code> &rarr; <code>id</code> (column)</li>
+            </ul>
+
+            <h2>Basic CRUD with PikaORM</h2>
+<pre><code>public static void main(String[] args) throws Exception {
+    // init the ORM
+    PikaORM orm = new PikaORM("jdbc:sqlite:web.db")
+        .withLogLevel(TRACE)
+        .makeDefaultORM()
+        .withMigrations(new WebAppMigrations())
+        .applyMigrations();
+
+    // insert some data
+    orm.insertAll(
+        new Todo("Todo 1", "This is todo 1"),
+        new Todo("Todo 2", "This is todo 2"),
+        new Todo("Todo 3", "This is todo 3")
+    );
+
+    orm.insert(new Todo("Todo 4", "This is todo 4"));
+
+    // Querying data
+    var query = orm.query(Todo.class)
+        .where("title = :val")
+        .withVar("val", "Todo 1");
+
+    PikaList&lt;Todo&gt; result = query.toList();
+
+    for (Todo todo : result) {
+        System.out.println(todo.getTitle());
+    }
+}</code></pre>
+            <p>The incredibly helpful <code>toList()</code> knows our class from the query we issued, and grabs the
+                map and proper formatting to turn all the rows returned by the DB into our <code>Todo</code> objects.</p>
+
+            <h2>Joins in PikaORM</h2>
+            <p>Last but not least — one more essential aspect to a good ORM.</p>
+<pre><code>String title = "Learn about PikaORM";
+
+PikaList&lt;Todo&gt; result = orm.query(Todo.class)
+    .join(Checklist.class)
+    .thenJoin(Calendar.class)
+    .where("Todo.Title = :title")
+    .withVar("title", title)
+    .fetchList();</code></pre>
+            <p>Imagining we have another table and class of <code>Checklist</code> and <code>Calendar</code> we can
+                easily join the tables with an additional method using our <code>query</code> method. We can
+                subsequently chain any other connected tables using <code>thenJoin</code>.</p>
+
+            <!-- Page navigation -->
+            <nav class="page-nav">
+                <a class="prev" href="/">
+                    <span class="em">🏠</span>
+                    <div><span class="lbl">← Prev</span><span class="nm">Welcome</span></div>
+                </a>
+                <span class="sep">/</span>
+                <a class="nxt" href="/pages/philosophy.html">
+                    <div><span class="lbl">Next →</span><span class="nm">Philosophy</span></div>
+                    <span class="em">🧠</span>
+                </a>
+            </nav>

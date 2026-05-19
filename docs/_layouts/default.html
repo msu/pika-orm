@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{{ page.description | default: site.description }}">
+    <title>{{ page.title }} · PikaORM</title>
+    <link rel="stylesheet" href="/assets/css/pika-style.css">
+</head>
+
+<body>
+    <aside class="sidebar">
+        <a href="/" class="brand">
+            <span class="logo">⚡</span> PikaORM
+        </a>
+        <nav>
+            <div class="nav-group-title">Getting Started</div>
+            <ul class="nav-links">
+                <li><a href="/" {% if page.active_page == 'welcome' %}class="active"{% endif %}>Welcome</a></li>
+                <li><a href="/pages/quickstart.html" {% if page.active_page == 'quickstart' %}class="active"{% endif %}>Web QuickStart</a></li>
+                <li><a href="/pages/philosophy.html" {% if page.active_page == 'philosophy' %}class="active"{% endif %}>Philosophy</a></li>
+            </ul>
+            <div class="nav-group-title" style="margin-top: 1.4rem;">Core Concepts</div>
+            <ul class="nav-links">
+                <li><a href="/pages/querying.html" {% if page.active_page == 'querying' %}class="active"{% endif %}>Advanced Querying</a></li>
+                <li><a href="/pages/migrations.html" {% if page.active_page == 'migrations' %}class="active"{% endif %}>Migrations &amp; Mapping</a></li>
+                <li><a href="/pages/streaming.html" {% if page.active_page == 'streaming' %}class="active"{% endif %}>Streaming</a></li>
+                <li><a href="/pages/transactions.html" {% if page.active_page == 'transactions' %}class="active"{% endif %}>Transactions</a></li>
+            </ul>
+            <div class="nav-group-title" style="margin-top: 1.4rem;">Advanced Features</div>
+            <ul class="nav-links">
+                <li><a href="/pages/logging.html" {% if page.active_page == 'logging' %}class="active"{% endif %}>Logging</a></li>
+                <li><a href="/pages/ejb.html" {% if page.active_page == 'ejb' %}class="active"{% endif %}>Enterprise Beans</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <div class="main-container">
+        <main class="content">
+            {{ content }}
+        </main>
+    </div>
+</body>
+
+</html>

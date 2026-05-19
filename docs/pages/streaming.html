@@ -1,0 +1,106 @@
+---
+layout: default
+title: Pika Streams
+description: "PikaORM Streaming — memory-efficient lazy database queries using the Java Stream API."
+active_page: streaming
+---
+
+            <span class="kicker">🌊 Core Concepts</span>
+            <h1>Pika Streams</h1>
+
+            <p>Pika Streams provide a powerful abstraction layer that combines the familiar Java Stream API with
+                database query execution. Unlike standard Java Streams that operate on in-memory collections, Pika
+                Streams execute queries <em>lazily</em> against your database — allowing you to process large datasets
+                efficiently without loading entire result sets into memory.</p>
+
+            <!-- Comparison chips -->
+            <div class="chips">
+                <div class="chip"><span class="em">💾</span><strong>Lazy</strong> evaluation</div>
+                <div class="chip"><span class="em">📉</span><strong>Low</strong> memory usage</div>
+                <div class="chip"><span class="em">🔗</span><strong>Java Stream</strong> compatible</div>
+                <div class="chip"><span class="em">⚡</span><strong>DB-level</strong> optimization</div>
+            </div>
+
+            <h2>Standard Streams vs Pika Streams</h2>
+
+            <div class="contrast">
+                <div class="card is">
+                    <h3>Pika Streams</h3>
+                    <ul>
+                        <li>Execute database queries on-demand</li>
+                        <li>Stream results directly from the database</li>
+                        <li>Memory-efficient for large result sets</li>
+                        <li>Lazy evaluation with DB-level optimization</li>
+                    </ul>
+                </div>
+                <div class="card isnt">
+                    <h3>Standard Java Streams</h3>
+                    <ul>
+                        <li>Operate on in-memory collections only</li>
+                        <li>Process data already loaded into JVM heap</li>
+                        <li>Limited by available memory for large datasets</li>
+                        <li>No DB awareness or optimization</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h2>Getting Started with Pika Streams</h2>
+            <p>Pika Streams are accessed through the main ORM instance using the <code>stream()</code> method:</p>
+<pre><code>// Get a stream finder for your entity class
+PikaStreamFinder&lt;SampleModel&gt; streamFinder = orm.stream(SampleModel.class);
+
+// Use within a connection context for proper resource management
+try (var conn = orm.establishConnection()) {
+    Stream&lt;SampleModel&gt; results = streamFinder.all();
+    // Process your stream...
+}</code></pre>
+
+            <h2>Query Methods</h2>
+
+            <h3>Single Record Queries</h3>
+            <p><strong><code>byId(Object id)</code></strong> — retrieves a single entity by its primary key.</p>
+<pre><code>try (var conn = orm.establishConnection()) {
+    Stream&lt;SampleModel&gt; modelStream = orm.stream(SampleModel.class).byId(123);
+    SampleModel model = modelStream.findFirst().orElse(null);
+}</code></pre>
+
+            <p><strong><code>byKey(String column, Object value)</code></strong> — finds a single entity by any column
+                value.</p>
+<pre><code>try (var conn = orm.establishConnection()) {
+    Stream&lt;SampleModel&gt; modelStream = orm.stream(SampleModel.class)
+        .byKey("str_val", "specificValue");
+    SampleModel model = modelStream.findFirst().get();
+}</code></pre>
+
+            <h3>Collection Queries</h3>
+            <p><strong><code>all()</code></strong> — retrieves all records from the entity's table.</p>
+<pre><code>try (var conn = orm.establishConnection()) {
+    List&lt;SampleModel&gt; allModels = orm.stream(SampleModel.class).all().toList();
+}</code></pre>
+
+            <h3>Dynamic Queries</h3>
+            <p><strong><code>where(String whereClause, Map&lt;String, Object&gt; args)</code></strong> — custom WHERE
+                clauses with named parameters.</p>
+<pre><code>try (var conn = orm.establishConnection()) {
+    List&lt;SampleModel&gt; results = orm.stream(SampleModel.class)
+        .where("int_val = :val", Map.of("val", 10))
+        .toList();
+}</code></pre>
+
+            <div class="callout">
+                <p><strong>Performance Note:</strong> Streams are not executed until a terminal operation (like
+                    <code>toList()</code>, <code>findFirst()</code>, or <code>forEach()</code>) is called. Always use
+                    streams within a connection context to ensure automatic cleanup.</p>
+            </div>
+
+            <nav class="page-nav">
+                <a class="prev" href="/pages/migrations.html">
+                    <span class="em">🗄️</span>
+                    <div><span class="lbl">← Prev</span><span class="nm">Migrations &amp; Mapping</span></div>
+                </a>
+                <span class="sep">/</span>
+                <a class="nxt" href="/pages/transactions.html">
+                    <div><span class="lbl">Next →</span><span class="nm">Transactions</span></div>
+                    <span class="em">🔒</span>
+                </a>
+            </nav>

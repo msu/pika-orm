@@ -1,5 +1,109 @@
-<html>
-<body>
-<h1>PIKAORM!</h1>
-</body>
-</html>
+---
+layout: default
+title: Welcome
+description: "PikaORM — the lightweight, minimal MicroORM for Java. No config files, zero magic, pure SQL power."
+active_page: welcome
+---
+
+            <div class="page-hero">
+                <div class="page-hero-text">
+                    <span class="kicker">🐭 Getting Started</span>
+                    <h1>Welcome to PikaORM</h1>
+                    <p style="font-size: 1.12em; max-width: 44ch; color: var(--ink); font-weight: 500;">
+                        The lightweight MicroORM for Java — <em>no config files</em>, no magic, just clean builder-style
+                        API over plain SQL.
+                    </p>
+                </div>
+                <div class="sticker">
+                    <span class="badge">Micro<br>ORM</span>
+                    <span class="dot d1"></span>
+                    <span class="dot d2"></span>
+                    <span class="dot d3"></span>
+                    <span class="emoji-big" aria-label="lightning bolt">⚡</span>
+                </div>
+            </div>
+
+            <!-- Feature chips -->
+            <div class="chips">
+                <div class="chip"><span class="em">🚫</span><strong>0</strong> config files</div>
+                <div class="chip"><span class="em">🏗️</span><strong>Builder</strong> API</div>
+                <div class="chip"><span class="em">☕</span><strong>Pure</strong> Java</div>
+                <div class="chip"><span class="em">🗃️</span><strong>Raw SQL</strong> friendly</div>
+                <div class="chip"><span class="em">🌊</span><strong>Streaming</strong> support</div>
+            </div>
+
+            <div class="callout">
+                <p>Ahh yes, just what we need: another ORM…. But hear us out — Pika is different.</p>
+            </div>
+
+            <h2>The Need-To-Know Essentials</h2>
+            <p>Before you scurry 🐁💨 off to your first project, here are the things you <em>need to know</em> about
+                Pika:</p>
+
+            <h3>1. Concision is king.</h3>
+            <p>Pika approaches the ORM problem with radical simplicity:</p>
+            <ul>
+                <li>No config files.</li>
+                <li>Intuitive builder-method based API design that is <strong>all code.</strong></li>
+                <li>Vast customizable mappings/models/features all using plain Java classes.</li>
+                <li>Easy to understand code base for personal modification.</li>
+            </ul>
+
+            <h3>2. Pika doesn't hide much SQL from you</h3>
+            <p>If you cannot do something <em>simplistically</em> with Pika logic, you are encouraged to use raw SQL —
+                you are given many ways to do this!</p>
+
+            <h3>3. Pika has two <em>flavors</em> of database mapping features.</h3>
+            <p>A more SQL-native paradigm, and a POJO (Plain Ole' Java Objects) object-leaning side. These are by no
+                means exclusive features in usage — in fact you are encouraged to use both ideas for different
+                things!</p>
+
+            <!-- "is / isn't" contrast cards -->
+            <div class="contrast">
+                <div class="card is">
+                    <h3>Pika is</h3>
+                    <ul>
+                        <li>A zero-config, builder-style ORM</li>
+                        <li>SQL-transparent and honest</li>
+                        <li>Easy to drop into any Java project</li>
+                        <li>A lightweight foundation you can extend</li>
+                    </ul>
+                </div>
+                <div class="card isnt">
+                    <h3>Pika isn't</h3>
+                    <ul>
+                        <li>A full-scale Hibernate replacement</li>
+                        <li>An annotation processor or code generator</li>
+                        <li>Magic — you always see the SQL</li>
+                        <li>Trying to be everything to everyone</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="callout">
+                <p>Found below are all the quick starts one would need to jump straight into Pika usage with their
+                    given database type in a web application. <strong>NOTE:</strong> We will take requests and
+                    changes for specific database types at our own discretion!</p>
+            </div>
+
+            <h2>Supported Databases</h2>
+            <ul>
+                <li><strong>SQLite</strong> (Use <code>.sqlLiteQuirks()</code> on ORM configuration — most native to
+                    PikaORM)</li>
+                <li><strong>H2</strong> (In Memory, Oracle, PostgreSQL, SQLServer modes)</li>
+                <li><strong>MariaDB</strong> (Has some small problems with <code>insertAll</code> — maybe avoid!)</li>
+            </ul>
+
+            <p>Are you looking at all of this going, <em>what does this all mean</em> — <strong>why and what
+                    is an ORM?</strong> Check out our super uber beginner guide to get started, I promise it's not that
+                tough :)</p>
+
+            <!-- Page navigation -->
+            <nav class="page-nav">
+                <span></span>
+                <span class="sep">/</span>
+                <a class="nxt" href="/pages/quickstart.html">
+                    <div><span class="lbl">Next →</span><span class="nm">Web QuickStart</span></div>
+                    <span class="em">🚀</span>
+                </a>
+            </nav>
