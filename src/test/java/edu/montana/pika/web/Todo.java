@@ -5,22 +5,21 @@ import edu.montana.pika.bean.EnterprisePikaBean;
 import edu.montana.pika.bean.PikaManyRelation;
 import edu.montana.pika.query.PikaClassFinder;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.Date;
 
 public class Todo extends EnterprisePikaBean {
 
     Long id;
     String title;
     String description;
-    String dueDate;
+    Date dueDate;
     Boolean completed;
     long version;
-    String createdAt;
+    Date createdAt;
 
     public Todo(){
         this.completed = false;
-        this.createdAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        this.createdAt = new Date();
     }
 
     public Todo(String title, String description) {
@@ -56,11 +55,11 @@ public class Todo extends EnterprisePikaBean {
         this.description = description;
     }
 
-    public String getDueDate() {
+    public Date getDueDate() {
         return dueDate;
     }
 
-    public void setDueDate(String dueDate) {
+    public void setDueDate(Date dueDate) {
         this.dueDate = dueDate;
     }
 
@@ -76,7 +75,7 @@ public class Todo extends EnterprisePikaBean {
         return version;
     }
 
-    public String getCreatedAt() {
+    public Date getCreatedAt() {
         return createdAt;
     }
 

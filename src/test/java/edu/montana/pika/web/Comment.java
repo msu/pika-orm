@@ -3,18 +3,17 @@ package edu.montana.pika.web;
 import edu.montana.pika.bean.EnterprisePikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.Date;
 
 public class Comment extends EnterprisePikaBean {
 
     Long id;
     Long todoId;
     String body;
-    String createdAt;
+    Date createdAt;
 
     public Comment() {
-        this.createdAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        this.createdAt = new Date();
     }
 
     public Comment(Long todoId, String body) {
@@ -31,7 +30,7 @@ public class Comment extends EnterprisePikaBean {
     public String getBody() { return body; }
     public void setBody(String body) { this.body = body; }
 
-    public String getCreatedAt() { return createdAt; }
+    public Date getCreatedAt() { return createdAt; }
 
     public Todo getTodo() {
         return load(Todo.class);

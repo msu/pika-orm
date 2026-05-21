@@ -340,7 +340,7 @@ public class TodoMVCDemo {
         sb.append("<input type=\"hidden\" name=\"version\" value=\"").append(t.getVersion()).append("\">");
         sb.append("<label>title <input type=\"text\" name=\"title\" value=\"").append(esc(t.getTitle())).append("\"></label>");
         sb.append("<label>description <input type=\"text\" name=\"description\" value=\"").append(esc(t.getDescription())).append("\"></label>");
-        sb.append("<label>due date <input type=\"text\" name=\"dueDate\" value=\"").append(esc(formatDate(t.getDueDate()))).append("\" placeholder=\"yyyy-MM-dd\"></label>");
+        sb.append("<label>due date <input type=\"date\" name=\"dueDate\" value=\"").append(esc(formatForDateInput(t.getDueDate()))).append("\" placeholder=\"yyyy-MM-dd\"></label>");
         sb.append("<button type=\"submit\">Save (v").append(t.getVersion()).append(")</button>");
         sb.append("</form>");
 
@@ -437,6 +437,11 @@ public class TodoMVCDemo {
 
     private static String formatDate(Object d) {
         return d == null ? "" : d.toString();
+    }
+
+    private static String formatForDateInput(java.util.Date d) {
+        if (d == null) return "";
+        return d.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString();
     }
 
     private static String esc(String s) {
