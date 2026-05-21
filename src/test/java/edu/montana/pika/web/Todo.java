@@ -2,23 +2,38 @@ package edu.montana.pika.web;
 
 
 import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaManyRelation;
 import edu.montana.pika.query.PikaClassFinder;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class Todo extends EnterprisePikaBean {
 
     Long id;
     String title;
     String description;
-    Date dueDate;
+    String dueDate;
     Boolean completed;
+    long version;
+    String createdAt;
 
-    public Todo(){}
+    public Todo(){
+        this.completed = false;
+        this.createdAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    }
 
     public Todo(String title, String description) {
+        this();
         this.title = title;
         this.description = description;
+    }
+
+    @Override
+    protected void validation() {
+        if (title == null || title.trim().isEmpty()) {
+            addError("title", "Title is required");
+        }
     }
 
     public Long getId() {
@@ -41,11 +56,11 @@ public class Todo extends EnterprisePikaBean {
         this.description = description;
     }
 
-    public Date getDueDate() {
+    public String getDueDate() {
         return dueDate;
     }
 
-    public void setDueDate(Date dueDate) {
+    public void setDueDate(String dueDate) {
         this.dueDate = dueDate;
     }
 
@@ -55,6 +70,18 @@ public class Todo extends EnterprisePikaBean {
 
     public void setCompleted(Boolean completed) {
         this.completed = completed;
+    }
+
+    public long getVersion() {
+        return version;
+    }
+
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public PikaManyRelation<Comment> getComments() {
+        return loadMany(Comment.class);
     }
 
     public static PikaClassFinder<Todo> find() {
