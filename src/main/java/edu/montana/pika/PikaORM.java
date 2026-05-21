@@ -40,6 +40,62 @@ public class PikaORM {
     public static final Pattern SQL_VARS_PATTERN = Pattern.compile("(?<!\\\\):(\\w+)");
     public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd[[ ]['T']HH:mm[:ss][XXX]]");
 
+    // Ordered list of formatters tried by parseDateString. Covers ISO 8601 (canonical
+    // interchange) and the SQL-text shape every major DB emits when stringifying
+    // TIMESTAMP/DATE columns. The SQL-text formatter is built explicitly so the
+    // fractional-seconds portion is variable-width (1-9 digits) rather than fixed.
+    private static final DateTimeFormatter SQL_TEXT_TIMESTAMP = new java.time.format.DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd HH:mm:ss")
+            .optionalStart()
+            .appendFraction(java.time.temporal.ChronoField.NANO_OF_SECOND, 1, 9, true)
+            .optionalEnd()
+            .toFormatter();
+
+    private static final List<DateTimeFormatter> DATE_STRING_PARSERS = List.of(
+            DateTimeFormatter.ISO_OFFSET_DATE_TIME,
+            DateTimeFormatter.ISO_LOCAL_DATE_TIME,
+            SQL_TEXT_TIMESTAMP,
+            DATE_TIME_FORMATTER,
+            DateTimeFormatter.ISO_LOCAL_DATE
+    );
+
+    private static final Pattern INTEGER_PATTERN = Pattern.compile("-?\\d+");
+
+    /**
+     * DB-agnostic parser for Date values read out of a TEXT/VARCHAR column. Tries
+     * (in order): epoch-millis-as-string, a small fixed set of formatters covering
+     * ISO 8601 and the SQL-text shapes drivers emit.
+     */
+    public static Date parseDateString(String s) {
+        if (s == null) return null;
+        if (INTEGER_PATTERN.matcher(s).matches()) {
+            return new Date(Long.parseLong(s));
+        }
+        for (DateTimeFormatter f : DATE_STRING_PARSERS) {
+            try {
+                TemporalAccessor parsed = f.parse(s);
+                try {
+                    return Date.from(Instant.from(parsed));
+                } catch (DateTimeException e) {
+                    try {
+                        LocalDateTime ldt = LocalDateTime.from(parsed);
+                        return Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant());
+                    } catch (DateTimeException e2) {
+                        try {
+                            LocalDate ld = LocalDate.from(parsed);
+                            return Date.from(ld.atStartOfDay(ZoneId.systemDefault()).toInstant());
+                        } catch (DateTimeException e3) {
+                            // try next formatter
+                        }
+                    }
+                }
+            } catch (DateTimeException e) {
+                // try next formatter
+            }
+        }
+        throw new IllegalArgumentException("Unable to parse Date from string: " + s);
+    }
+
     private static PikaORM DEFAULT_ORM = null;
 
     private static final ThreadLocal<ConnectionSession> CURRENT_SESSION = new ThreadLocal<>();
@@ -478,32 +534,7 @@ public class PikaORM {
                 throw new IllegalArgumentException("Unable to convert string to LocalDate: " + value);
             }
         } else if (targetType == Date.class && value instanceof String s) {
-            try {
-                return new Date(Long.parseLong(s));
-            } catch (NumberFormatException nfe) {
-                // if the value is not a long, try to parse it as a date string
-                TemporalAccessor parsedDate = DATE_TIME_FORMATTER.parse(s);
-                try {
-                    // Try to convert to Instant first (works if all fields present)
-                    Instant instant = Instant.from(parsedDate);
-                    return Date.from(instant);
-                } catch (DateTimeException e) {
-                    // If that fails, try LocalDateTime
-                    try {
-                        LocalDateTime localDateTime = LocalDateTime.from(parsedDate);
-                        return Date.from(localDateTime.atZone(ZoneId.systemDefault()).toInstant());
-                    } catch (DateTimeException e2) {
-                        // If that fails, try LocalDate (date only, no time)
-                        try {
-                            LocalDate localDate = LocalDate.from(parsedDate);
-                            return Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
-                        } catch (DateTimeException e3) {
-                            throw new IllegalArgumentException("Unable to convert temporal to Date: " + parsedDate);
-                        }
-                    }
-                }
-
-            }
+            return parseDateString(s);
         } else if (targetType == Boolean.class) {
             if (value == null) {
                 return false;

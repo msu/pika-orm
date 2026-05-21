@@ -152,10 +152,7 @@ public class FieldMapping {
                     fieldVal = orm.getReflector().enumValueOf(targetType, strValue);
                 }
             } else if (targetType == Date.class) {
-                Timestamp timestamp = resultSet.getTimestamp(columnName);
-                if (timestamp != null) {
-                    fieldVal = new Date(timestamp.getTime());
-                }
+                fieldVal = readDateValue(resultSet, columnName);
             } else {
                 //noinspection unchecked
                 fieldVal = resultSet.getObject(columnName, targetType);
@@ -176,6 +173,29 @@ public class FieldMapping {
             return true;
         } catch (SQLException e) {
             return false;
+        }
+    }
+
+    // DB-agnostic Date read: try the driver's native getTimestamp first (fast path on
+    // Postgres, MySQL, H2, Oracle). On SQLException — sqlite-jdbc's "Error parsing time
+    // stamp" lands here when the on-disk text doesn't match its configured parser — fall
+    // back to reading the column as a string and running PikaORM's own forgiving parser.
+    private Date readDateValue(ResultSet resultSet, String columnName) throws SQLException {
+        try {
+            Timestamp ts = resultSet.getTimestamp(columnName);
+            if (ts != null) {
+                return new Date(ts.getTime());
+            }
+            // null Timestamp can mean either SQL NULL or a value the driver couldn't read.
+            // Check the raw string to disambiguate.
+            String raw = resultSet.getString(columnName);
+            return raw == null ? null : PikaORM.parseDateString(raw);
+        } catch (SQLException e) {
+            String raw = resultSet.getString(columnName);
+            if (raw == null) {
+                throw e;
+            }
+            return PikaORM.parseDateString(raw);
         }
     }
 
