@@ -38,7 +38,8 @@ import java.util.stream.StreamSupport;
 public class PikaORM {
 
     public static final Pattern SQL_VARS_PATTERN = Pattern.compile("(?<!\\\\):(\\w+)");
-    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd[[ ]['T']HH:mm[:ss][XXX]]");
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter
+            .ofPattern("yyyy-MM-dd[[ ]['T']HH:mm[:ss][XXX]]");
 
     // Ordered list of formatters tried by parseDateString. Covers ISO 8601 (canonical
     // interchange) and the SQL-text shape every major DB emits when stringifying
@@ -108,7 +109,7 @@ public class PikaORM {
 
     // Logger stuff
     private PikaLogger.Level internalLoggerLevel = PikaLogger.Level.INFO;
-    private PikaLogger logger = null;  // Initialized in constructor
+    private PikaLogger logger = null; // Initialized in constructor
     private boolean logQueries = false;
     private boolean logCaching = false;
 
@@ -156,9 +157,9 @@ public class PikaORM {
     // associated migrations file
     private Migrations migrations;
 
-    //====================================================================
+    // ====================================================================
     // constructors & builders
-    //====================================================================
+    // ====================================================================
 
     public PikaORM(Callable<Connection> connectionSource) {
         this.connectionSource = connectionSource;
@@ -296,7 +297,6 @@ public class PikaORM {
         return this;
     }
 
-
     // Getters for extracted classes
     public PikaLogger getLogger() {
         return logger;
@@ -425,9 +425,9 @@ public class PikaORM {
         }
     }
 
-    //====================================================================
+    // ====================================================================
     // default orm management
-    //====================================================================
+    // ====================================================================
 
     public static PikaORM get() {
         PikaORM defaultORM = getDefault();
@@ -445,9 +445,9 @@ public class PikaORM {
         DEFAULT_ORM = orm;
     }
 
-    //====================================================================
+    // ====================================================================
     // Coercion System
-    //====================================================================
+    // ====================================================================
 
     public <T> T coerce(Class<T> targetClass, Object value) {
         if (value == null) {
@@ -472,7 +472,8 @@ public class PikaORM {
                     value.getClass().getSimpleName() + " with value " + value + " to class " +
                     targetClass.getSimpleName());
         }
-        if (result == NULL_SENTINEL) result = null;
+        if (result == NULL_SENTINEL)
+            result = null;
         return (T) result;
     }
 
@@ -551,9 +552,9 @@ public class PikaORM {
         return null;
     }
 
-    //====================================================================
+    // ====================================================================
     // One to Many & Many to One & Many to Many functionality
-    //====================================================================
+    // ====================================================================
 
     public <J, T> PikaManyThroughRelation<J, T> loadManyThrough(Object one, Class<J> joinClass, Class<T> classOfMany) {
         return maybeCache(new LoadManyThroughKey(one, joinClass, classOfMany), () -> {
@@ -572,7 +573,8 @@ public class PikaORM {
     }
 
     public <T> PikaManyRelation<T> loadMany(Object one, Class<T> classOfMany, String manyFk) {
-        return maybeCache(new LoadManyKey(one, classOfMany, manyFk), () -> new PikaManyRelation<>(one, classOfMany, manyFk, this));
+        return maybeCache(new LoadManyKey(one, classOfMany, manyFk),
+                () -> new PikaManyRelation<>(one, classOfMany, manyFk, this));
     }
 
     public <T> T load(Object objectWithFk, Class<T> classToLoad) {
@@ -584,7 +586,8 @@ public class PikaORM {
     public <T> T load(Object objectWithFk, Class<T> classToLoad, String foreignKeyColumn) {
         Mapping metaData = getMapping(objectWithFk.getClass());
         Object parentPkValue = metaData.getValueForColumn(objectWithFk, foreignKeyColumn);
-        return maybeCache(new LoadKey(parentPkValue, classToLoad, foreignKeyColumn), () -> find(classToLoad).byId(parentPkValue));
+        return maybeCache(new LoadKey(parentPkValue, classToLoad, foreignKeyColumn),
+                () -> find(classToLoad).byId(parentPkValue));
     }
 
     public <T> T loadReverse(Object objectWithPk, Class<T> classToLoad) {
@@ -610,9 +613,9 @@ public class PikaORM {
         }
     }
 
-    //====================================================================
+    // ====================================================================
     // Main entrypoints into the query layer
-    //====================================================================
+    // ====================================================================
 
     public <T> PikaClassFinder<T> find(Class<T> classToFind) {
         return new PikaClassFinder<>(this, classToFind);
@@ -650,9 +653,9 @@ public class PikaORM {
         }
     }
 
-    //====================================================================
+    // ====================================================================
     // Cache management
-    //====================================================================
+    // ====================================================================
 
     public void startQueryCaching() {
         QUERY_CACHE.set(new QueryCache(logger, logCaching));
@@ -664,9 +667,10 @@ public class PikaORM {
 
     public void clearQueryCache() {
         QueryCache queryCache = QUERY_CACHE.get();
-        if(queryCache != null) {
+        if (queryCache != null) {
             queryCache.clear();
-        };
+        }
+        ;
     }
 
     public QueryCache getQueryCache() {
@@ -679,11 +683,9 @@ public class PikaORM {
         return () -> logQueries = originalValue;
     }
 
-
-    //====================================================================
+    // ====================================================================
     // Connection management
-    //====================================================================
-
+    // ====================================================================
 
     public Connection getNewRawConnection() {
         return safely(connectionSource);
@@ -711,14 +713,15 @@ public class PikaORM {
     private ConnectionSession pushNewSession() {
         ConnectionSession currentSession = getCurrentSession();
         ConnectionSession newSession = new ConnectionSession(this, currentSession);
-        logger.log(PikaLogger.Level.DEBUG, "Created a new connection for Thread {} w/ID {}", Thread.currentThread().getName(), newSession.getUUID());
+        logger.log(PikaLogger.Level.DEBUG, "Created a new connection for Thread {} w/ID {}",
+                Thread.currentThread().getName(), newSession.getUUID());
         CURRENT_SESSION.set(newSession);
         return newSession;
     }
 
-    //====================================================================
+    // ====================================================================
     // Transaction management
-    //====================================================================
+    // ====================================================================
 
     public void inTransaction(Runnable runnable) {
         try {
@@ -823,9 +826,9 @@ public class PikaORM {
         }
     }
 
-    //====================================================================
+    // ====================================================================
     // Database interaction
-    //====================================================================
+    // ====================================================================
 
     public QueryResult<ResultMap> select(String sql) {
         return select(sql, Map.of());
@@ -847,7 +850,8 @@ public class PikaORM {
         return select(sql, args, resultClass, Arrays.asList(colsToMap));
     }
 
-    public <T> QueryResult<T> select(String sql, Map<String, Object> args, Class<T> resultClass, List<String> colsToMap) {
+    public <T> QueryResult<T> select(String sql, Map<String, Object> args, Class<T> resultClass,
+            List<String> colsToMap) {
         return select(sql, args, resultClass, new ColumnsSpec(colsToMap));
     }
 
@@ -858,17 +862,18 @@ public class PikaORM {
         return queryResult;
     }
 
-    public <T> void select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec, PikaList<T> results) {
+    public <T> void select(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec,
+            PikaList<T> results) {
         Mapping mapping = getMapping(resultClass);
         ArrayList<Object> vals = new ArrayList<>();
         String updatedSql = updateSqlVars(sql, args, vals);
         logQuery("Issuing SQL Query:", sql, args);
         try (var session = getOrCreateSession();
-             var ps = session.prepareStatement(updatedSql, vals);
-             var resultSet = session.execute(ps)) {
+                var ps = session.prepareStatement(updatedSql, vals);
+                var resultSet = session.execute(ps)) {
             while (resultSet.next()) {
                 T result = mapping.newObjectFromResult(this, resultSet, columnSpec);
-                if (result instanceof PikaRecordLifecycle lifecycle) {//this throws a warn
+                if (result instanceof PikaRecordLifecycle lifecycle) {// this throws a warn
                     lifecycle.afterSelect();
                 }
                 results.add(result);
@@ -905,11 +910,12 @@ public class PikaORM {
     public <T> Stream<T> stream(String sql, Map<String, Object> args, Class resultClass, ColumnsSpec columnSpec) {
         var session = getCurrentSession();
         if (session == null) {
-            throw new IllegalStateException("You must manually establish a connection with establishConnection() and manage closing the connection yourself before streaming results");
+            throw new IllegalStateException(
+                    "You must manually establish a connection with establishConnection() and manage closing the connection yourself before streaming results");
         }
         Mapping mapping = getMapping(resultClass);
         ArrayList<Object> vals = new ArrayList<>();
-        String updatedSql = updateSqlVars(sql, args, vals);//SQL, Argument Map, Blank Value list to be filled
+        String updatedSql = updateSqlVars(sql, args, vals);// SQL, Argument Map, Blank Value list to be filled
         logQuery("Issuing SQL Query:", sql, args);
         try {
             PreparedStatement ps = session.prepareStatement(updatedSql, vals);
@@ -952,7 +958,7 @@ public class PikaORM {
         }
         Class<?> clazz = object.getClass();
         Mapping mapping = getMapping(clazz);
-        Map<String, Object> values = mapping.toDatabaseMap(object);//this is the place to check?
+        Map<String, Object> values = mapping.toDatabaseMap(object);// this is the place to check?
         String keyCol = null;
         if (mapping.hasIdColumn()) {
             keyCol = mapping.getIdColumn();
@@ -972,7 +978,7 @@ public class PikaORM {
                 values.putIfAbsent(uuidColumn, uuid);
             }
         }
-        // TODO - remove this?  It's an insert...
+        // TODO - remove this? It's an insert...
         if (mapping.hasVersionColumn()) {
             newVersionValue = mapping.incrementVersion(values);
         }
@@ -1045,10 +1051,11 @@ public class PikaORM {
         logQuery("Bulk Insert SQL:", insertString, Map.of());
         logger.log(getQueryLogLevel(), "BULK INSERT SQL: {}\n  Args:{}", insertString, values);
         try (var session = getOrCreateSession();
-             var ps = session.prepareStatement(insertString, values)) {
+                var ps = session.prepareStatement(insertString, values)) {
             time(ps::executeUpdate);
         } catch (Exception e) {
-            logger.log(PikaLogger.Level.ERROR, "Exception in insertAll() with SQL {} & args {}: {}", insertString, values, e.getMessage());
+            logger.log(PikaLogger.Level.ERROR, "Exception in insertAll() with SQL {} & args {}: {}", insertString,
+                    values, e.getMessage());
             throw rethrow(e);
         }
     }
@@ -1080,7 +1087,8 @@ public class PikaORM {
         Collection<Object> queryValues = values.values();
         logger.log(getQueryLogLevel(), "INSERT SQL: {}\n  Args:{}", insertString, queryValues);
         try (var session = getOrCreateSession();
-             var ps = session.prepareStatement(insertString, queryValues, keyCols == null ? new String[0] : keyCols)) {
+                var ps = session.prepareStatement(insertString, queryValues,
+                        keyCols == null ? new String[0] : keyCols)) {
             time(ps::executeUpdate);
             ResultSet generatedKeys = ps.getGeneratedKeys();
             if (keyCols.length > 0 && generatedKeys.next()) {
@@ -1089,7 +1097,8 @@ public class PikaORM {
                 return null;
             }
         } catch (Exception e) {
-            logger.log(PikaLogger.Level.ERROR, "Exception in insert() with SQL {} & args {}: {}", insertString, queryValues, e.getMessage());
+            logger.log(PikaLogger.Level.ERROR, "Exception in insert() with SQL {} & args {}: {}", insertString,
+                    queryValues, e.getMessage());
             throw rethrow(e);
         }
     }
@@ -1125,7 +1134,8 @@ public class PikaORM {
         return update;
     }
 
-    private boolean update(String tableName, String keyCol, Object keyVal, String versionCol, Object versionVal, Map<String, Object> values) {
+    private boolean update(String tableName, String keyCol, Object keyVal, String versionCol, Object versionVal,
+            Map<String, Object> values) {
         if (values.isEmpty()) {
             // nothing to update
             return true;
@@ -1154,11 +1164,12 @@ public class PikaORM {
 
         logQuery("Update SQL: ", updateSQL, values);
         try (var session = getOrCreateSession();
-             var ps = session.prepareStatement(updateSQL, finalValues)) {
+                var ps = session.prepareStatement(updateSQL, finalValues)) {
             int i = time(ps::executeUpdate);
             return i == 1;
         } catch (Exception e) {
-            logger.log(PikaLogger.Level.ERROR, "Exception in update() with SQL {} & args {}: {}", updateSQL, values.values(), e.getMessage());
+            logger.log(PikaLogger.Level.ERROR, "Exception in update() with SQL {} & args {}: {}", updateSQL,
+                    values.values(), e.getMessage());
             throw rethrow(e);
         }
     }
@@ -1184,11 +1195,12 @@ public class PikaORM {
         String deleteSQL = "DELETE FROM " + tableName + "\nWHERE " + keyCol + "=?";
         logQuery("Delete SQL:", deleteSQL, Map.of(keyCol, keyVal));
         try (var session = getOrCreateSession();
-             var ps = session.prepareStatement(deleteSQL, List.of(keyVal))) {
+                var ps = session.prepareStatement(deleteSQL, List.of(keyVal))) {
             int i = time(ps::executeUpdate);
             return i == 1;
         } catch (Exception e) {
-            logger.log(PikaLogger.Level.ERROR, "Exception in delete() with SQL {} & value {}: {}", deleteSQL, keyVal, e.getMessage());
+            logger.log(PikaLogger.Level.ERROR, "Exception in delete() with SQL {} & value {}: {}", deleteSQL, keyVal,
+                    e.getMessage());
             throw rethrow(e);
         }
     }
@@ -1219,7 +1231,7 @@ public class PikaORM {
         }
         logQuery("Executing Raw SQL:", updatedSql, args);
         try (var session = getOrCreateSession();
-             var ps = session.prepareStatement(updatedSql, vals)) {
+                var ps = session.prepareStatement(updatedSql, vals)) {
             boolean result = time(ps::execute);
             return result;
         } catch (Exception e) {
@@ -1292,10 +1304,9 @@ public class PikaORM {
         return finalSql.toString();
     }
 
-
-    //==================================================================
-    //  Metadata stuff
-    //==================================================================
+    // ==================================================================
+    // Metadata stuff
+    // ==================================================================
 
     public PikaORM withMapping(Class classToMap, Mapping mapping) {
         mapping.setOrm(this);
