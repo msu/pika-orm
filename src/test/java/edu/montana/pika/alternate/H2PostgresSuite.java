@@ -6,7 +6,7 @@ import org.junit.platform.suite.api.*;
 
 @Suite
 @SuiteDisplayName("H2 Postgres Suite")
-@SelectPackages({"bigsky.pika"})
+@SelectPackages({"edu.montana.pika"})
 @ExcludeClassNamePatterns({".*ErrorsTest.*", ".*Chinook.*", ".*MigrationsTest"})
 public class H2PostgresSuite {
 

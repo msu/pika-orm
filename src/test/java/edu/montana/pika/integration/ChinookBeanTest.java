@@ -1,7 +1,6 @@
 package edu.montana.pika.integration;
 
 import edu.montana.pika.PikaORM;
-import bigsky.pika.integration.model.beans.*;
 import edu.montana.pika.integration.model.beans.*;
 import edu.montana.pika.query.QueryResult;
 import edu.montana.pika.util.TextTools;

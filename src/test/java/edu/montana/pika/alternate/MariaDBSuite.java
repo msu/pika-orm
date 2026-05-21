@@ -6,7 +6,7 @@ import org.junit.platform.suite.api.*;
 
 @Suite
 @SuiteDisplayName("MariaDB Suite")
-@SelectPackages({"bigsky.pika"})
+@SelectPackages({"edu.montana.pika"})
 @ExcludeClassNamePatterns({".*ErrorsTest.*", ".*Chinook.*", ".*MigrationsTest"})
 public class MariaDBSuite {
 
