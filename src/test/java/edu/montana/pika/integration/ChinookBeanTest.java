@@ -1,7 +1,6 @@
 package edu.montana.pika.integration;
 
 import edu.montana.pika.PikaORM;
-import bigsky.pika.integration.model.beans.*;
 import edu.montana.pika.integration.model.beans.*;
 import edu.montana.pika.query.QueryResult;
 import edu.montana.pika.util.TextTools;
@@ -54,14 +53,12 @@ public class ChinookBeanTest {
         assertEquals(20, firstTwentyAlbums.size());
     }
 
-
     @Test
     void testMultiPaging() {
         var query = AlbumBean.find().page(2).pageSize(20);
         var multiPageQuery = query.fetch();
-        assertEquals("Prenda Minha",multiPageQuery.first().getTitle());
+        assertEquals("Prenda Minha", multiPageQuery.first().getTitle());
     }
-
 
     @Test
     void testOrderBy() {
@@ -98,7 +95,7 @@ public class ChinookBeanTest {
                 .join(TrackBean.class)
                 .join(ArtistBean.class)
                 .where("tracks.Name LIKE 'A%' AND artists.Name LIKE 'A%'")
-                        .fetchList();
+                .fetchList();
 
         assertEquals(6, result.size());
     }

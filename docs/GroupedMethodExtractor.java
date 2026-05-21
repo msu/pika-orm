@@ -1,5 +1,4 @@
-package bigsky.pika.docs;
-
+// package pika.docs;
 
 import java.io.*;
 import java.nio.file.*;
@@ -7,12 +6,10 @@ import java.util.*;
 import java.util.regex.*;
 
 public class GroupedMethodExtractor {
-
-    // === Customize your input file here ===
-    private static final String INPUT_JAVA_FILE = "src/main/java/bigsky/pika/PikaORM.java";
-    private static final String OUTPUT_TEXT_FILE = "PikaMethods.md";
-
     public static void main(String[] args) throws IOException {
+        String INPUT_JAVA_FILE = "src/main/java/edu/montana/pika/PikaORM.java";
+        String OUTPUT_TEXT_FILE = "PikaMethods.md";
+
         String code = Files.readString(Paths.get(INPUT_JAVA_FILE));
         code = removeCommentsAndStrings(code);
 
@@ -113,65 +110,70 @@ public class GroupedMethodExtractor {
 
     private static Map<String, List<String>> extractClassMethods(String code) {
         Map<String, List<String>> result = new LinkedHashMap<>();
-        Deque<String> classStack = new ArrayDeque<>();
-
+        
         Pattern classPattern = Pattern.compile("\\b(class|interface|enum)\\s+(\\w+)");
-        Matcher classMatcher = classPattern.matcher(code);
-
         Pattern methodPattern = Pattern.compile(
-                "(public|protected|private|static|final|abstract|synchronized|\\s)*" +
-                        "[\\w\\<\\>\\[\\]]+\\s+" + // return type
-                        "(\\w+)\\s*" +             // method name
-                        "\\(([^)]*)\\)\\s*" +      // parameters
-                        "(throws[\\w\\.,\\s]+)?\\s*\\{");
+                "(?:\\b(public|protected|private|static|final|abstract|synchronized)\\s+)*" +
+                "[\\w\\<\\>\\[\\]\\?\\s,]+\\s+" + // return type
+                "(\\w+)\\s*" + // method name
+                "\\(([^)]*)\\)\\s*" + // parameters
+                "(?:throws[\\w\\.,\\s]+)?\\s*\\{");
 
-        int index = 0;
-        while (index < code.length()) {
-            int nextClass = indexOfMatch(classPattern, code, index);
-            int nextMethod = indexOfMatch(methodPattern, code, index);
-
-            if ((nextClass != -1 && (nextMethod == -1 || nextClass < nextMethod))) {
-                classMatcher.region(index, code.length());
-                if (classMatcher.find()) {
-                    String className = classMatcher.group(2);
-                    String fullClassName = String.join(".", classStack) +
-                            (classStack.isEmpty() ? "" : ".") + className;
-                    classStack.push(className);
-                    result.put(fullClassName, new ArrayList<>());
-                    index = classMatcher.end();
+        Deque<String> classStack = new ArrayDeque<>();
+        Deque<Integer> depthStack = new ArrayDeque<>();
+        
+        int bracketDepth = 0;
+        int i = 0;
+        int len = code.length();
+        
+        while (i < len) {
+            char c = code.charAt(i);
+            if (c == '{') {
+                bracketDepth++;
+                i++;
+            } else if (c == '}') {
+                if (!depthStack.isEmpty() && bracketDepth == depthStack.peek()) {
+                    classStack.pop();
+                    depthStack.pop();
                 }
-            } else if (nextMethod != -1) {
+                bracketDepth--;
+                i++;
+            } else if (Character.isWhitespace(c)) {
+                i++;
+            } else {
+                Matcher classMatcher = classPattern.matcher(code);
+                classMatcher.region(i, len);
+                if (classMatcher.lookingAt()) {
+                    String className = classMatcher.group(2);
+                    String fullClassName = classStack.isEmpty() ? className : String.join(".", classStack) + "." + className;
+                    classStack.push(className);
+                    depthStack.push(bracketDepth + 1);
+                    result.put(fullClassName, new ArrayList<>());
+                    i = classMatcher.end();
+                    continue;
+                }
+                
                 Matcher methodMatcher = methodPattern.matcher(code);
-                methodMatcher.region(index, code.length());
-                if (methodMatcher.find()) {
-                    if (!classStack.isEmpty()) {
+                methodMatcher.region(i, len);
+                if (methodMatcher.lookingAt()) {
+                    if (!classStack.isEmpty() && bracketDepth == depthStack.peek()) {
                         List<String> classList = new ArrayList<>();
                         classStack.descendingIterator().forEachRemaining(classList::add);
                         String currentClass = String.join(".", classList);
-                        String methodSig = methodMatcher.group(2) + "(" + methodMatcher.group(3).trim() + ")";
+                        
+                        String methodName = methodMatcher.group(2);
+                        String params = methodMatcher.group(3).trim().replaceAll("\\s+", " ");
+                        String methodSig = methodName + "(" + params + ")";
+                        
                         result.computeIfAbsent(currentClass, k -> new ArrayList<>()).add(methodSig);
                     }
-                    index = methodMatcher.end();
+                    i = methodMatcher.end() - 1;
+                    continue;
                 }
-            } else {
-                break;
-            }
-
-            if (index < code.length() && code.charAt(index) == '}') {
-                if (!classStack.isEmpty()) {
-                    classStack.pop();
-                }
-                index++;
-            } else {
-                index++;
+                
+                i++;
             }
         }
-
         return result;
-    }
-
-    private static int indexOfMatch(Pattern pattern, String text, int start) {
-        Matcher matcher = pattern.matcher(text);
-        return matcher.find(start) ? matcher.start() : -1;
     }
 }
