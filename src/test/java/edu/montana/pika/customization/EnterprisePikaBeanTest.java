@@ -455,4 +455,25 @@ public class EnterprisePikaBeanTest extends TestBase {
         assertEquals("Alice", b.getFirstName());
     }
 
+    @Test
+    void testToMapIncludesAllFieldsByDefault() {
+        initTestDb(SampleEPB.DDL);
+        SampleEPB m = new SampleEPB("hello", 7, true, new Date(2024, 1, 1));
+        Map<String, Object> map = m.toMap();
+        assertEquals("hello", map.get("strVal"));
+        assertEquals(7, map.get("intVal"));
+        assertEquals(true, map.get("boolVal"));
+        assertTrue(map.containsKey("dateVal"));
+    }
+
+    @Test
+    void testToMapHonorsFilter() {
+        initTestDb(SampleEPB.DDL);
+        SampleEPB m = new SampleEPB("hello", 7, true, new Date(2024, 1, 1));
+        Map<String, Object> map = m.toMap((obj, name) -> name.equals("strVal") || name.equals("intVal"));
+        assertEquals(2, map.size());
+        assertEquals("hello", map.get("strVal"));
+        assertEquals(7, map.get("intVal"));
+    }
+
 }
