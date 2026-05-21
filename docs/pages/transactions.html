@@ -15,7 +15,7 @@ active_page: transactions
 
             <!-- Transaction flow -->
             <div class="step-flow">
-                <span class="node start">withTransaction()</span>
+                <span class="node start">inTransaction()</span>
                 <span class="arr">→</span>
                 <span class="node">Execute ops</span>
                 <span class="arr">→</span>
@@ -27,7 +27,7 @@ active_page: transactions
             </div>
 
             <h2>Basic Lambda Transactions</h2>
-            <p>PikaORM wraps transactions inside the <code>withTransaction()</code> block. If an exception is thrown
+            <p>PikaORM wraps transactions inside the <code>inTransaction()</code> block. If an exception is thrown
                 inside the lambda, the entire transaction (including nested transactions) is rolled back.</p>
 <pre><code>PikaORM orm = new PikaORM("jdbc:sqlite:test/web.db")
     .withLogLevel(TRACE)
@@ -39,11 +39,11 @@ TransactionDemo foo = new TransactionDemo("foo", 10);
 TransactionDemo bar = new TransactionDemo("bar", -10); // bad value
 
 try {
-    orm.withTransaction(() -&gt; {
+    orm.inTransaction(() -&gt; {
         orm.insert(foo);
 
         // Nested transaction example
-        orm.withTransaction(() -&gt; {
+        orm.inTransaction(() -&gt; {
             orm.insert(bar);
         });
     });

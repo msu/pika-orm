@@ -17,7 +17,7 @@ public class TransactionsTest extends TestBase {
         TransactionDemo bar = new TransactionDemo("bar", -10); // bad value
 
         try {
-            orm.withTransaction(() -> {
+            orm.inTransaction(() -> {
                 orm.insert(foo);
                 orm.insert(bar);
             });
@@ -40,7 +40,7 @@ public class TransactionsTest extends TestBase {
 
         try {
 
-            var x =  orm.withTransaction(() -> {
+            var x =  orm.inTransaction(() -> {
                 orm.insert(foo);
                 orm.insert(bar);
                 return foo;
@@ -63,9 +63,9 @@ public class TransactionsTest extends TestBase {
         TransactionDemo bar = new TransactionDemo("bar", -10); // bad value
 
         try {
-            orm.withTransaction(() -> {
+            orm.inTransaction(() -> {
                 orm.insert(foo);
-                orm.withTransaction(() -> {
+                orm.inTransaction(() -> {
                     orm.insert(bar);
                 });
             });
@@ -87,9 +87,9 @@ public class TransactionsTest extends TestBase {
         TransactionDemo bar = new TransactionDemo("bar", 20); // bad value
 
         try {
-            orm.withTransaction(() -> {
+            orm.inTransaction(() -> {
                 orm.insert(foo);
-                orm.withTransaction(() -> {
+                orm.inTransaction(() -> {
                     orm.insert(bar);
                 });
             });
@@ -111,8 +111,8 @@ public class TransactionsTest extends TestBase {
         TransactionDemo bar = new TransactionDemo("bar", -10); // bad value
 
         try {
-            orm.withTransaction(() -> {
-                orm.withTransaction(() -> {
+            orm.inTransaction(() -> {
+                orm.inTransaction(() -> {
                     orm.insert(foo);
                 });
                 orm.insert(bar); // insert bad after inner transaction

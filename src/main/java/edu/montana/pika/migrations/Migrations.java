@@ -151,7 +151,7 @@ public abstract class Migrations {
      * Applies all outstanding migrations in the order they are declared
      */
     public void applyAll() {
-        orm.withTransaction(() -> {
+        orm.inTransaction(() -> {
             orm.getLogger().log(PikaLogger.Level.INFO, "Applying migrations");
             orm.exec(PikaMigration.DDL);
             var mergedMigrations = loadMigrations(orm);
@@ -278,7 +278,7 @@ public abstract class Migrations {
         }
 
         void runUp(PikaORM orm) {
-            orm.withTransaction(() -> {
+            orm.inTransaction(() -> {
                 String[] upSqlSplitOnSemicolons = getUpSqlSplitOnSemicolons();
                 for (String sql : upSqlSplitOnSemicolons) {
                     if (!sql.isBlank()) {
@@ -297,7 +297,7 @@ public abstract class Migrations {
         }
 
         void runDown(PikaORM orm) {
-            orm.withTransaction(() -> {
+            orm.inTransaction(() -> {
                 String[] upSqlSplitOnSemicolons = getDownSqlSplitOnSemicolons();
                 for (String sql : upSqlSplitOnSemicolons) {
                     if (!sql.isBlank()) {

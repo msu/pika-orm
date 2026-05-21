@@ -3,14 +3,11 @@ package edu.montana.pika;
 import edu.montana.pika.bean.PikaManyRelation;
 import edu.montana.pika.bean.PikaManyThroughRelation;
 import edu.montana.pika.bean.PikaRecordLifecycle;
-import bigsky.pika.cache.*;
 import edu.montana.pika.cache.*;
 import edu.montana.pika.logging.DefaultLogger;
 import edu.montana.pika.logging.PikaLogger;
-import bigsky.pika.mapping.*;
 import edu.montana.pika.mapping.*;
 import edu.montana.pika.migrations.Migrations;
-import bigsky.pika.query.*;
 import edu.montana.pika.query.*;
 import edu.montana.pika.session.ConnectionSession;
 import edu.montana.pika.util.RunnableWithException;
@@ -692,7 +689,7 @@ public class PikaORM {
     // Transaction management
     //====================================================================
 
-    public void withTransaction(Runnable runnable) {
+    public void inTransaction(Runnable runnable) {
         try {
             startTransaction();
             runnable.run();
@@ -703,10 +700,10 @@ public class PikaORM {
         }
     }
 
-    public <T> T withTransaction(Callable<T> runnable) {
+    public <T> T inTransaction(Callable<T> callable) {
         try {
             startTransaction();
-            T result = runnable.call();
+            T result = callable.call();
             commitTransaction();
             return result;
         } catch (Exception e) {
@@ -715,22 +712,14 @@ public class PikaORM {
         }
     }
 
-    public void inTransaction(Runnable runnable) {
-        withTransaction(runnable);
-    }
-
-    public <T> T inTransaction(Callable<T> callable) {
-        return withTransaction(callable);
-    }
-
     public void joinTransaction(Runnable runnable) {
         requireActiveTransaction();
-        withTransaction(runnable);
+        inTransaction(runnable);
     }
 
     public <T> T joinTransaction(Callable<T> callable) {
         requireActiveTransaction();
-        return withTransaction(callable);
+        return inTransaction(callable);
     }
 
     public void forceTransaction(Runnable runnable) {
