@@ -2,6 +2,7 @@ package edu.montana.pika.utils;
 
 import edu.montana.pika.PikaORM;
 import edu.montana.pika.TestBase;
+import edu.montana.pika.mapping.Mapping;
 import edu.montana.pika.query.ResultMap;
 import org.junit.jupiter.api.Test;
 
@@ -176,5 +177,17 @@ public class ResultMapTest extends TestBase {
         assertTrue(empty.isEmpty());
         assertEquals(0, empty.size());
         assertNull(empty.getString("any"));
+    }
+
+    @Test
+    public void testMappingForResultMapInitializesFieldMaps() {
+        var orm = new PikaORM(() -> null);
+        Mapping mapping = new Mapping();
+        mapping.setOrm(orm);
+        mapping.setClass(ResultMap.class);
+
+        assertNotNull(mapping.fieldNameToMapping);
+        assertTrue(mapping.fieldNameToMapping.isEmpty());
+        assertNull(mapping.getFieldMappingForFieldName("anything"));
     }
 }

@@ -286,11 +286,13 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
 
     public PikaQuery<T> pageSize(int pageSize) {
         this.pageSize = pageSize;
+        initResults();
         return this;
     }
 
     public PikaQuery<T> page(long page) {
         this.page = page;
+        initResults();
         return this;
     }
 

@@ -245,4 +245,27 @@ public class PagingTest  extends TestBase {
         assertEquals("http://example.com/todos?page=3", q.nextPageURL(url));
     }
 
+    @Test
+    void testChangingPageInvalidatesCachedResults() {
+        var orm = initTestDb(SampleModel.DDL);
+        seedPages(orm, 25);
+        var q = orm.find(SampleModel.class).page(1).pageSize(10).orderBy("id");
+
+        var firstPage = q.page(1).fetchList();
+        assertEquals("sample 0", firstPage.first().getStrVal());
+
+        var secondPage = q.page(2).fetchList();
+        assertEquals("sample 10", secondPage.first().getStrVal());
+    }
+
+    @Test
+    void testChangingPageSizeInvalidatesCachedResults() {
+        var orm = initTestDb(SampleModel.DDL);
+        seedPages(orm, 25);
+        var q = orm.find(SampleModel.class).page(1).pageSize(10).orderBy("id");
+
+        assertEquals(5, q.pageSize(5).fetchList().size());
+        assertEquals(15, q.pageSize(15).fetchList().size());
+    }
+
 }

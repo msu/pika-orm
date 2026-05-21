@@ -174,7 +174,7 @@ public class FieldMapping {
         try {
             resultSet.findColumn(columnName);
             return true;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             return false;
         }
     }
