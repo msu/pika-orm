@@ -162,6 +162,16 @@ public class PikaClassQuery<T> implements Callable<QueryResult<T>>, PikaIterable
         return this;
     }
 
+    public PikaClassQuery<T> whereBetween(String column, Object low, Object high) {
+        query.whereBetween(column, low, high);
+        return this;
+    }
+
+    public PikaClassQuery<T> orWhereBetween(String column, Object low, Object high) {
+        query.orWhereBetween(column, low, high);
+        return this;
+    }
+
     public PikaClassQuery<T> group() {
         query.group();
         return this;

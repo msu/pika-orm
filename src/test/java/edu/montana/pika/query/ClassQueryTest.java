@@ -187,6 +187,27 @@ public class ClassQueryTest extends TestBase {
     }
 
     @Test
+    void testWhereBetween() {
+        var orm = initTestDb(SampleModel.DDL);
+        seedMixed(orm);
+        var results = orm.query(SampleModel.class)
+                .whereBetween("int_val", 2, 5)
+                .fetchList();
+        assertEquals(3, results.size());
+    }
+
+    @Test
+    void testOrWhereBetween() {
+        var orm = initTestDb(SampleModel.DDL);
+        seedMixed(orm);
+        var results = orm.query(SampleModel.class)
+                .where("str_val = :s", "s", "gamma")
+                .orWhereBetween("int_val", 6, 10)
+                .fetchList();
+        assertEquals(2, results.size());
+    }
+
+    @Test
     void testCount() {
         var orm = initTestDb(SampleModel.DDL);
         seedMixed(orm);
