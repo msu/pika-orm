@@ -9,6 +9,7 @@ import edu.montana.pika.util.TextTools;
 
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.function.BiPredicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
@@ -292,6 +293,22 @@ public class EnterprisePikaBean implements PikaRecordLifecycle {
 
     public boolean isPersisted() {
         return persisted;
+    }
+
+    public Map<String, Object> toMap() {
+        return toMap((obj, name) -> true);
+    }
+
+    public Map<String, Object> toMap(BiPredicate<EnterprisePikaBean, String> filter) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        Mapping mapping = orm().getMapping(this.getClass());
+        for (FieldMapping fm : mapping.fieldNameToMapping.values()) {
+            String name = fm.getFieldName();
+            if (filter.test(this, name)) {
+                result.put(name, fm.getFieldValue(this));
+            }
+        }
+        return result;
     }
 
     @Override

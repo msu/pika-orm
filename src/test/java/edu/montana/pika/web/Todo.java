@@ -2,6 +2,7 @@ package edu.montana.pika.web;
 
 
 import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaManyRelation;
 import edu.montana.pika.query.PikaClassFinder;
 
 import java.util.Date;
@@ -13,12 +14,25 @@ public class Todo extends EnterprisePikaBean {
     String description;
     Date dueDate;
     Boolean completed;
+    long version;
+    Date createdAt;
 
-    public Todo(){}
+    public Todo(){
+        this.completed = false;
+        this.createdAt = new Date();
+    }
 
     public Todo(String title, String description) {
+        this();
         this.title = title;
         this.description = description;
+    }
+
+    @Override
+    protected void validation() {
+        if (title == null || title.trim().isEmpty()) {
+            addError("title", "Title is required");
+        }
     }
 
     public Long getId() {
@@ -55,6 +69,18 @@ public class Todo extends EnterprisePikaBean {
 
     public void setCompleted(Boolean completed) {
         this.completed = completed;
+    }
+
+    public long getVersion() {
+        return version;
+    }
+
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    public PikaManyRelation<Comment> getComments() {
+        return loadMany(Comment.class);
     }
 
     public static PikaClassFinder<Todo> find() {

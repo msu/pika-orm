@@ -16,9 +16,9 @@
         TransactionDemo bar = new TransactionDemo("bar", -10); // bad value
 
         try {
-            orm.withTransaction(() -> {
+            orm.inTransaction(() -> {
                 orm.insert(foo);
-                orm.withTransaction(() -> {
+                orm.inTransaction(() -> {
                     orm.insert(bar);
                 });
             });

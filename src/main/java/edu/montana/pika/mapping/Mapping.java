@@ -40,12 +40,12 @@ public class Mapping {
 
     public void setClass(Class aClass) {
         this.classForTable = aClass;
+        fieldNameToMapping = new LinkedHashMap<>();
+        columnToMapping = new LinkedHashMap<>();
         if (aClass == ResultMap.class) {
             return; // special case
         } else {
             this.tableName = mapToTable();
-            fieldNameToMapping = new LinkedHashMap<>();
-            columnToMapping = new LinkedHashMap<>();
             for (Field field : getAllFields(aClass)) {
                 FieldMapping fieldMapping = mapField(field);
                 if (fieldMapping != null) {

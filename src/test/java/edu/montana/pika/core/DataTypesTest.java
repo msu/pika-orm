@@ -4,8 +4,11 @@ import edu.montana.pika.TestBase;
 import edu.montana.pika.core.model.HasDate;
 import edu.montana.pika.core.model.HasEnum;
 import edu.montana.pika.models.SampleModel;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
@@ -234,6 +237,43 @@ public class DataTypesTest extends TestBase {
 
         SampleModel fromDb = orm.find(SampleModel.class).byId(model.getId());
         assertEquals(unicode, fromDb.getStrVal());
+    }
+
+    // Regression for FieldMapping's Date read-fallback. With a TEXT-affinity column,
+    // sqlite-jdbc serializes Timestamps as millis-as-text but its own getTimestamp
+    // refuses to parse that form back ("Error parsing time stamp"). The fallback path
+    // in FieldMapping.readDateValue recovers via getString + PikaORM.parseDateString.
+    @Test
+    void testDateReadFromTextMillisColumn() {
+        Assumptions.assumeTrue(getMode() == DatabaseMode.SQLITE);
+        var orm = initTestDb("CREATE TABLE has_dates (id INTEGER PRIMARY KEY, date TEXT)");
+        long millis = 1779396033628L;
+        orm.exec("INSERT INTO has_dates (id, date) VALUES (1, '" + millis + "')");
+        HasDate fromDb = orm.find(HasDate.class).byId(1);
+        assertNotNull(fromDb);
+        assertEquals(millis, fromDb.getDate().getTime());
+    }
+
+    @Test
+    void testDateReadFromIsoTextColumn() {
+        Assumptions.assumeTrue(getMode() == DatabaseMode.SQLITE);
+        var orm = initTestDb("CREATE TABLE has_dates (id INTEGER PRIMARY KEY, date TEXT)");
+        orm.exec("INSERT INTO has_dates (id, date) VALUES (1, '2026-05-21T14:40:33.628')");
+        HasDate fromDb = orm.find(HasDate.class).byId(1);
+        assertNotNull(fromDb);
+        LocalDateTime expected = LocalDateTime.of(2026, 5, 21, 14, 40, 33, 628_000_000);
+        assertEquals(Date.from(expected.atZone(ZoneId.systemDefault()).toInstant()), fromDb.getDate());
+    }
+
+    @Test
+    void testDateReadFromSqlSpaceTextColumn() {
+        Assumptions.assumeTrue(getMode() == DatabaseMode.SQLITE);
+        var orm = initTestDb("CREATE TABLE has_dates (id INTEGER PRIMARY KEY, date TEXT)");
+        orm.exec("INSERT INTO has_dates (id, date) VALUES (1, '2026-05-21 14:40:33')");
+        HasDate fromDb = orm.find(HasDate.class).byId(1);
+        assertNotNull(fromDb);
+        LocalDateTime expected = LocalDateTime.of(2026, 5, 21, 14, 40, 33);
+        assertEquals(Date.from(expected.atZone(ZoneId.systemDefault()).toInstant()), fromDb.getDate());
     }
 
 }

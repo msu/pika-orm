@@ -116,6 +116,22 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
         return orWhere(column + " LIKE :" + varName).withVar(varName, pattern);
     }
 
+    public PikaQuery<T> whereBetween(String column, Object low, Object high) {
+        String lowVar = "VAR_" + integer.getAndIncrement();
+        String highVar = "VAR_" + integer.getAndIncrement();
+        return where(column + " BETWEEN :" + lowVar + " AND :" + highVar)
+                .withVar(lowVar, low)
+                .withVar(highVar, high);
+    }
+
+    public PikaQuery<T> orWhereBetween(String column, Object low, Object high) {
+        String lowVar = "VAR_" + integer.getAndIncrement();
+        String highVar = "VAR_" + integer.getAndIncrement();
+        return orWhere(column + " BETWEEN :" + lowVar + " AND :" + highVar)
+                .withVar(lowVar, low)
+                .withVar(highVar, high);
+    }
+
     public PikaQuery<T> group() {
         openGroup(" AND ");
         return this;
@@ -286,11 +302,13 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
 
     public PikaQuery<T> pageSize(int pageSize) {
         this.pageSize = pageSize;
+        initResults();
         return this;
     }
 
     public PikaQuery<T> page(long page) {
         this.page = page;
+        initResults();
         return this;
     }
 

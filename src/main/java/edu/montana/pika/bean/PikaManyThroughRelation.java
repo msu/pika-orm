@@ -69,7 +69,7 @@ public class PikaManyThroughRelation<J, T> implements PikaIterable<T> {
         if (obj instanceof EnterprisePikaBean epb) {
             epb.save();
         } else {
-            orm.insert(newMember);
+            orm.insert(obj);
         }
         reload();
         return obj;

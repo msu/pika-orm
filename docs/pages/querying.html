@@ -93,6 +93,11 @@ List&lt;Foo&gt; foos = fooContainer.getFoos().toList();
 Foo newFoo = new Foo();
 fooContainer.getFoos().addAndSave(newFoo);</code></pre>
 
+            <!-- TODO: port the "Avoiding N+1: Bulk-Loading Children" section
+                 from docs/docs_draft/advanced-querying.md (lines ~612-701).
+                 Covers whereIn + PikaIterable.toMap / toDistinctMap as the
+                 deliberate replacement for an eager-loading API. -->
+
             <div class="pull-quote">
                 <blockquote>Pick the query style that matches how close to the metal you want to be.</blockquote>
                 <cite>— PikaORM docs</cite>

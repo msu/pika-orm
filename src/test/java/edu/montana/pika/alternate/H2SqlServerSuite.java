@@ -6,7 +6,7 @@ import org.junit.platform.suite.api.*;
 
 @Suite
 @SuiteDisplayName("H2 SQLServer Suite")
-@SelectPackages({"bigsky.pika"})
+@SelectPackages({"edu.montana.pika"})
 @ExcludeClassNamePatterns({".*ErrorsTest.*", ".*Chinook.*", ".*MigrationsTest"})
 public class H2SqlServerSuite {
 
