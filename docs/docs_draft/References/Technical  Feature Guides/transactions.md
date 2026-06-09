@@ -1,13 +1,13 @@
 # Transactions in PikaORM
 
-> Transactions are handled very simplistically in PikaORM, using LAMDA's as the core function
+> Transactions are handled very simplistically in PikaORM, using LAMBDA's as the core function
 
 
 
 ```java
 		 // init the ORM
         PikaORM orm = new PikaORM("jdbc:sqlite:test/web.db") // DB connection string
-                .withLogLevel(TRACE)
+                .withLogLevel(TRACE) // Include logging options to the ORM object
                 .makeDefaultORM()
                 .withMigrations(new TransactionDemo())
                 .applyMigrations();
