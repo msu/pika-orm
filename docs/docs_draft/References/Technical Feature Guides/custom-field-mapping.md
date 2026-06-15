@@ -1,4 +1,9 @@
-# Comprehensive migrations (Metadata/mapping customizations)
+---
+title: "Custom Field Mapping and Metadata"
+layout: default
+---
+
+# Custom Field Mapping and Metadata
 
 This guide covers how to create custom field mappings and metadata transformations in PikaORM, allowing you to handle complex data types, custom serialization, and specialized database storage requirements.
 
@@ -100,8 +105,6 @@ public class HasCustomizedMetadata {
 ```
 
 > All customized mapping is done by overriding the methods for metadata mapping with the `Mapping` Class as well as `FieldMapping`. We recommend using the `switch` and `case` statement for better readability with your custom classes. This also shows the setup in addition to a standard `Migration` layout for Pika as well
-
-
 
 ### Example of full Collection Serialization Custom Mapping
 
@@ -268,7 +271,5 @@ public void testCustomMapping() {
  
 }
 ```
-
-
 
 > Overall the sky is the limit! We can't wait to see what kind of crazy migrations and custom metadata architecture the community could create, we hope these examples can point you in the right direction.

@@ -1,61 +1,59 @@
-> Ahh yes, just what we need: another ORM....
+---
+title: "Get Started with PikaORM"
+layout: default
+---
 
-# Welcome to PikaORM, the lightweight, MicroORM!🐭 
+# Welcome to PikaORM
 
-## Why Pika...?
+PikaORM is a lightweight, conceptual Object Relational Mapper for Java.
 
-Check out our [Philosophy of Pika](./philosophy-of-pika.md) page to see why we think pika is useful
+## Why PikaORM
 
-## **The Need-To-Know Pika Essentials before you scurry 🐁💨 to your first project...**
+Check out our [Philosophy of Pika]({{ site.baseurl }}/docs_draft/References/System%20Understanding/philosophy-of-pika.md) page to see why we think Pika is useful.
 
-#### 1. **Concision is king.**
+## Core Essentials
 
-- Pika approaches the ORM problem with [simplicity](grugbrain.dev) which means:
-  - No config files.
-  - Intuitive builder-method based API design that is ***all code.***
-  - Vast customizable mappings/models/features all using plain java classes.
-  - Easy to understand code base for personal modification.
+**1. Concision is key.**
+Pika approaches the ORM problem with simplicity, which means:
+- No external configuration files or annotations.
+- Intuitive builder method-based API design.
+- Highly customizable mappings, models, and features all using plain Java classes.
+- An easy to understand codebase for personal modification.
 
-### 2. Pika doesn't hide much SQL from you
+**2. Pika exposes SQL.**
+If you cannot do something simplistically with Pika logic, you are encouraged to use raw SQL. You are given multiple entry points to do this directly within the ORM.
 
-- if you cannot do something *simplistically* with Pika logic, you are encouraged to using raw SQL *(You are given many ways to do this)*!
+**3. Dual database mapping paradigms.**
+Pika provides both a SQL-native paradigm and a POJO (Plain Old Java Object) leaning side. These are not mutually exclusive. You are encouraged to use both approaches as your domain requires.
 
-### 3. Pika has two *flavors* of database mapping features. 
+## Supported Databases
 
-- A more SQL native paradigm, and a POJO [(Plain ole' Java Objects)](https://en.wikipedia.org/wiki/Plain_old_Java_object) object leaning side. These are by no means exclusive features in usage, and in fact you are encouraged to used both ideas for different things!
+- **SQLite**: Must use `.withSQLiteQuirks()` on ORM configuration for small corner cases.
+- **H2**: Supports In-Memory, Oracle, PostgreSQL, and SQLServer dialects.
+- **MariaDB**: Supported with standard JDBC usage.
 
-> Found below are all the following quick starts one would need to jump strait into Pika usage with there given database type in a web application. *NOTE:* We will take requests, and changes for specific type databases at our own discretion! If you really really want something added, add it yourself you are smart!
+## Navigation Guide
 
-### Supported databases (UPDATED)
-
-- **SQLite** (Must use .sqlLiteQuirks() on ORM configuration for small corner cases, most native to PikaORM)
-
-- **H2** (In Memory, Oracle, PostgreSQL, SQLServer)
-
-- **MariaDB** (Has some small problems with `insertAll` so maybe avoid!)
-
-> Are you looking at all of this going, what the *dookie* does this all mean, **why and what is an ORM**? Check out are super uber beginner guide get started, I promise it's not that tough :)
+Are you new to databases or ORMs? Check out our beginner guides to understand the core concepts. If you already know SQL and ORMs, follow the chart below to find what you need.
 
 ```mermaid
 flowchart TD
-    U{Read 'Get Started'}
-    U --> A
-    A{Do I know how SQL works?}
-    A -->|Yes!| B[Have I used/comfortable using an ORM?]
-    B --> |Yes!|F[Are you looking to jump strait into using Pika?]
-    F --> |Yes!|H[Refer to 'Example Projects' and 'Walkthrough Game']
-    F --> |I want to learn how it works more first|J[What do you want to learn?]
-    B --> |Nope|E
-    A -->|Nope| C[Refer to 'New to Databases']
-    C --> |Read|D['What are databases']
-    D --> |Read|E['What is an ORM?']
-    E --> A
-
-
-    J --> |Architecture|L[Refer to 'Architecture Overview']
-    J --> |Features|P[Refer to the 'Technical Features' guides, or the 'Walkthrough Game' which shows the most important feature usages] 
-    J --> |Philosophy of Software|K[Refer to 'Philosophy of Pika']
-
-
+    Start{Where are you in your journey?}
+    
+    Start --> |I don't know SQL|ReadDB["What are Databases?"]
+    ReadDB --> ReadORM["What is an ORM?"]
+    ReadORM --> NextStep
+    
+    Start -->|I know SQL & ORMs| NextStep{What do you want to do?}
+    
+    NextStep -->|Just show me code!| Patterns[Patterns]
+    Patterns --> Quickstart["Web Quickstart"]
+    Patterns --> CommonPatterns["Feature Patterns (N+1, Caching, etc)"]
+    
+    NextStep -->|I want to understand the framework| System[System Understanding]
+    System --> Phil["Philosophy of Pika"]
+    System --> Arch["Architecture"]
+    
+    NextStep -->|I need technical details| Ref[Master Reference]
+    Ref --> TechGuides["Technical Feature Guides"]
 ```
-

@@ -12,7 +12,6 @@ kramdown:
 
 # Exclude non-site files from the build
 exclude:
-  - docs_draft/
   - "template inspo/"
   - GroupedMethodExtractor.java
   - checklist.md
