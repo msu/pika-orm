@@ -9,11 +9,14 @@ baseurl: ""
 markdown: kramdown
 kramdown:
   input: GFM
+  syntax_highlighter: rouge
+
+permalink: pretty
 
 # Exclude non-site files from the build
 exclude:
   - "template inspo/"
-  - GroupedMethodExtractor.java
-  - checklist.md
   - Gemfile
   - Gemfile.lock
+  - TODO.md
+  - PikaMethods.md

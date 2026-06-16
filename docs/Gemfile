@@ -1,7 +1,4 @@
 source "https://rubygems.org"
 
-# Use Jekyll directly — avoids pulling in ffi 1.17+ which requires Ruby 3.0+
-# (system Ruby on macOS is 2.6)
 gem "jekyll", "~> 4.3"
-gem "ffi", "< 1.17"   # ffi 1.17+ requires Ruby >= 3.0
-gem "webrick"          # built-in HTTP server (explicit for clarity)
+gem "webrick"   # required for Ruby 3.x (no longer bundled)
