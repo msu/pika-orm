@@ -1,0 +1,22 @@
+---
+layout: none
+permalink: /search.json
+---
+[
+  {% assign first = true %}
+  {% for p in site.pages %}
+    {% unless p.url contains '.xml' or p.url contains '.json' or p.url == '/search.json' or p.url contains 'assets' or p.layout == 'none' %}
+      {% if p.title and p.title != '' %}
+        {% unless first %},{% endunless %}
+        {% assign first = false %}
+        {
+          "id":       {{ forloop.index }},
+          "title":    {{ p.title    | jsonify }},
+          "url":      {{ p.url      | jsonify }},
+          "category": {{ p.category | default: "" | jsonify }},
+          "content":  {{ p.content  | strip_html | strip_newlines | truncate: 500 | jsonify }}
+        }
+      {% endif %}
+    {% endunless %}
+  {% endfor %}
+]

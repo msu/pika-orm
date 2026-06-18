@@ -1,0 +1,19 @@
+<!-- Fixed tab toggle — sits on the outer (left) edge of the sidebar border, flush with topbar -->
+<button
+  id="toc-toggle"
+  class="toc-sidebar-tab"
+  aria-label="Collapse table of contents"
+  aria-expanded="true"
+  aria-controls="sidebar-right"
+>
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <polyline points="9 18 15 12 9 6"/>
+  </svg>
+</button>
+
+<aside class="sidebar-right" id="sidebar-right" aria-label="On this page">
+  <div class="toc-header">On this page</div>
+  <nav id="toc" class="toc" aria-label="Table of contents">
+    <!-- Populated by main.js -->
+  </nav>
+</aside>

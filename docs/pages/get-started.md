@@ -6,31 +6,6 @@ active_page: get-started
 permalink: /
 ---
 
-<div class="page-hero">
-  <div class="page-hero-text">
-    <span class="kicker">🐭 Getting Started</span>
-    <h1>Welcome to PikaORM</h1>
-    <p style="font-size: 1.12em; max-width: 44ch; color: var(--ink); font-weight: 500;">
-      The lightweight MicroORM for Java — <em>no config files</em>, no magic, just clean
-      builder-style API over plain SQL.
-    </p>
-  </div>
-  <div class="sticker">
-    <span class="badge">Micro<br>ORM</span>
-    <span class="dot d1"></span>
-    <span class="dot d2"></span>
-    <span class="dot d3"></span>
-    <span class="emoji-big" aria-label="lightning bolt">⚡</span>
-  </div>
-</div>
-
-<div class="chips">
-  <div class="chip"><span class="em">🚫</span><strong>0</strong> config files</div>
-  <div class="chip"><span class="em">🏗️</span><strong>Builder</strong> API</div>
-  <div class="chip"><span class="em">☕</span><strong>Pure</strong> Java</div>
-  <div class="chip"><span class="em">🗃️</span><strong>Raw SQL</strong> friendly</div>
-  <div class="chip"><span class="em">🌊</span><strong>Streaming</strong> support</div>
-</div>
 
 PikaORM is a lightweight Object Relational Mapper for Java. Check out our [Philosophy of Pika](/pages/philosophy/) to see why we built it the way we did.
 
@@ -80,12 +55,3 @@ flowchart TD
     NextStep --> |"Technical reference"| Ref[Master Reference]
     Ref --> TechGuides["Technical Feature Guides"]
 ```
-
-<nav class="page-nav">
-  <span></span>
-  <span class="sep">/</span>
-  <a class="nxt" href="/pages/quickstart/">
-    <div><span class="lbl">Next →</span><span class="nm">Web QuickStart</span></div>
-    <span class="em">🚀</span>
-  </a>
-</nav>

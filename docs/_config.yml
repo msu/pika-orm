@@ -10,13 +10,17 @@ markdown: kramdown
 kramdown:
   input: GFM
   syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: highlight
 
 permalink: pretty
 
 # Exclude non-site files from the build
 exclude:
-  - "template inspo/"
   - Gemfile
   - Gemfile.lock
   - TODO.md
   - PikaMethods.md
+
+# Accent color — change this one value to retheme the site
+accent_color: "#5b5bd6"

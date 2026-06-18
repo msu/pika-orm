@@ -1,0 +1,28 @@
+<nav class="sidebar-left" id="sidebar-left" aria-label="Documentation navigation">
+  {% for section in site.data.nav %}
+  <div class="nav-section">
+    <button
+      class="nav-section-header"
+      aria-expanded="true"
+      aria-controls="nav-section-{{ section.id }}"
+      data-section-id="{{ section.id }}"
+    >
+      <span class="nav-section-title">{{ section.category }}</span>
+      <svg class="nav-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </button>
+    <ul class="nav-links" id="nav-section-{{ section.id }}" role="list">
+      {% for nav_page in section.pages %}
+      <li>
+        <a
+          href="{{ nav_page.url }}"
+          class="nav-link{% if page.active_page == nav_page.active_page %} nav-link--active{% endif %}"
+          {% if page.active_page == nav_page.active_page %}aria-current="page"{% endif %}
+        >{{ nav_page.title }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</nav>

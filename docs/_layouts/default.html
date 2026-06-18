@@ -1,101 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="{{ page.description | default: site.description }}">
-    <title>{{ page.title }} · PikaORM</title>
-    <link rel="stylesheet" href="/assets/css/pika-style.css">
+  {% include head.html %}
 </head>
-
 <body>
-    <aside class="sidebar">
-        <a href="/" class="brand">
-            <span class="logo">⚡</span> PikaORM
-        </a>
-        <nav>
-            <div class="nav-group-title">Getting Started</div>
-            <ul class="nav-links">
-                <li><a href="/" {% if page.active_page == 'get-started' %}class="active"{% endif %}>Get Started</a></li>
-                <li><a href="/pages/philosophy/" {% if page.active_page == 'philosophy' %}class="active"{% endif %}>Philosophy</a></li>
-                <li><a href="/pages/quickstart/" {% if page.active_page == 'quickstart' %}class="active"{% endif %}>Web QuickStart</a></li>
-            </ul>
+  {% include topbar.html %}
 
-            <div class="nav-group-title" style="margin-top: 1.4rem;">New to Databases?</div>
-            <ul class="nav-links">
-                <li><a href="/pages/what-are-databases/" {% if page.active_page == 'what-are-databases' %}class="active"{% endif %}>What are Databases?</a></li>
-                <li><a href="/pages/what-is-an-orm/" {% if page.active_page == 'what-is-an-orm' %}class="active"{% endif %}>What is an ORM?</a></li>
-            </ul>
+  <div class="layout-shell">
+    {% include sidebar-left.html %}
 
-            <div class="nav-group-title" style="margin-top: 1.4rem;">Core Concepts</div>
-            <ul class="nav-links">
-                <li><a href="/pages/querying/" {% if page.active_page == 'querying' %}class="active"{% endif %}>Advanced Querying</a></li>
-                <li><a href="/pages/migrations/" {% if page.active_page == 'migrations' %}class="active"{% endif %}>Migrations</a></li>
-                <li><a href="/pages/streaming/" {% if page.active_page == 'streaming' %}class="active"{% endif %}>Streaming</a></li>
-                <li><a href="/pages/transactions/" {% if page.active_page == 'transactions' %}class="active"{% endif %}>Transactions</a></li>
-                <li><a href="/pages/relationships/" {% if page.active_page == 'relationships' %}class="active"{% endif %}>Relationships</a></li>
-                <li><a href="/pages/paging/" {% if page.active_page == 'paging' %}class="active"{% endif %}>Paging</a></li>
-            </ul>
-
-            <div class="nav-group-title" style="margin-top: 1.4rem;">Advanced Features</div>
-            <ul class="nav-links">
-                <li><a href="/pages/logging/" {% if page.active_page == 'logging' %}class="active"{% endif %}>Logging</a></li>
-                <li><a href="/pages/ejb/" {% if page.active_page == 'ejb' %}class="active"{% endif %}>Enterprise Beans</a></li>
-                <li><a href="/pages/db-mapping-configuration/" {% if page.active_page == 'db-mapping-configuration' %}class="active"{% endif %}>DB Mapping Config</a></li>
-                <li><a href="/pages/custom-field-mapping/" {% if page.active_page == 'custom-field-mapping' %}class="active"{% endif %}>Custom Field Mapping</a></li>
-                <li><a href="/pages/coercion-system/" {% if page.active_page == 'coercion-system' %}class="active"{% endif %}>Coercion System</a></li>
-                <li><a href="/pages/optimistic-concurrency/" {% if page.active_page == 'optimistic-concurrency' %}class="active"{% endif %}>Optimistic Concurrency</a></li>
-                <li><a href="/pages/lifecycle-callbacks/" {% if page.active_page == 'lifecycle-callbacks' %}class="active"{% endif %}>Lifecycle Callbacks</a></li>
-                <li><a href="/pages/query-caching/" {% if page.active_page == 'query-caching' %}class="active"{% endif %}>Query Caching</a></li>
-            </ul>
-
-            <div class="nav-group-title" style="margin-top: 1.4rem;">Patterns</div>
-            <ul class="nav-links">
-                <li><a href="/pages/n-plus-1-avoidance/" {% if page.active_page == 'n-plus-1' %}class="active"{% endif %}>N+1 Avoidance</a></li>
-                <li><a href="/pages/query-caching-pattern/" {% if page.active_page == 'query-caching-pattern' %}class="active"{% endif %}>Query Caching Pattern</a></li>
-                <li><a href="/pages/connection-logging/" {% if page.active_page == 'connection-logging' %}class="active"{% endif %}>Standard Logging</a></li>
-                <li><a href="/pages/custom-mapping/" {% if page.active_page == 'custom-mapping' %}class="active"{% endif %}>Custom Mapping</a></li>
-            </ul>
-
-            <div class="nav-group-title" style="margin-top: 1.4rem;">Reference</div>
-            <ul class="nav-links">
-                <li><a href="/pages/master-reference/" {% if page.active_page == 'master-reference' %}class="active"{% endif %}>Master Reference</a></li>
-                <li><a href="/pages/architecture/" {% if page.active_page == 'architecture' %}class="active"{% endif %}>Architecture</a></li>
-                <li><a href="/pages/understanding-test-suite/" {% if page.active_page == 'understanding-test-suite' %}class="active"{% endif %}>Test Suite Guide</a></li>
-            </ul>
-        </nav>
-    </aside>
-
-    <div class="main-container">
-        <main class="content">
-            {{ content }}
-        </main>
+    <div class="layout-center">
+      <main class="prose" id="main-content" tabindex="-1">
+        {{ content }}
+      </main>
+      {% include footer.html %}
     </div>
 
-    <!-- Mermaid.js for diagram rendering -->
-    <script type="module">
-        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-        mermaid.initialize({
-            startOnLoad: true,
-            theme: 'base',
-            themeVariables: {
-                primaryColor: '#f66e1f',
-                primaryTextColor: '#1a1210',
-                primaryBorderColor: '#c4511a',
-                lineColor: '#c4511a',
-                secondaryColor: '#fdf3ec',
-                tertiaryColor: '#fffdf9',
-                background: '#fffdf9',
-                mainBkg: '#fdf3ec',
-                nodeBorder: '#c4511a',
-                clusterBkg: '#fffdf9',
-                titleColor: '#1a1210',
-                edgeLabelBackground: '#fffdf9',
-                fontFamily: 'ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif'
-            }
-        });
-    </script>
-</body>
+    {% include sidebar-right.html %}
+  </div>
 
+  <!-- Mermaid -->
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+    // Convert kramdown's <pre><code class="language-mermaid"> blocks to <div class="mermaid">
+    document.querySelectorAll('pre code.language-mermaid').forEach(function(codeEl) {
+      var pre = codeEl.parentElement;
+      var div = document.createElement('div');
+      div.className = 'mermaid';
+      div.textContent = codeEl.textContent;
+      pre.parentNode.replaceChild(div, pre);
+    });
+
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#ededfc',
+        primaryTextColor: '#1c1c2e',
+        primaryBorderColor: '#5b5bd6',
+        lineColor: '#5b5bd6',
+        secondaryColor: '#f5f5ff',
+        tertiaryColor: '#fafafa',
+        background: '#ffffff',
+        mainBkg: '#ededfc',
+        nodeBorder: '#5b5bd6',
+        clusterBkg: '#f5f5ff',
+        titleColor: '#1c1c2e',
+        edgeLabelBackground: '#ffffff',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        fontSize: '14px'
+      }
+    });
+  </script>
+
+  <!-- Main JS: sidebar toggle, TOC builder, search -->
+  <script src="/assets/js/main.js"></script>
+</body>
 </html>
