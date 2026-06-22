@@ -6,11 +6,18 @@
       <span class="toggle-bar"></span>
       <span class="toggle-bar"></span>
     </button>
-    <a href="/" class="topbar-brand" aria-label="PikaORM home">
-      <img src="/PikaORMLogo.png" alt="PikaORM logo" class="topbar-logo" onerror="this.style.display='none'">
+    <a href="{{ '/' | relative_url }}" class="topbar-brand" aria-label="PikaORM home">
+      <img src="{{ '/PikaORMLogo.png' | relative_url }}" alt="PikaORM logo" class="topbar-logo" onerror="this.style.display='none'">
       <span class="topbar-name">PikaORM</span>
     </a>
   </div>
+
+  <nav class="topbar-nav" aria-label="Global">
+    <a href="{{ '/' | relative_url }}" class="topbar-nav-link">Get Started</a>
+    <a href="{{ '/pages/master-reference/' | relative_url }}" class="topbar-nav-link">Docs</a>
+    <a href="{{ '/pages/patterns-hub/' | relative_url }}" class="topbar-nav-link">Patterns</a>
+    <a href="{{ '/pages/changelog/' | relative_url }}" class="topbar-nav-link">Changelog</a>
+  </nav>
 
   <div class="topbar-right">
     <!-- Search -->

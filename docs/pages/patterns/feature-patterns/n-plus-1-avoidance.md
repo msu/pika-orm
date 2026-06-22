@@ -41,7 +41,7 @@ try {
     orm.endQueryCaching();
 }
 ```
-*Note: This does not solve the N+1 problem for the initial load, but it prevents it from becoming 2N+1 or worse.* See the [Query Caching Pattern](/pages/query-caching-pattern/) for more details.
+*Note: This does not solve the N+1 problem for the initial load, but it prevents it from becoming 2N+1 or worse.* See the [Query Caching Pattern]({{ '/pages/query-caching-pattern/' | relative_url }}) for more details.
 
 ## Solution 2: Bulk Loading with WHERE IN (The Performant Way)
 

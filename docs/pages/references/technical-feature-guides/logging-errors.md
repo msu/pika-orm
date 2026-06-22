@@ -60,7 +60,7 @@ PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
 
 ### Query Cache Logging
 
-If you are using the [Query Caching System](/pages/query-caching/), you can explicitly log cache hits and misses. This is incredibly useful for debugging N+1 queries.
+If you are using the [Query Caching System]({{ '/pages/query-caching/' | relative_url }}), you can explicitly log cache hits and misses. This is incredibly useful for debugging N+1 queries.
 
 ```java
 PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
@@ -93,4 +93,4 @@ This suppression is Thread-Local. It applies only to the current thread for the 
 
 To route PikaORM logs to a standard enterprise logging framework, use the `.withLogger()` method. 
 
-See the [Connection to Standard Logging Interfaces](/pages/connection-logging/) pattern guide for complete code examples on wiring PikaORM to SLF4J, Log4j2, and `java.util.logging`.
+See the [Connection to Standard Logging Interfaces]({{ '/pages/connection-logging/' | relative_url }}) pattern guide for complete code examples on wiring PikaORM to SLF4J, Log4j2, and `java.util.logging`.

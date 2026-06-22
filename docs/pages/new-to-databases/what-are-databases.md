@@ -61,4 +61,4 @@ The core operations in SQL are often referred to as **CRUD** (Create, Read, Upda
 
 Now that you understand databases and SQL, you might wonder how this fits into writing a Java application. That is exactly what an ORM handles.
 
-Head over to [What is an ORM?](/pages/what-is-an-orm/) to learn how Object Relational Mapping connects your Java code to your database.
+Head over to [What is an ORM?]({{ '/pages/what-is-an-orm/' | relative_url }}) to learn how Object Relational Mapping connects your Java code to your database.

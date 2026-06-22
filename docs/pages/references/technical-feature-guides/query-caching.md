@@ -48,4 +48,4 @@ Because the keys are based on exact foreign key matches, PikaORM can guarantee t
 
 ## Example Usage
 
-See the [Query Caching Pattern](/pages/query-caching-pattern/) guide for a practical example of wrapping a web request in a caching block.
+See the [Query Caching Pattern]({{ '/pages/query-caching-pattern/' | relative_url }}) guide for a practical example of wrapping a web request in a caching block.

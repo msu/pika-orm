@@ -16,7 +16,7 @@
       {% for nav_page in section.pages %}
       <li>
         <a
-          href="{{ nav_page.url }}"
+          href="{{ nav_page.url | relative_url }}"
           class="nav-link{% if page.active_page == nav_page.active_page %} nav-link--active{% endif %}"
           {% if page.active_page == nav_page.active_page %}aria-current="page"{% endif %}
         >{{ nav_page.title }}</a>

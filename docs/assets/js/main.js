@@ -254,7 +254,8 @@
 
     // Load search index JSON
     function loadSearchData() {
-      fetch('/search.json')
+      const baseUrl = window.siteBaseUrl || '';
+      fetch(baseUrl + '/search.json')
         .then(function (r) { return r.json(); })
         .then(function (data) {
           pagesData = data;
@@ -341,13 +342,14 @@
       }
 
       const top = hits.slice(0, 8);
+      const baseUrl = window.siteBaseUrl || '';
       const html = top.map(function (hit) {
         const page = pagesData[parseInt(hit.ref, 10)];
         if (!page) return '';
         // Excerpt: try to find a snippet containing the first matched term
         const rawContent = (page.content || '').replace(/\s+/g, ' ').trim();
         const excerpt    = findExcerpt(rawContent, q, 140);
-        return '<a href="' + escHtml(page.url) + '" class="search-result-item">'
+        return '<a href="' + escHtml(baseUrl + page.url) + '" class="search-result-item">'
           + (page.category ? '<div class="search-result-category">' + escHtml(page.category) + '</div>' : '')
           + '<div class="search-result-title">'  + highlight(page.title || page.url) + '</div>'
           + (excerpt ? '<div class="search-result-excerpt">' + highlight(excerpt) + '\u2026</div>' : '')

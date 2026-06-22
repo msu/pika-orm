@@ -74,7 +74,7 @@ Global overrides are useful when the entire database follows a different standar
 
 Any class can define a `public static Mapping mapping()` method. If this method is present, PikaORM completely ignores the global conventions for this class and uses your defined `Mapping` object instead.
 
-See the [Custom Field Mapping](/pages/custom-field-mapping/) guide for details on building class-specific mappings.
+See the [Custom Field Mapping]({{ '/pages/custom-field-mapping/' | relative_url }}) guide for details on building class-specific mappings.
 
 ### External Classes
 

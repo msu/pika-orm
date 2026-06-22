@@ -7,7 +7,7 @@ permalink: /
 ---
 
 
-PikaORM is a lightweight Object Relational Mapper for Java. Check out our [Philosophy of Pika](/pages/philosophy/) to see why we built it the way we did.
+PikaORM is a lightweight Object Relational Mapper for Java. Check out our [Philosophy of Pika]({{ '/pages/philosophy/' | relative_url }}) to see why we built it the way we did.
 
 ## Core Essentials
 

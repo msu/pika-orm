@@ -79,4 +79,4 @@ public class UserPreferences {
 3. **`defaultMapping(field)` fallback**: Always include a `default` case that returns `defaultMapping(field)`. This ensures that if you add new, simple fields to the class later, they are mapped automatically without requiring updates to the switch block.
 4. **`transformForDB` and `transformFromDB`**: These hooks let you define how data transitions between your Java type and the SQL type defined by `asType()`.
 
-For exhaustive details on what you can configure, see the [Custom Field Mapping and Metadata](/pages/custom-field-mapping/) technical guide.
+For exhaustive details on what you can configure, see the [Custom Field Mapping and Metadata]({{ '/pages/custom-field-mapping/' | relative_url }}) technical guide.

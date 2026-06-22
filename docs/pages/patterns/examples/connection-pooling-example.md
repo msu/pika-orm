@@ -1,6 +1,7 @@
 ---
 title: "Connection Pooling with HikariCP"
 layout: default
+permalink: /pages/patterns/examples/connection-pooling-example/
 ---
 
 # Connection Pooling with HikariCP

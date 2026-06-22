@@ -88,4 +88,4 @@ UserProfile profile = orm.loadReverse(user, UserProfile.class);
 
 Relationship methods execute a database query immediately upon fetching the results (`.toList()`). If you loop over 50 artists and call `.loadMany(artist, Album.class).toList()`, you will execute 50 queries.
 
-To learn how to bulk-load relationships effectively in PikaORM, read the [N+1 Query Avoidance](/pages/n-plus-1-avoidance/) pattern guide.
+To learn how to bulk-load relationships effectively in PikaORM, read the [N+1 Query Avoidance]({{ '/pages/n-plus-1-avoidance/' | relative_url }}) pattern guide.
