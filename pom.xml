@@ -3,7 +3,7 @@
 
     <artifactId>pika-orm</artifactId>
     <groupId>edu.montana</groupId>
-    <version>1.0-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
