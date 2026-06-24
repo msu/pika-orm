@@ -1,9 +1,9 @@
 package edu.montana.pika.integration.model.beans;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 
-public class GenreBean extends EnterprisePikaBean {
+public class GenreBean extends PikaBean {
 
     int genreId;
     String name;

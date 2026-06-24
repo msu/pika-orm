@@ -101,7 +101,7 @@ var explain = SampleEgb.find().byQuery()
     .explain();
 ```
 
-#### Static Method Integration (for EPB-enabled models)
+#### Static Method Integration (for PikaBean-enabled models)
 ```java
 var query = SampleEgb.find().byQuery()
     .where("date_val < :val")

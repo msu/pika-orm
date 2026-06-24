@@ -56,7 +56,7 @@ public class PikaManyRelation<T> implements PikaIterable<T> {
 
     public void addAndSave(T newMember) {
         add(newMember);
-        if (newMember instanceof EnterprisePikaBean epb) {
+        if (newMember instanceof PikaBean epb) {
             epb.save();
         } else {
             Object idForNewMember = mappingForMany.getId(newMember);

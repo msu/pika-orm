@@ -57,9 +57,9 @@
     - title: "Optimistic Concurrency"
       url: "/pages/optimistic-concurrency/"
       active_page: "optimistic-concurrency"
-    - title: "Enterprise Beans"
-      url: "/pages/ejb/"
-      active_page: "ejb"
+    - title: "PikaBean (Active Record)"
+      url: "/pages/pika-bean/"
+      active_page: "pika-bean"
 
 - category: "Examples"
   id: examples

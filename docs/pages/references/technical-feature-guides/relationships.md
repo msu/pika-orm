@@ -10,7 +10,7 @@ permalink: /pages/relationships/
 
 PikaORM handles relationships without requiring complex annotations. Relationships are resolved dynamically at runtime by reading your Java objects and using standard foreign key conventions.
 
-There are four primary relationship methods available on the `PikaORM` instance. If your class extends `EnterprisePikaBean`, these methods are also available directly on the object.
+There are four primary relationship methods available on the `PikaORM` instance. If your class extends `PikaBean`, these methods are also available directly on the object.
 
 ## One-to-Many (`loadMany`)
 

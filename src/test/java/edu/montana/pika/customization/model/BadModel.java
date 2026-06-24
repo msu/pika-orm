@@ -1,8 +1,8 @@
 package edu.montana.pika.customization.model;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 
-public class BadModel extends EnterprisePikaBean {
+public class BadModel extends PikaBean {
     public static final String DDL = """
             CREATE TABLE IF NOT EXISTS bad_models (
                 id INTEGER PRIMARY KEY

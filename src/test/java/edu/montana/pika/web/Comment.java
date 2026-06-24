@@ -1,11 +1,11 @@
 package edu.montana.pika.web;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 
 import java.util.Date;
 
-public class Comment extends EnterprisePikaBean {
+public class Comment extends PikaBean {
 
     Long id;
     Long todoId;

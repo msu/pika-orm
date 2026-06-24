@@ -1,13 +1,13 @@
 package edu.montana.pika.integration.model.beans;
 
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 
 import java.math.BigDecimal;
 import java.util.Date;
 
-public class InvoiceBean extends EnterprisePikaBean {
+public class InvoiceBean extends PikaBean {
 
     int invoiceId;
     int customerId;

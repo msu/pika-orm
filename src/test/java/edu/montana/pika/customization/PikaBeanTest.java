@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class EnterprisePikaBeanTest extends TestBase {
+public class PikaBeanTest extends TestBase {
 
     // Basic CRUD operations
     @Test

@@ -66,7 +66,7 @@ public class PikaManyThroughRelation<J, T> implements PikaIterable<T> {
 
     public J addAndSave(T newMember) {
         J obj = add(newMember);
-        if (obj instanceof EnterprisePikaBean epb) {
+        if (obj instanceof PikaBean epb) {
             epb.save();
         } else {
             orm.insert(obj);
@@ -109,7 +109,7 @@ public class PikaManyThroughRelation<J, T> implements PikaIterable<T> {
                 .where(joinClassMapping.getTableName() + "." + elementToRemoveFk + "=:elementId")
                 .withVar("elementId", elementToRemove.getId(element));
         for (Object joinObject : joinObjects) {
-            if(joinObject instanceof EnterprisePikaBean epb) {
+            if(joinObject instanceof PikaBean epb) {
                 epb.delete();
             } else {
                 orm.delete(joinObject);

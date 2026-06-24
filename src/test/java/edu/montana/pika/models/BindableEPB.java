@@ -1,9 +1,9 @@
 package edu.montana.pika.models;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 
-public class BindableEPB extends EnterprisePikaBean {
+public class BindableEPB extends PikaBean {
 
     public static final String DDL = """
             CREATE TABLE IF NOT EXISTS bindable_epbs (

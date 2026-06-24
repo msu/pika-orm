@@ -1,10 +1,10 @@
 package edu.montana.pika.integration.model.beans;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 
 import java.util.Map;
 
-public class PlaylistTrackBean extends EnterprisePikaBean {
+public class PlaylistTrackBean extends PikaBean {
 
     Long playlistId;
     Long trackId;

@@ -278,4 +278,4 @@ PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
 
 ### sloppyCoerce()
 
-`sloppyCoerce()` is a tolerant variant: if normal coercion throws and the input is not already a String, it converts the value to a `String` and runs the pipeline again. `EnterprisePikaBean.setFieldsFrom(Map)` uses it internally to bind raw HTTP form parameters into typed fields without fatal casting exceptions.
+`sloppyCoerce()` is a tolerant variant: if normal coercion throws and the input is not already a String, it converts the value to a `String` and runs the pipeline again. `PikaBean.setFieldsFrom(Map)` uses it internally to bind raw HTTP form parameters into typed fields without fatal casting exceptions.

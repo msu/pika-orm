@@ -1,12 +1,12 @@
 package edu.montana.pika.models;
 
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 
 import java.util.Date;
 
-public class SampleEPB extends EnterprisePikaBean {
+public class SampleEPB extends PikaBean {
 
     public static final String DDL = """
             CREATE TABLE IF NOT EXISTS sample_epbs (

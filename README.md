@@ -68,9 +68,9 @@ CREATE TABLE my_models (
 
 ## CRUD with POJOS
 
-## CRUD with EnterprisePikaBeans
+## CRUD with PikaBeans
 
-### Validation in EnterprisePikaBeans
+### Validation in PikaBeans
 
 ## Raw Queries
 

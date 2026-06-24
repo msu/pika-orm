@@ -1,8 +1,8 @@
 package edu.montana.pika.features.model;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 
-public class OptimisticBean extends EnterprisePikaBean {
+public class OptimisticBean extends PikaBean {
 
     public static final String DDL = """
             CREATE TABLE IF NOT EXISTS optimistic_beans (

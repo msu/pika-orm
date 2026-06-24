@@ -1,9 +1,9 @@
 package edu.montana.pika.integration.model.beans;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 
-public class InvoiceItemBean extends EnterprisePikaBean {
+public class InvoiceItemBean extends PikaBean {
 
     int invoiceItemId;
     int invoiceId;

@@ -10,7 +10,7 @@ permalink: /pages/lifecycle-callbacks/
 
 PikaORM allows your domain objects to hook into the database execution pipeline. You do this by implementing the `PikaRecordLifecycle` interface. 
 
-*(Note: If your class extends `EnterprisePikaBean`, it implements this interface automatically, and you simply override the methods you need).*
+*(Note: If your class extends `PikaBean`, it implements this interface automatically, and you simply override the methods you need).*
 
 ## Available Hooks
 
@@ -59,7 +59,7 @@ public interface PikaRecordLifecycle {
 ### SELECT Flow
 
 1. *PikaORM executes the SELECT SQL statement and instantiates your object.*
-2. `afterSelect()`: Runs immediately after PikaORM has finished mapping data from the `ResultSet` into your fields. This is commonly used to take a snapshot of the object's original state (which is how the dirty-field optimization works in `EnterprisePikaBean`).
+2. `afterSelect()`: Runs immediately after PikaORM has finished mapping data from the `ResultSet` into your fields. This is commonly used to take a snapshot of the object's original state (which is how the dirty-field optimization works in `PikaBean`).
 
 ## Abort Semantics
 

@@ -1,12 +1,12 @@
 package edu.montana.pika.integration.model.beans;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 import edu.montana.pika.bean.PikaManyRelation;
 
 import java.util.Date;
 
-public class EmployeeBean extends EnterprisePikaBean {
+public class EmployeeBean extends PikaBean {
 
     Long employeeId;
     String lastName;

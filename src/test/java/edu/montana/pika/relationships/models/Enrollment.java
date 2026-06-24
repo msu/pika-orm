@@ -1,9 +1,9 @@
 package edu.montana.pika.relationships.models;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 
-public class Enrollment extends EnterprisePikaBean {
+public class Enrollment extends PikaBean {
     Long id;
     Long studentId;
     Long courseId;

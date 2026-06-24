@@ -18,7 +18,7 @@ permalink: /pages/architecture/
 edu.montana.pika
 ├── PikaORM.java                ← Central orchestrator / entry point
 ├── bean/
-│   ├── EnterprisePikaBean.java ← Active-record base class
+│   ├── PikaBean.java ← Active-record base class
 │   ├── PikaRecordLifecycle.java← Lifecycle callback interface
 │   ├── PikaManyRelation.java   ← One-to-Many relation holder
 │   └── PikaManyThroughRelation.java ← Many-to-Many (join table) holder
@@ -220,7 +220,7 @@ classDiagram
         +stream() Stream~T~
     }
 
-    class EnterprisePikaBean {
+    class PikaBean {
         +boolean persisted
         +Map~String,Object~ originalValues
         +Map errors
@@ -338,10 +338,10 @@ classDiagram
     Mapping --> FieldMapping : "one per mapped field"
     Mapping --> ColumnsSpec : "uses in newObjectFromResult"
 
-    EnterprisePikaBean ..|> PikaRecordLifecycle
-    EnterprisePikaBean --> PikaORM : "orm() static accessor"
-    EnterprisePikaBean --> PikaManyRelation : "loadMany() returns"
-    EnterprisePikaBean --> PikaManyThroughRelation : "loadManyThrough() returns"
+    PikaBean ..|> PikaRecordLifecycle
+    PikaBean --> PikaORM : "orm() static accessor"
+    PikaBean --> PikaManyRelation : "loadMany() returns"
+    PikaBean --> PikaManyThroughRelation : "loadManyThrough() returns"
 
     PikaManyRelation --> PikaClassQuery : "toQuery() builds"
     PikaManyThroughRelation --> PikaClassQuery : "toQuery() builds"
@@ -610,7 +610,7 @@ flowchart TD
 | Method           | Description                                                  |
 | ---------------- | ------------------------------------------------------------ |
 | `add(T)`         | Sets the FK field on `newMember` to `one`'s PK. Does **not** save. |
-| `addAndSave(T)`  | Calls `add()` then persists (via `save()` for EPB or `insert()`/`update()` otherwise). |
+| `addAndSave(T)`  | Calls `add()` then persists (via `save()` for PikaBean or `insert()`/`update()` otherwise). |
 | `create()`       | Creates a new instance with FK pre-set.                      |
 | `findById(long)` | Finds a specific member within this relation by its PK.      |
 | `toQuery()`      | Returns a `PikaClassQuery` for further filtering.            |
@@ -627,13 +627,13 @@ flowchart TD
 
 ---
 
-### 3.8 — EnterprisePikaBean: Active-Record Layer
+### 3.8 — PikaBean: Active-Record Layer
 
-`EnterprisePikaBean` (EPB) is an optional base class that wires a domain object directly into PikaORM via the default static `PikaORM.get()`.
+`PikaBean` is an optional base class that wires a domain object directly into PikaORM via the default static `PikaORM.get()`.
 
 ```mermaid
 flowchart TD
-    subgraph EPB ["EnterprisePikaBean"]
+    subgraph PikaBean ["PikaBean"]
         direction LR
         EPB_PERSIST["persisted flag\noriginalValues snapshot"]
         EPB_ERRORS["errors Map\n field → PikaList&lt;String&gt;"]
@@ -643,11 +643,11 @@ flowchart TD
         EPB_UTIL["setFieldsFrom(Map,fields)\ngetOriginalValue(field)\nisIdEquivalent(obj)\nisPersisted()"]
     end
 
-    EPB --> PRL[PikaRecordLifecycle]
+    PikaBean --> PRL[PikaRecordLifecycle]
     PRL -.->|"afterSelect() sets persisted=true\nand snapshots originalValues"| EPB_PERSIST
     EPB_PERSIST -.->|"beforeUpdate() strips unchanged fields\noptimising UPDATE payloads"| EPB_CRUD
 
-    EPB -.->|"save() dispatches"| D{"isPersisted?"}
+    PikaBean -.->|"save() dispatches"| D{"isPersisted?"}
     D -->|yes| UPD["orm().update(this)"]
     D -->|no| INS["orm().insert(this)"]
     UPD -->|"marks persisted again"| EPB_PERSIST
@@ -672,7 +672,7 @@ flowchart TD
 
 ### 3.9 — Lifecycle Callback System
 
-`PikaRecordLifecycle` is implemented either directly on any POJO or by extending `EnterprisePikaBean`.
+`PikaRecordLifecycle` is implemented either directly on any POJO or by extending `PikaBean`.
 
 ```mermaid
 sequenceDiagram
@@ -707,7 +707,7 @@ sequenceDiagram
 ```
 
 > [!NOTE]
-> Returning `false` from `validate()`, `beforeInsert()`, `beforeUpdate()`, or `beforeDelete()` causes the operation to **abort silently** (returns `null` or `false`). No exception is thrown. For EPB subclasses, `saveOrThrow()` will throw `IllegalStateException` if the operation fails.
+> Returning `false` from `validate()`, `beforeInsert()`, `beforeUpdate()`, or `beforeDelete()` causes the operation to **abort silently** (returns `null` or `false`). No exception is thrown. For PikaBean subclasses, `saveOrThrow()` will throw `IllegalStateException` if the operation fails.
 
 ---
 

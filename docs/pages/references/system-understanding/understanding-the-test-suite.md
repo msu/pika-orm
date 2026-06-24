@@ -21,7 +21,7 @@ The test suite is organized by feature area under `src/test/java/edu/montana/pik
 | Package / Test | Description |
 |---|---|
 | `TestBase` | Base class handling database initialization and cross-dialect testing. |
-| `integration.ChinookBeanTest` | Massive end-to-end test using the standard Chinook database schema. Validates complex queries, relationships, and EPB. |
+| `integration.ChinookBeanTest` | Massive end-to-end test using the standard Chinook database schema. Validates complex queries, relationships, and PikaBean. |
 | `relationships.*` | Tests for `OneToNTest` and `ManyToManyTest`. |
 | `query.*` | Tests for the `PikaClassQuery` builder, caching, and raw SQL queries. |
 | `mapping.*` | Tests for default mappings, coercion logic, and `ColumnsSpec`. |
@@ -67,5 +67,5 @@ void myFeatureTest() {
 The test suite uses a few standardized classes for testing:
 
 1. **`SampleModel`**: A simple POJO with basic fields (String, Integer, Boolean, Date). It includes a static `DDL` constant for easy table creation.
-2. **`SampleEgb`**: An `EnterprisePikaBean` subclass used to test the Active Record pattern, lifecycle hooks, and dirty-field optimization.
+2. **`SampleEgb`**: An `PikaBean` subclass used to test the Active Record pattern, lifecycle hooks, and dirty-field optimization.
 3. **Chinook Entities**: The `integration` package uses standard Chinook database entities (e.g., `Artist`, `Album`, `Track`) to test complex relationships and foreign key resolution.

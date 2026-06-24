@@ -1,18 +1,16 @@
 ---
 layout: default
-title: "Enterprise Java Beans Support"
-description: "PikaORM EnterprisePikaBean: active record pattern, smart save, dirty-field tracking, validation, and web form binding."
-active_page: ejb
-permalink: /pages/ejb/
+title: "PikaBean (Active Record)"
+description: "PikaORM PikaBean: active record pattern, smart save, dirty-field tracking, validation, and web form binding."
+active_page: pika-bean
+permalink: /pages/pika-bean/
 ---
 
-# EnterprisePikaBean (Active Record Pattern)
+# PikaBean (Active Record Pattern)
 
-PikaORM provides an optional active-record base class called `EnterprisePikaBean` (EPB). 
+PikaORM provides an optional active-record base class called `PikaBean`.
 
-While you can use PikaORM with plain Java classes by passing them into `orm.insert(obj)` and `orm.update(obj)`, extending `EnterprisePikaBean` wires the domain object directly to the default `PikaORM.get()` instance. This allows the object to manage its own persistence, validation, and lifecycle.
-
-*Note: This is a lightweight ORM-focused bean system and has no relation to heavy J2EE Enterprise JavaBeans.*
+While you can use PikaORM with plain Java classes by passing them into `orm.insert(obj)` and `orm.update(obj)`, extending `PikaBean` wires the domain object directly to the default `PikaORM.get()` instance. This allows the object to manage its own persistence, validation, and lifecycle.
 
 ## Key Features
 
@@ -24,12 +22,12 @@ While you can use PikaORM with plain Java classes by passing them into `orm.inse
 
 ## Basic Usage
 
-### Creating an EPB
+### Creating an PikaBean
 
 ```java
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 
-public class User extends EnterprisePikaBean {
+public class User extends PikaBean {
     private String name;
     private String email;
     private Integer age;
@@ -83,7 +81,7 @@ existing.delete();
 
 ### Dirty-Field Optimization
 
-When an EPB is loaded from the database via a SELECT query, PikaORM takes a snapshot of its fields (`originalValues`).
+When an PikaBean is loaded from the database via a SELECT query, PikaORM takes a snapshot of its fields (`originalValues`).
 
 When you call `update()` or `save()`, PikaORM's `beforeUpdate` lifecycle hook compares the current field values against the `originalValues` map. Any fields whose values are identical are stripped from the `UPDATE` payload. This drastically reduces the size of SQL statements and prevents overwriting changes made by other processes to unrelated columns.
 
@@ -91,7 +89,7 @@ If no fields have changed, `update()` returns `false` and skips the database rou
 
 ### Validation and `saveOrThrow()`
 
-EPB contains a built-in error map.
+PikaBean contains a built-in error map.
 
 ```java
 User user = new User();
@@ -118,7 +116,7 @@ user.saveOrThrow();
 
 When processing form submissions, you often have a `Map<String, String[]>`, `Map<String, String>`, or a form-data provider. Extracting these and parsing strings to integers or dates is tedious.
 
-EPB provides `setFieldsFrom()` to securely bind map values to your object using PikaORM's Coercion System:
+PikaBean provides `setFieldsFrom()` to securely bind map values to your object using PikaORM's Coercion System:
 
 ```java
 // Simulated web request form data
@@ -140,7 +138,7 @@ user.saveOrThrow();
 
 ### Relationship Loading
 
-EPB provides shortcuts to PikaORM's relationship methods:
+PikaBean provides shortcuts to PikaORM's relationship methods:
 
 ```java
 // Instead of orm.loadMany(this, Order.class)

@@ -13,7 +13,7 @@ import java.util.function.BiPredicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
-public class EnterprisePikaBean implements PikaRecordLifecycle {
+public class PikaBean implements PikaRecordLifecycle {
 
     private transient boolean persisted;
     private final transient Map<String, PikaList<String>> errors = new LinkedHashMap<>();
@@ -237,11 +237,11 @@ public class EnterprisePikaBean implements PikaRecordLifecycle {
         orm().reload(this);
     }
 
-    public <T extends EnterprisePikaBean> T setFieldsFrom(Map<String, String> map, String... fields) {
+    public <T extends PikaBean> T setFieldsFrom(Map<String, String> map, String... fields) {
         return setFieldsFrom((UnaryOperator<String>) map::get, fields);
     }
 
-    public <T extends EnterprisePikaBean> T setFieldsFrom(UnaryOperator<String> supplier, String... fields) {
+    public <T extends PikaBean> T setFieldsFrom(UnaryOperator<String> supplier, String... fields) {
         for (String col : fields) {
             String str = supplier.apply(col);
             setValueFromString(col, str);
@@ -280,7 +280,7 @@ public class EnterprisePikaBean implements PikaRecordLifecycle {
     }
 
     public boolean isIdEquivalent(Object object) {
-        if(object instanceof EnterprisePikaBean) {
+        if(object instanceof PikaBean) {
             if(object.getClass().equals(this.getClass())) {
                 Mapping mapping = orm().getMapping(this.getClass());
                 Object myId = mapping.getId(this);
@@ -299,7 +299,7 @@ public class EnterprisePikaBean implements PikaRecordLifecycle {
         return toMap((obj, name) -> true);
     }
 
-    public Map<String, Object> toMap(BiPredicate<EnterprisePikaBean, String> filter) {
+    public Map<String, Object> toMap(BiPredicate<PikaBean, String> filter) {
         Map<String, Object> result = new LinkedHashMap<>();
         Mapping mapping = orm().getMapping(this.getClass());
         for (FieldMapping fm : mapping.fieldNameToMapping.values()) {

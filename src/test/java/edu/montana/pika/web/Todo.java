@@ -1,13 +1,13 @@
 package edu.montana.pika.web;
 
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.bean.PikaManyRelation;
 import edu.montana.pika.query.PikaClassFinder;
 
 import java.util.Date;
 
-public class Todo extends EnterprisePikaBean {
+public class Todo extends PikaBean {
 
     Long id;
     String title;

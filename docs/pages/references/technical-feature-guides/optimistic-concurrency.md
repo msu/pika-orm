@@ -23,7 +23,7 @@ When OCC is active for a class, PikaORM expects the database table to have an in
    UPDATE table SET ..., version = 2 WHERE id = ? AND version = 1
    ```
 4. If another process updated the record between steps 1 and 3, the `version` in the database will be `2`. The `WHERE version = 1` clause will fail to match any rows.
-5. PikaORM notices that 0 rows were updated and returns `false` from `orm.update()`. If you are using `EnterprisePikaBean`'s `.saveOrThrow()`, it throws a `ConcurrentModificationException`.
+5. PikaORM notices that 0 rows were updated and returns `false` from `orm.update()`. If you are using `PikaBean`'s `.saveOrThrow()`, it throws a `ConcurrentModificationException`.
 
 ## Enabling OCC
 

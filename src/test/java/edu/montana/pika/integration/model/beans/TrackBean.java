@@ -1,10 +1,10 @@
 package edu.montana.pika.integration.model.beans;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 import edu.montana.pika.bean.PikaManyThroughRelation;
 
-public class TrackBean extends EnterprisePikaBean {
+public class TrackBean extends PikaBean {
 
     Long trackId;
     String name;

@@ -1,10 +1,10 @@
 package edu.montana.pika.integration.model.beans;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 import edu.montana.pika.bean.PikaManyRelation;
 
-public class ArtistBean extends EnterprisePikaBean {
+public class ArtistBean extends PikaBean {
 
     Long artistId;
     String name;

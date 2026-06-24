@@ -1,10 +1,10 @@
 package edu.montana.pika.relationships.models;
 
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.query.PikaClassFinder;
 import edu.montana.pika.bean.PikaManyThroughRelation;
 
-public class Student extends EnterprisePikaBean {
+public class Student extends PikaBean {
     Long id;
     String name;
 

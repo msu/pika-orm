@@ -26,7 +26,8 @@ permalink: /
 <div class="hero-code-inner" markdown="1">
 
 ```java
-import edu.montana.pika.bean.EnterprisePikaBean;
+import edu.montana.pika.bean.PikaBean;
+import edu.montana.pika.query.PikaClassFinder;
 
 // ActiveRecord style classes map to tables, e.g. `todos`  
 public class Todo extends PikaBean {
@@ -38,6 +39,11 @@ public class Todo extends PikaBean {
 
     public void setTitle(String title)             { this.title = title; }
     public void setDescription(String description)  { this.description = description; }
+
+    // A typed entry point for queries against this table
+    public static PikaClassFinder<Todo> find() {
+        return find(Todo.class);
+    }
 
     @Override
     protected void validation() {
@@ -57,8 +63,9 @@ todo.setTitle("Read the docs");
 todo.setDescription("Finish the PikaORM guide");
 todo.saveOrThrow();
 
-// Query with the fluent builder...
-PikaList<Todo> active = orm.query(Todo.class)
+// Look one up by id, or run a fluent query through find()...
+Todo first = Todo.find().byId(1L);
+PikaList<Todo> active = Todo.find()
         .where("completed = :done", "done", false)
         .fetchList();
 
