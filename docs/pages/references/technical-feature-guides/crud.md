@@ -8,146 +8,93 @@ permalink: /pages/crud/
 
 # CRUD
 
-PikaORM provides an optional active-record base class called `PikaBean`.
+A `PikaBean` is a plain class that maps to a table and saves itself. Extend it, add fields, and you get `insert()`, `find()`, `update()`, and `delete()` against the default ORM.
 
-While you can use PikaORM with plain Java classes by passing them into `orm.insert(obj)` and `orm.update(obj)`, extending `PikaBean` wires the domain object directly to the default `PikaORM.get()` instance. This allows the object to manage its own persistence, validation, and lifecycle.
+Set the default ORM once at startup with `makeDefaultORM()` (see [Get Started]({{ '/pages/get-started/' | relative_url }})). Every bean uses it.
 
-## Key Features
-
-- **Active Record Methods**: Call `.save()`, `.insert()`, `.update()`, or `.delete()` directly on the object.
-- **Smart Save**: `save()` automatically chooses whether to `insert` or `update` based on the bean's internal persistence state.
-- **Change Tracking (Dirty-field optimization)**: Tracks original values and only updates columns that have actually changed.
-- **Built-in Validation**: Field-level error handling using `require()` and `requireUnique()`.
-- **Web Form Binding**: Safely bind string maps from web requests directly to fields using `setFieldsFrom()`.
-
-## Basic Usage
-
-### Creating an PikaBean
+## Define a bean
 
 ```java
 import edu.montana.pika.bean.PikaBean;
+import edu.montana.pika.query.PikaClassFinder;
 
 public class User extends PikaBean {
-    private String name;
-    private String email;
-    private Integer age;
-    
-    // Default constructor is required
+    Long id;
+    String name;
+    String email;
+
     public User() {}
-    
-    // getters and setters...
-    
-    @Override
-    protected void validation() {
-        // Built-in validation helpers
-        require("name");
-        require("email");
-        requireUnique("email");
-        
-        // Custom validation logic
-        if (age != null && age < 18) {
-            addError("age", "User must be 18 or older");
-        }
+
+    public void setName(String name)   { this.name = name; }
+    public void setEmail(String email) { this.email = email; }
+
+    // Typed entry point for queries. One line of boilerplate per bean.
+    public static PikaClassFinder<User> find() {
+        return find(User.class);
     }
 }
 ```
 
-### CRUD Operations
+Fields map to columns by convention: `User` to table `users`, `email` to column `email`. Pika reads and writes fields directly, so getters and setters are optional (add them for your own code).
+
+## Create
+
+Make a new bean, set its fields, and call `insert()`. Pika runs an `INSERT` and hands you back the generated primary key. It also sets the `id` field on the object.
 
 ```java
-// Create new record
-User user = new User();
-user.setName("John Doe");
-user.setEmail("john@example.com");
+User u = new User();
+u.setName("Ada");
+u.setEmail("ada@example.com");
 
-if (user.validate()) {
-    // Automatically uses PikaORM.get()
-    Long id = user.insert(); // Returns generated ID
-}
-
-// Alternatively, use save() which figures out if it's new
-user.save();
-
-// Update existing record
-User existing = User.find(User.class).byId(1L);
-existing.setName("Jane Doe");
-existing.save(); // Automatically calls update() since it was loaded from the DB
-
-// Delete record
-existing.delete();
+long id = u.insert();   // INSERT, returns the generated key (and sets u.id)
 ```
 
-## Advanced Features
+## Read
 
-### Dirty-Field Optimization
-
-When an PikaBean is loaded from the database via a SELECT query, PikaORM takes a snapshot of its fields (`originalValues`).
-
-When you call `update()` or `save()`, PikaORM's `beforeUpdate` lifecycle hook compares the current field values against the `originalValues` map. Any fields whose values are identical are stripped from the `UPDATE` payload. This drastically reduces the size of SQL statements and prevents overwriting changes made by other processes to unrelated columns.
-
-If no fields have changed, `update()` returns `false` and skips the database round-trip entirely.
-
-### Validation and `saveOrThrow()`
-
-PikaBean contains a built-in error map.
+`find()` is your entry point for queries. The two everyday reads are by primary key and by some other column:
 
 ```java
-User user = new User();
-user.setEmail("invalid-email");
-
-if (!user.validate()) {
-    if (user.hasErrors()) {
-        System.out.println("Validation failed: " + user.getErrorString("email"));
-    }
-}
+User u   = User.find().byId(1L);                          // by primary key
+User ada = User.find().byKey("email", "ada@example.com"); // by any column
+PikaList<User> all = User.find().all().toList();          // every row
 ```
 
-If you prefer exceptions over boolean checks (e.g., in a web framework where an exception handler returns a 400 Bad Request), use `saveOrThrow()`:
+`byId` and `byKey` return a single bean, or `null` if nothing matches. `all()` gives you every row. For filtering, ordering, and joins, see [Querying]({{ '/pages/querying/' | relative_url }}).
+
+## Update
+
+Load a bean, change it, and call `update()`. Pika writes an `UPDATE` that targets the row by its primary key.
 
 ```java
-User user = new User();
-user.setName(""); // Fails the require("name") validation
-
-// Throws IllegalStateException if validation fails
-user.saveOrThrow(); 
+User u = User.find().byId(1L);
+u.setName("Ada Lovelace");
+u.update();             // UPDATE by primary key
 ```
 
-### Web Form Binding (`setFieldsFrom`)
+Pika remembers the values the bean had when you loaded it and only writes the columns you actually changed. If nothing changed, `update()` does no SQL and returns `false`.
 
-When processing form submissions, you often have a `Map<String, String[]>`, `Map<String, String>`, or a form-data provider. Extracting these and parsing strings to integers or dates is tedious.
+## Delete
 
-PikaBean provides `setFieldsFrom()` to securely bind map values to your object using PikaORM's Coercion System:
+Load a bean and call `delete()`. Pika deletes the row by its primary key.
 
 ```java
-// Simulated web request form data
-Map<String, Object> formData = Map.of(
-    "name", "Alice",
-    "age", "25", // String that needs to become an Integer
-    "isAdmin", "true"
-);
-
-User user = new User();
-
-// ONLY bind the specific fields we permit.
-// This prevents Mass Assignment Vulnerabilities (e.g., if the user tried 
-// to inject "isAdmin=true", it is ignored because it's not in the allowlist).
-user.setFieldsFrom(formData, "name", "age");
-
-user.saveOrThrow();
+User u = User.find().byId(1L);
+u.delete();             // DELETE by primary key
 ```
 
-### Relationship Loading
+## save(): insert or update
 
-PikaBean provides shortcuts to PikaORM's relationship methods:
+When you do not want to track whether an object is new, call `save()`. It runs `insert()` for a fresh object and `update()` for one that came from the database.
 
 ```java
-// Instead of orm.loadMany(this, Order.class)
-PikaManyRelation<Order> orders = user.loadMany(Order.class);
+User u = new User();
+u.setName("Grace");
+u.save();               // new object -> INSERT
 
-// Many-to-many
-PikaManyThroughRelation<UserRole, Role> roles = 
-    user.loadManyThrough(UserRole.class, Role.class);
-
-// Belongs-to / single relation
-Company company = user.load(Company.class);
+u.setName("Grace Hopper");
+u.save();               // already persisted -> UPDATE
 ```
+
+Reach for `save()` when you do not want to track which case you are in; use `insert()` / `update()` when you do.
+
+Validating a bean before it saves and binding web form data onto it are covered in [Validation & Forms]({{ '/pages/validation/' | relative_url }}). Loading related records is covered in [Relationships]({{ '/pages/relationships/' | relative_url }}).

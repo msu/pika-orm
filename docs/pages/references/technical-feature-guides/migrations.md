@@ -1,18 +1,18 @@
 ---
 layout: default
 title: "Migrations"
-description: "PikaORM Migrations: define and manage database schema entirely in Java, with CLI console support."
+description: "Define and evolve your database schema in Java with PikaORM migrations and the migration console."
 active_page: migrations
 permalink: /pages/migrations/
 ---
 
 # Migrations
 
-PikaORM includes a built-in migration engine. It allows you to define and manage your database schema entirely in Java code, ensuring that your database structure evolves consistently alongside your application logic.
+You define your schema in Java, not in a loose pile of `.sql` files. Each change is a migration with an `up` (apply it) and a `down` (roll it back). Pika tracks which migrations have run, so applying them is safe to do on every startup.
 
-## Defining Migrations
+## Define migrations
 
-Migrations are defined by creating a class that extends `edu.montana.pika.migrations.Migrations`. You override the `migrations()` method and call `add()` to register discrete units of work.
+Extend `Migrations`, override `migrations()`, and register each change with `add()`. They run in the order you add them.
 
 ```java
 import edu.montana.pika.migrations.Migrations;
@@ -22,17 +22,15 @@ public class AppMigrations extends Migrations {
 
     @Override
     public void migrations() {
-        // Order matters! Migrations run in the order they are added.
-        add(this::createUsersTable);
+        add(this::createUsers);
         add(this::addEmailToUsers);
     }
 
-    public PikaMigration createUsersTable() {
+    public PikaMigration createUsers() {
         return makeMigration("001_create_users")
-                .description("Creates the initial users table")
                 .up("""
                     CREATE TABLE IF NOT EXISTS users (
-                        id INTEGER PRIMARY KEY,
+                        id   INTEGER PRIMARY KEY,
                         name TEXT
                     );
                     """)
@@ -42,79 +40,55 @@ public class AppMigrations extends Migrations {
     public PikaMigration addEmailToUsers() {
         return makeMigration("002_add_email")
                 .up("ALTER TABLE users ADD COLUMN email TEXT;")
-                .down("ALTER TABLE users DROP COLUMN email;"); // Note: SQLite does not support DROP COLUMN
+                .down("ALTER TABLE users DROP COLUMN email;");
     }
 }
 ```
 
-Each migration has:
-- A unique **name** (used to track if it has been applied).
-- An **up** block: The SQL to execute when applying the migration.
-- A **down** block: The SQL to execute when rolling back the migration.
-- An optional **description**.
+A migration is a unique name, an `up` block, a `down` block, and an optional `description()`. You write the SQL; Pika runs it. Put several statements in one block by separating them with semicolons, and Pika runs them together in a single transaction.
 
-*Note: You can execute multiple SQL statements inside a single `up` or `down` block by separating them with semicolons. They will be executed sequentially within a single transaction.*
+Watch your target database's limits. SQLite, for example, cannot `DROP COLUMN`, so that second `down` only works where the database supports it.
 
-## Applying Migrations
+## Apply on startup
 
-You register your migrations class with the ORM during startup.
+Register your migrations on the ORM and call `applyMigrations()`. Pika runs every migration that has not run yet, in order.
 
 ```java
 PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
-    .withMigrations(new AppMigrations())
-    .applyMigrations(); // Automatically runs all pending migrations
+        .withMigrations(new AppMigrations())
+        .applyMigrations();
 ```
 
-### The `pika_migrations` Tracking Table
+The first time it runs, Pika creates a `pika_migrations` table and records each migration's name as it applies. On later runs it skips anything already recorded, so calling `applyMigrations()` on every startup is safe.
 
-When you call `applyMigrations()`, PikaORM automatically creates a table called `pika_migrations` in your database. 
+## The console
 
-It checks the `name` of every registered migration against this table. If a migration is not in the table, it is marked as `PENDING`. PikaORM then iterates through the pending migrations in order, executes their `up` SQL within a transaction, and inserts a record into `pika_migrations` marking it as `APPLIED`.
-
-Because of this tracking table, calling `applyMigrations()` is **idempotent** and safe to run on every application startup.
-
-## Interactive Migration Console
-
-During development, automatically running migrations on startup can be dangerous if you make a mistake. PikaORM includes an interactive CLI to give you granular control.
+Auto-applying on startup is convenient but blunt. While developing, boot the interactive console instead and step through migrations by hand.
 
 ```java
 public static void main(String[] args) {
     PikaORM orm = new PikaORM("jdbc:sqlite:app.db").makeDefaultORM();
-    
+
     AppMigrations migrations = new AppMigrations();
     orm.withMigrations(migrations);
-    
-    // Boot the console instead of starting the web server
-    migrations.console(); 
+    migrations.console();   // takes over stdin and waits for commands
 }
 ```
 
-When you run this code, it hijacks `System.in` and presents a prompt:
-
 ```text
 migrations > show
-[APPLIED] 001_create_users - Creates the initial users table
+[APPLIED] 001_create_users
 [PENDING] 002_add_email
 
 migrations > up
 Applying: 002_add_email
-Successfully applied migration.
-
-migrations > down
-Rolling back: 002_add_email
-Successfully rolled back migration.
-
-migrations > all
-Applying: 002_add_email
-Successfully applied migration.
 ```
 
-### Console Commands
-
-| Command | Action |
-|---------|--------|
-| `show`  | Tabular display of all defined migrations and their current status (`APPLIED` or `PENDING`). |
-| `all`   | Applies all pending migrations in order. |
-| `up`    | Applies only the *next* single pending migration. |
-| `down`  | Executes the `down` SQL for the most recently applied migration and removes it from the tracking table. |
-| `exit` / `quit` | Terminates the console session. |
+| Command | What it does |
+|---------|--------------|
+| `show` | List every migration and whether it is applied or pending. |
+| `all` | Apply all pending migrations, in order. |
+| `up` | Apply the next pending migration only. |
+| `down` | Roll back the most recently applied migration (runs its `down`). |
+| `help` | List the commands. |
+| `exit` / `quit` | Leave the console. |
