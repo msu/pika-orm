@@ -8,13 +8,13 @@ permalink: /pages/querying/
 
 # Querying
 
-`find()` returns a fluent query builder. Chain conditions, ordering, and joins onto it, then run it with `fetchList()` for a list, `fetchFirst()` for one row, or an aggregate like `count()`.
+`find()` covers the simple stuff: `byId`, `byKey`, counts. Add a `where()` and you get a fluent `PikaClassQuery` to chain conditions, ordering, and joins onto, then run with `fetchList()` for a list, `fetchFirst()` for one row, or an aggregate. When a query does not start with a condition (just an ordering, an `IN`, a join), start it with `byQuery()`.
 
-Simple lookups (`byId`, `byKey`, `all`) are covered in [CRUD]({{ '/pages/crud/' | relative_url }}). This page is everything past that. The examples use a `Todo` bean with `title`, `completed`, and `priority` fields.
+Lookups (`byId`, `byKey`, `all`) are covered in [CRUD]({{ '/pages/crud/' | relative_url }}). This page is everything past that. The examples use a `Todo` bean with `title`, `completed`, and `priority` fields.
 
 ## Filter
 
-`where()` takes a SQL fragment with named `:params`. Chain more `where()` calls to AND them together, or `orWhere()` to OR.
+`where()` takes a SQL fragment with named `:params`. Chain another `where()` to AND, or `orWhere()` to OR.
 
 ```java
 PikaList<Todo> open = Todo.find()
@@ -22,7 +22,7 @@ PikaList<Todo> open = Todo.find()
         .fetchList();
 ```
 
-You can bind a parameter three ways. Use whichever reads best:
+Bind a parameter three ways. Use whichever reads best:
 
 ```java
 Todo.find().where("title = :t", "t", "Read the docs").fetchList();          // inline
@@ -34,43 +34,45 @@ Conditions are SQL, so the column names are your table's columns, not the Java f
 
 ## Common conditions
 
-Pika has shortcuts for the conditions you write most. They build the SQL and bind the values for you.
+The query has shortcuts for the conditions you write most. They build the SQL and bind the values for you. Reach the query with `byQuery()` (or chain them after a `where()`):
 
 ```java
-Todo.find().whereLike("title", "%docs%").fetchList();
-Todo.find().whereIn("priority", List.of(1, 2)).fetchList();
-Todo.find().whereBetween("priority", 1, 3).fetchList();
+Todo.find().byQuery().whereLike("title", "%docs%").fetchList();
+Todo.find().byQuery().whereIn("priority", List.of(1, 2)).fetchList();
+Todo.find().byQuery().whereBetween("priority", 1, 3).fetchList();
 ```
 
 ## Order
 
-`orderBy()` defaults to ascending. Pass a `SortOrder` for descending.
+`orderBy()` defaults to ascending; pass a `SortOrder` for descending. It lives on the query, so start with `where()` or `byQuery()`:
 
 ```java
 import static edu.montana.pika.query.SortOrder.DESC;
 
 PikaList<Todo> byPriority = Todo.find()
+        .where("completed = :done", "done", false)
         .orderBy("priority", DESC)
         .fetchList();
 ```
 
 ## One row
 
-`fetchFirst()` returns the first match (or `null`). `firstWhere()` is the same thing with the condition inline.
+`firstWhere()` returns the first match (or `null`) with the condition inline. Off a longer query, `fetchFirst()` does the same.
 
 ```java
-Todo next = Todo.find().where("completed = :d", "d", false).fetchFirst();
 Todo byTitle = Todo.find().firstWhere("title = :t", "t", "Read the docs");
+Todo next    = Todo.find().where("completed = :d", "d", false).orderBy("priority", DESC).fetchFirst();
 ```
 
 ## Aggregate
 
-Skip loading rows when you only want a number. These run the aggregate in SQL and return the result.
+Skip loading rows when you only want a number. These run in SQL straight off `find()`:
 
 ```java
-long open    = Todo.find().where("completed = :d", "d", false).count();
-Double avg   = Todo.find().avg("priority");
-Object top   = Todo.find().max("priority");
+long open  = Todo.find().count();                                  // every row
+long undone = Todo.find().where("completed = :d", "d", false).count();
+Double avg = Todo.find().avg("priority");
+Object top = Todo.find().max("priority");
 ```
 
 `count()` returns a `long`; `sum()` and `avg()` return `Double`; `min()` and `max()` return `Object`.
@@ -86,15 +88,7 @@ PikaList<Todo> docsTodos = Todo.find()
         .fetchList();
 ```
 
-The result is still `PikaList<Todo>` -- the join filters the todos, it does not change what you get back.
-
-For an outer join, pass a `JoinType`:
-
-```java
-import static edu.montana.pika.query.JoinType.LEFT;
-
-Todo.find().join(LEFT, Project.class).fetchList();
-```
+The result is still `PikaList<Todo>`: the join filters the todos, it does not change what you get back.
 
 `thenJoin()` chains a join off the table you just joined, rather than off the root:
 
@@ -106,10 +100,14 @@ Todo.find()
         .fetchList();
 ```
 
-When Pika cannot infer the relationship (self-joins, unconventional keys), pass the join clause as a string:
+For an outer join, or a join Pika cannot infer (self-joins, unconventional keys), start with `byQuery()` and pass the `JoinType` or the raw clause:
 
 ```java
-Todo.find()
+import static edu.montana.pika.query.JoinType.LEFT;
+
+Todo.find().byQuery().join(LEFT, Project.class).fetchList();
+
+Todo.find().byQuery()
         .join("todos parent ON parent.id = todos.parent_id")
         .where("parent.title = :t", "t", "Launch")
         .fetchList();

@@ -53,6 +53,9 @@
 - category: "Examples"
   id: examples
   pages:
+    - title: "Todo App (Javalin)"
+      url: "/pages/todo-app/"
+      active_page: "todo-app"
     - title: "N+1 Avoidance"
       url: "/pages/n-plus-1-avoidance/"
       active_page: "n-plus-1"
