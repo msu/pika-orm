@@ -1,12 +1,12 @@
 ---
 layout: default
-title: "PikaBean (Active Record)"
-description: "PikaORM PikaBean: active record pattern, smart save, dirty-field tracking, validation, and web form binding."
-active_page: pika-bean
-permalink: /pages/pika-bean/
+title: "CRUD"
+description: "Define a PikaBean and create, read, update, and delete records with the active record API."
+active_page: crud
+permalink: /pages/crud/
 ---
 
-# PikaBean (Active Record Pattern)
+# CRUD
 
 PikaORM provides an optional active-record base class called `PikaBean`.
 

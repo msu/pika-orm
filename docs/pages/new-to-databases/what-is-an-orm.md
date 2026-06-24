@@ -75,4 +75,4 @@ PikaORM is designed to give you the best of both worlds. You use the simple obje
 
 ## Next Steps
 
-Ready to see how PikaORM puts this into practice? Jump into the [Web Quickstart]({{ '/pages/quickstart/' | relative_url }}) to see a complete application example.
+Ready to see how PikaORM puts this into practice? Jump into [Get Started]({{ '/pages/get-started/' | relative_url }}) to install it and run your first queries.

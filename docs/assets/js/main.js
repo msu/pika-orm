@@ -10,14 +10,22 @@
   'use strict';
 
   /* ── 1. SIDEBAR LEFT TOGGLE ─────────────────────────────── */
+  // Two controls share body.sidebar-collapsed:
+  //   • #sidebar-toggle      — topbar hamburger, mobile-only (off-canvas drawer)
+  //   • #sidebar-collapse-btn — chevron at the top of the sidebar, desktop rail
   const body          = document.body;
   const toggleBtn     = document.getElementById('sidebar-toggle');
+  const collapseBtn   = document.getElementById('sidebar-collapse-btn');
   const COLLAPSED_KEY = 'pika-sidebar-collapsed';
 
   function setSidebarState(collapsed) {
     body.classList.toggle('sidebar-collapsed', collapsed);
     if (toggleBtn) {
       toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+    }
+    if (collapseBtn) {
+      collapseBtn.setAttribute('aria-expanded', String(!collapsed));
+      collapseBtn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
     }
     try { localStorage.setItem(COLLAPSED_KEY, String(collapsed)); } catch (_) {}
   }
@@ -33,11 +41,16 @@
     }
   })();
 
+  function toggleSidebar() {
+    const isCollapsed = body.classList.contains('sidebar-collapsed');
+    setSidebarState(!isCollapsed);
+  }
+
   if (toggleBtn) {
-    toggleBtn.addEventListener('click', function () {
-      const isCollapsed = body.classList.contains('sidebar-collapsed');
-      setSidebarState(!isCollapsed);
-    });
+    toggleBtn.addEventListener('click', toggleSidebar);
+  }
+  if (collapseBtn) {
+    collapseBtn.addEventListener('click', toggleSidebar);
   }
 
   // Close sidebar when clicking outside on mobile

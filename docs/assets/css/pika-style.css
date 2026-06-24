@@ -62,6 +62,7 @@
   /* Sidebars */
   --sidebar-left-w: 240px;
   --sidebar-right-w: 220px;
+  --nav-rail-width: 44px;
 
   /* Layout */
   --prose-max: 720px;
@@ -133,7 +134,7 @@ body {
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: 1rem;
   flex-shrink: 0;
 }
 
@@ -144,31 +145,34 @@ body {
   flex-shrink: 0;
 }
 
-/* Topbar Center Nav */
+/* Topbar nav — left-aligned project links + right-aligned external links
+   (Notch pattern). Brand on the far left, search on the far right. */
 .topbar-nav {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  flex: 1;
-  justify-content: center;
+  gap: 0.125rem;
 }
 
 .topbar-nav-link {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   font-weight: 500;
   color: var(--ink-muted);
   text-decoration: none;
-  transition: color var(--t-fast);
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  transition: color var(--t-fast), background var(--t-fast);
 }
 
 .topbar-nav-link:hover {
-  color: var(--accent);
+  color: var(--ink);
+  background: var(--surface-2);
   text-decoration: none;
 }
 
-/* Sidebar toggle button */
+/* Topbar hamburger — mobile only. Opens the off-canvas sidebar on ≤800px.
+   On desktop the sidebar is collapsed via the chevron inside the sidebar. */
 .sidebar-toggle {
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 4px;
   background: none;
@@ -177,6 +181,12 @@ body {
   padding: 6px;
   border-radius: var(--radius-sm);
   transition: background var(--t-fast);
+}
+
+@media (max-width: 800px) {
+  .sidebar-toggle {
+    display: flex;
+  }
 }
 
 .sidebar-toggle:hover {
@@ -284,9 +294,9 @@ body {
   transition: margin-left var(--t-med), margin-right var(--t-med);
 }
 
-/* Collapsed left sidebar */
+/* Collapsed left sidebar — shrink content to the rail width (desktop) */
 body.sidebar-collapsed .layout-center {
-  margin-left: 0;
+  margin-left: var(--nav-rail-width);
 }
 
 /* ── 5. SIDEBAR LEFT ─────────────────────────────────────── */
@@ -300,15 +310,87 @@ body.sidebar-collapsed .layout-center {
   overflow-x: hidden;
   background: var(--surface);
   border-right: 1px solid var(--surface-3);
-  padding: 1.25rem 0 2rem;
+  padding: 0.75rem 0 2rem;
   z-index: 50;
+  display: flex;
+  flex-direction: column;
   transition: transform var(--t-med), width var(--t-med);
   scrollbar-width: thin;
   scrollbar-color: var(--surface-3) transparent;
 }
 
-body.sidebar-collapsed .sidebar-left {
-  transform: translateX(-100%);
+/* Chevron collapse button — right-aligned at the top of the sidebar.
+   Toggles body.sidebar-collapsed (the desktop rail). Notch pattern. */
+.sidebar-collapse-btn {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0 0.75rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-sm);
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-color: var(--ink-subtle);
+}
+
+.sidebar-collapse-icon {
+  transition: transform var(--t-med);
+}
+
+/* Desktop collapsed: narrow to a rail, hide link lists, rotate section
+   titles vertical, rotate + center the chevron. */
+@media (min-width: 801px) {
+  body.sidebar-collapsed .sidebar-left {
+    width: var(--nav-rail-width);
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  body.sidebar-collapsed .sidebar-collapse-btn {
+    align-self: center;
+    margin: 0 0 0.5rem;
+  }
+
+  body.sidebar-collapsed .sidebar-collapse-icon {
+    transform: rotate(180deg);
+  }
+
+  body.sidebar-collapsed .nav-links {
+    display: none;
+  }
+
+  body.sidebar-collapsed .nav-section {
+    display: flex;
+    justify-content: center;
+  }
+
+  body.sidebar-collapsed .nav-section-header {
+    justify-content: center;
+    padding: 0.4rem 0;
+    margin-top: 0.5rem;
+  }
+
+  body.sidebar-collapsed .nav-chevron {
+    display: none;
+  }
+
+  body.sidebar-collapsed .nav-section-title {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    letter-spacing: 0.08em;
+  }
 }
 
 .nav-section {
@@ -1300,134 +1382,6 @@ mark.search-highlight {
   /* No box-shadow — stay readable and minimal */
 }
 
-/* ── 12. HUB CARDS ────────────────────────────────────────── */
-.docs-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin: 2rem 0;
-}
-
-.docs-card {
-  display: flex;
-  flex-direction: column;
-  padding: 1.5rem;
-  background: var(--surface);
-  border: 1px solid var(--surface-3);
-  border-radius: var(--radius-lg);
-  text-decoration: none !important;
-  color: var(--ink);
-  transition: transform var(--t-fast), box-shadow var(--t-fast), border-color var(--t-fast);
-}
-
-.docs-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 0 0 0 2px var(--accent-light);
-  color: var(--ink);
-}
-
-.docs-card-icon {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 1.25rem;
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.docs-card-icon svg {
-  width: 24px;
-  height: 24px;
-  color: var(--accent);
-}
-
-.docs-card strong {
-  font-size: 1.0625rem;
-  font-weight: 600;
-  margin-bottom: 0.375rem;
-  color: var(--ink);
-}
-
-.docs-card span {
-  font-size: 0.875rem;
-  color: var(--ink-muted);
-  line-height: 1.5;
-}
-
-/* Accordion Specific Hub Cards */
-.docs-card-accordion {
-  background: var(--surface);
-  border: 1px solid var(--surface-3);
-  border-radius: var(--radius-lg);
-  transition: box-shadow var(--t-fast), border-color var(--t-fast);
-  overflow: hidden; /* for border radius */
-}
-
-.docs-card-accordion:hover,
-.docs-card-accordion:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 0 0 0 2px var(--accent-light);
-}
-
-.docs-card-summary {
-  display: flex;
-  flex-direction: column;
-  padding: 1.5rem;
-  position: relative;
-  user-select: none;
-}
-
-.docs-card-content {
-  padding: 0 1.5rem 1.5rem 1.5rem;
-  border-top: 1px solid var(--surface-3);
-}
-
-.docs-card-content ul {
-  list-style: none;
-  padding: 0;
-  margin: 1.5rem 0 0 0;
-}
-
-.docs-card-content li {
-  margin-bottom: 0.5rem;
-}
-
-.docs-card-content li:last-child {
-  margin-bottom: 0;
-}
-
-.docs-card-content a {
-  display: flex;
-  flex-direction: column;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-sm);
-  color: var(--ink);
-  text-decoration: none;
-  transition: background var(--t-fast), color var(--t-fast);
-  border: 1px solid transparent;
-}
-
-.docs-card-content a:hover {
-  background: var(--surface-2);
-  border-color: var(--surface-3);
-  text-decoration: none;
-}
-
-.docs-card-content a strong {
-  font-size: 0.9375rem;
-  color: var(--accent-dark);
-  margin-bottom: 0.125rem;
-}
-
-.docs-card-content a small {
-  font-size: 0.8125rem;
-  color: var(--ink-muted);
-}
-
 /* ── 12b. LANDING / SPLASH ────────────────────────────────── */
 body.landing {
   display: flex;
@@ -1437,48 +1391,70 @@ body.landing {
   background: var(--bg);
 }
 
-/* No left sidebar on the splash — hide its toggle */
-body.landing .sidebar-toggle {
-  display: none;
+/* No left sidebar on the splash — hide its toggle on all widths */
+body.landing .sidebar-toggle,
+body.landing .sidebar-collapse-btn {
+  display: none !important;
 }
 
 .landing-main {
   flex: 1;
 }
 
-/* Hero — light, centered; circular logo placeholder + wordmark */
+/* Visually hidden — accessible h1 for the splash */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Hero — Notch banner shape: logo left, wordmark + lead right */
 .hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 2.5rem 1.5rem 1.25rem;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 2.75rem 1.5rem 1rem;
   background: var(--bg);
 }
 
-/* Circular badge — mimics the upcoming round, textless hand-drawn logo */
+.hero-banner {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+/* Circular badge — the round, textless phoenix logo */
 .hero-logo-badge {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 132px;
-  height: 132px;
+  width: clamp(150px, 18vw, 190px);
+  height: clamp(150px, 18vw, 190px);
   border-radius: 50%;
   background: #fff;
   border: 1px solid var(--surface-3);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.07);
-  margin-bottom: 1rem;
 }
 
 .hero-logo {
-  width: 58%;
+  width: 62%;
   height: auto;
+}
+
+.hero-banner-text {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .hero-wordmark {
   font-family: var(--font-display);
-  font-size: 3.25rem;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -1487,18 +1463,19 @@ body.landing .sidebar-toggle {
 }
 
 .hero-lead {
-  max-width: 540px;
-  margin: 0 auto 1.5rem;
+  max-width: 42rem;
+  margin: 0 0 0.75rem;
   font-size: 1.0625rem;
   line-height: 1.6;
   color: var(--ink-muted);
 }
 
-.hero-actions {
-  display: flex;
-  gap: 0.875rem;
-  flex-wrap: wrap;
-  justify-content: center;
+.hero-punch {
+  max-width: 42rem;
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 /* Buttons */
@@ -1542,20 +1519,40 @@ body.landing .sidebar-toggle {
   border-color: var(--accent);
 }
 
-/* Code sample below the hero */
+/* Code sample below the hero — framed like Notch's .code-demo with a
+   filename title bar above the dark code card. */
 .hero-code {
-  padding: 0.5rem 1.5rem 3rem;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 2.5rem;
 }
 
 .hero-code-inner {
-  max-width: 760px;
+  max-width: 100%;
   margin: 0 auto;
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10);
+}
+
+/* Filename title bar (like Notch's .demo-title) */
+.hero-code-title {
+  background: linear-gradient(to bottom, #2a2f37, #1e2228);
+  padding: 0.5rem 1rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  color: var(--ink-subtle);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Splash code uses the same .code-card frame as docs (built by main.js),
-   but without the header/footer bands — just a clean rounded block. */
+   but without the JS header/footer bands — the title bar above replaces them. */
 .hero-code-inner .code-card {
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10);
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .hero-code-inner .code-card-header,
@@ -1576,13 +1573,6 @@ body.landing .sidebar-toggle {
   margin: 0;
 }
 
-/* Fallback rounding before the JS card wrapper is applied */
-.hero-code-inner > .language-java,
-.hero-code-inner > pre {
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
 .hero-code-inner pre code {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   background: none;
@@ -1592,13 +1582,94 @@ body.landing .sidebar-toggle {
   white-space: pre;
 }
 
+/* Documentation cards grid (Notch .docs-grid / .docs-card, gold accent) */
+.docs-grid {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 1.5rem 3.5rem;
+}
+
+.docs-grid > h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0 0 1rem;
+}
+
+.docs-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.docs-card {
+  display: block;
+  padding: 1.25rem 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+}
+
+.docs-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+.docs-card h3 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.docs-card:hover h3 {
+  color: var(--accent-dark);
+}
+
+.docs-card p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
 @media (max-width: 800px) {
   .hero {
-    padding: 3.5rem 1.25rem 3rem;
+    padding: 2.5rem 1.25rem 0.5rem;
+  }
+
+  .hero-banner {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.25rem;
+  }
+
+  .hero-logo-badge {
+    width: clamp(150px, 45vw, 200px);
+    height: clamp(150px, 45vw, 200px);
   }
 
   .hero-code {
-    padding: 2.5rem 1.125rem;
+    padding: 1.5rem 1.125rem;
+  }
+
+  .docs-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .docs-cards {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1625,8 +1696,18 @@ body.landing .sidebar-toggle {
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
   }
 
+  /* Mobile collapsed = fully off-canvas (not a rail). The chevron button
+     is hidden on mobile; the topbar hamburger drives the drawer. */
+  body.sidebar-collapsed .sidebar-left {
+    transform: translateX(-100%);
+  }
+
   body:not(.sidebar-collapsed) .sidebar-left {
     transform: translateX(0);
+  }
+
+  .sidebar-collapse-btn {
+    display: none;
   }
 
   /* Default to collapsed on mobile */
