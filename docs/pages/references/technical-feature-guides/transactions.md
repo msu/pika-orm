@@ -1,106 +1,80 @@
 ---
 layout: default
 title: "Transactions"
-description: "PikaORM transactions: lambda-based inTransaction, forceTransaction, joinTransaction, and nesting semantics."
+description: "Run work in a transaction with PikaORM: nesting, isolated transactions, and required transactions."
 active_page: transactions
 permalink: /pages/transactions/
 ---
 
 # Transactions
 
-PikaORM handles transactions using a thread-local connection stack and simple lambda expressions. You execute blocks of code within a transaction wrapper, and PikaORM manages the connection lifecycle, commits, and rollbacks automatically.
+Wrap work in `inTransaction()`. Pika commits when the block finishes and rolls back if it throws. You do not touch the connection, commit, or rollback yourself.
 
-## Transaction API Surface
+## Run in a transaction
 
-There are three primary methods for executing code in a transaction:
-
-### 1. `inTransaction` / `withTransaction`
-
-These methods are aliases of each other. They execute the provided `Runnable` or `Callable` inside a transaction.
-- If a transaction is already active on the current thread, it joins that transaction.
-- If no transaction is active, it starts a new one.
+Pass a block that returns nothing, or one that returns a value:
 
 ```java
-// Using Runnable (no return value)
 orm.inTransaction(() -> {
-    orm.insert(new User("Alice"));
-    orm.insert(new User("Bob"));
-}); // Automatically commits here if successful, rolls back if an exception is thrown
+    new User("Alice").save();
+    new User("Bob").save();
+});   // commits here; if either save threw, neither row is written
 
-// Using Callable (returns a value)
-User newAdmin = orm.withTransaction(() -> {
-    User admin = new User("Charlie");
-    orm.insert(admin);
-    orm.insert(new Role(admin.getId(), "ADMIN"));
-    return admin;
+User admin = orm.inTransaction(() -> {
+    User u = new User("Charlie");
+    u.save();
+    new Role("ADMIN").save();
+    return u;
 });
 ```
 
-### 2. `forceTransaction`
+If the block throws, Pika rolls back everything in it and rethrows the exception.
 
-Executes the provided block in a *completely isolated* transaction. It ignores any existing thread-local connection session, opens its own connection, and commits or rolls back independently of whatever else is happening on the thread.
+## Nesting
+
+Call `inTransaction()` inside another and the inner block joins the outer one. Pika counts the nesting and issues a single commit when the outermost block finishes. One failure anywhere rolls back the whole thing.
 
 ```java
-orm.inTransaction(() -> {
-    orm.insert(foo);
-    
-    // This executes and commits immediately on a separate connection.
-    // Even if the outer transaction rolls back, this log entry remains.
-    orm.forceTransaction(() -> {
-        orm.insert(new AuditLog("Created foo"));
+orm.inTransaction(() -> {            // opens the transaction
+    foo.save();
+
+    orm.inTransaction(() -> {        // joins it, no separate commit
+        bar.save();
     });
-    
-    if (somethingFails) throw new RuntimeException(); 
-    // Outer transaction rolls back 'foo'. 'AuditLog' is unaffected.
+
+});                                  // foo and bar commit together
+```
+
+## Escaping the current transaction
+
+`forceTransaction()` runs on its own connection and ignores any transaction on the thread. It commits on its own, so its work survives even when the surrounding transaction rolls back. Reach for it when something must persist no matter what, like an audit log.
+
+```java
+orm.inTransaction(() -> {
+    foo.save();
+
+    orm.forceTransaction(() -> {
+        new AuditLog("created foo").save();   // commits immediately, on its own connection
+    });
+
+    throw new RuntimeException();   // rolls back foo; the audit log stays
 });
 ```
 
-### 3. `joinTransaction`
+## Requiring a transaction
 
-Executes the provided block *only if* a transaction is already active. If no transaction is currently open on the thread, it throws an `IllegalStateException`. This is useful for helper methods that absolutely must be run as part of a larger unit of work.
+`joinTransaction()` runs its block only if a transaction is already open, and throws `IllegalStateException` if one is not. Use it in helper methods that must never run on their own.
 
 ```java
-public void updateStatus(Order order) {
+public void ship(Order order) {
     orm.joinTransaction(() -> {
         order.setStatus("SHIPPED");
-        orm.update(order);
+        order.save();
     });
 }
 ```
 
-## Nesting Semantics
-
-PikaORM supports arbitrarily deep transaction nesting using a simple reference-counting mechanism.
-
-```mermaid
-flowchart TD
-    subgraph Nesting ["Nested Transactions"]
-        N1["outer withTransaction()"]
-        N2["inner withTransaction() — joins outer"]
-        N1 -->|transactionCount++| N2
-        N2 -->|transactionCount--| N1
-        N1 -->|"transactionCount == 0 → commit"| DB[(Database)]
-    end
-```
-
-When you nest `inTransaction` calls, the physical JDBC `COMMIT` statement is deferred until the outermost transaction completes successfully.
-
-If an exception is thrown anywhere in the nested chain, it bubbles up. When the outermost transaction catches it, it issues a single physical `ROLLBACK`, undoing all operations.
-
-```java
-orm.inTransaction(() -> { // transactionCount = 1
-    orm.insert(foo);
-    
-    orm.inTransaction(() -> { // transactionCount = 2
-        orm.insert(bar); // Joining existing connection
-    }); // transactionCount = 1 (No commit issued yet)
-    
-}); // transactionCount = 0 (Physical COMMIT issued here)
-```
-
-## Transaction Status
-
-You can check if a transaction is currently active on the thread using:
+## Checking status
 
 ```java
 boolean active = orm.isInTransaction();

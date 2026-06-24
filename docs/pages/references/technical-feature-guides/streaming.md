@@ -1,121 +1,71 @@
 ---
 layout: default
-title: "Streaming API"
-description: "PikaORM Streaming: memory-efficient lazy database queries using PikaStreamFinder and the Java Stream API."
+title: "Streaming"
+description: "Process result sets too large for memory by streaming rows from the database with PikaORM."
 active_page: streaming
 permalink: /pages/streaming/
 ---
 
-# Pika Streams
+# Streaming
 
-## Overview
+`find()` loads every matching row into a list. When the result set is too big to hold in memory, stream it instead. Pika pulls rows one at a time from the JDBC `ResultSet` into a Java `Stream`, so memory stays flat no matter how many rows there are.
 
-Pika Streams provide a powerful abstraction layer that combines the familiar Java Stream API with database query execution. 
+## Hold the connection open
 
-Unlike standard Java Streams that operate on in-memory collections, Pika Streams execute queries lazily against your database. They stream results row-by-row directly from the JDBC `ResultSet`, allowing you to process massive datasets efficiently without loading the entire result set into JVM memory.
-
-## Getting Started with Pika Streams
-
-Pika Streams are accessed through the main ORM instance using the `stream()` method:
-
-```java
-// Get a stream finder for your entity class
-PikaStreamFinder<SampleModel> streamFinder = orm.stream(SampleModel.class);
-
-// Use within a connection context for proper resource management
-try (var conn = orm.establishConnection()) {
-    Stream<SampleModel> results = streamFinder.all();
-    // Process your stream...
-}
-```
-
-### Connection Management (Crucial)
-
-Unlike standard `orm.find()` operations which automatically checkout and release a connection for the duration of the query, Streams are **lazy**. The database connection must remain open while you process the stream. 
-
-**You must always use streams within an explicit connection context** (e.g., a try-with-resources block calling `establishConnection()`) to ensure the underlying connection and `ResultSet` are properly closed when the stream completes.
+A stream is lazy: the query runs as you consume it, so the database connection has to stay open the whole time. Wrap streaming work in `establishConnection()` with try-with-resources. When the block exits, Pika closes the connection and the `ResultSet`.
 
 ```java
 try (var conn = orm.establishConnection()) {
-    long activeUsersCount = orm.stream(SampleModel.class)
-        .where("is_active = :val", Map.of("val", true))
-        .stream()
-        .count(); // Terminal operation executes the query
+    long active = orm.stream(User.class)
+            .where("active = :a", Map.of("a", true))
+            .count();   // terminal operation runs the query
 }
 ```
 
-## The PikaStreamFinder Class
+`orm.stream(User.class)` returns a stream finder. `.all()` streams every row; `.where(clause, args)` filters in the database first. Both hand you a Java `Stream`, so the usual terminal operations (`forEach`, `count`, `findFirst`, `collect`) drive the query.
 
-The `PikaStreamFinder<T>` serves as your primary interface for creating database-backed streams.
-
-### Stream Filtering
-
-`PikaStreamFinder` supports pushing WHERE clauses directly into the database before the stream begins:
+Filter in the database, not in memory:
 
 ```java
-try (var conn = orm.establishConnection()) {
-    // Push filtering to the database (Efficient)
-    Stream<SampleModel> activeModels = orm.stream(SampleModel.class)
-        .where("is_active = :val", Map.of("val", true))
-        .stream();
-        
-    // Standard Java stream filtering (Less Efficient)
-    Stream<SampleModel> activeModelsMemory = orm.stream(SampleModel.class)
-        .all()
-        .filter(model -> model.isActive()); 
-}
+// Good: the database filters
+orm.stream(User.class).where("active = :a", Map.of("a", true));
+
+// Wasteful: pulls every row over the wire, then filters in the JVM
+orm.stream(User.class).all().filter(User::isActive);
 ```
 
-Whenever possible, use `.where()` to let the database do the filtering rather than pulling all rows over the network and filtering via `.filter()` in memory.
+## Three ways to get a stream
 
-### PikaStreamFinder vs PikaClassQuery.stream() vs orm.stream(sql)
+- `orm.stream(User.class)` for simple filtered streams (shown above).
+- `orm.query(User.class)...stream()` to build a full query (joins, ordering) and stream the result. See [Querying]({{ '/pages/querying/' | relative_url }}).
+- `orm.stream(sql)` for raw SQL, streamed as `ResultMap` rows. See [Plain Java Objects]({{ '/pages/plain-objects/' | relative_url }}).
 
-There are three ways to get a Stream in PikaORM:
+## Example: export to CSV
 
-1. **`orm.stream(Class)`**: Returns a `PikaStreamFinder`. The simplest way to start a stream with basic filtering.
-2. **`orm.query(Class).stream()`**: Returns a standard Java `Stream`. Use this when you need complex querying (JOINs, GROUP BY, OrderBy) before streaming the results.
-3. **`orm.stream(String sql)`**: Raw SQL streaming. Returns a `Stream<ResultMap>`. Use this for massive custom reporting queries.
-
-## Practical Example: Data Export
-
-Streams shine when exporting data (e.g., to a CSV file) where the dataset exceeds available RAM.
+A dataset bigger than RAM is exactly what streaming is for.
 
 ```java
-public void exportUsersToCsv(String filePath) throws IOException {
+public void exportUsers(String path) throws IOException {
     try (var conn = orm.establishConnection();
-         FileWriter writer = new FileWriter(filePath)) {
-         
-        writer.write("ID,Name,Email\n");
-        
-        orm.stream(User.class)
-            .all() // Starts the stream
-            .forEach(user -> {
-                try {
-                    writer.write(user.getId() + "," + user.getName() + "," + user.getEmail() + "\n");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+         FileWriter out = new FileWriter(path)) {
+
+        out.write("id,name,email\n");
+
+        orm.stream(User.class).all().forEach(u -> {
+            try {
+                out.write(u.getId() + "," + u.getName() + "," + u.getEmail() + "\n");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 }
 ```
 
-## Performance Considerations
+## When not to stream
 
-- **Lazy Evaluation**: Streams are not executed until a terminal operation (like `findFirst()`, `forEach()`, or `count()`) is called.
-- **Connection Context**: Always use streams within a connection context (`try (var conn = orm.establishConnection())`).
-- **Database Optimization**:`.where()` before calling `.stream()` to push filtering down to the database level.
-- **Limit/Pagination**: If you only need a subset of data, do not stream. Use `orm.query(Class).page().fetchList()` instead. Streams are for processing large continuous sets.
+If you only need a page of rows, do not stream. Use [Paging]({{ '/pages/paging/' | relative_url }}) (`.page(n).fetchList()`). Streaming is for chewing through large, continuous sets end to end.
 
-## Error Handling
+## Errors
 
-When using streams, exceptions that occur during JDBC iteration are wrapped in `RuntimeException` (since Java's Stream API does not permit checked exceptions in its functional interfaces). 
-
-```java
-try (var conn = orm.establishConnection()) {
-    SampleModel retrieved = orm.stream(SampleModel.class)
-        .all()
-        .findFirst()
-        .orElseThrow(() -> new RuntimeException("No records found"));
-}
-```
+Java's Stream API does not allow checked exceptions in its lambdas, so anything thrown while iterating the `ResultSet` comes back wrapped in a `RuntimeException`.

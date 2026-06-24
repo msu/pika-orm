@@ -1,72 +1,62 @@
 ---
 layout: default
 title: "Paging"
-description: "PikaORM Paging: built-in pagination API with metadata, total counts, and URL helpers for web frameworks."
+description: "Slice large queries into pages with PikaORM, with totals and ready-made page links."
 active_page: paging
 permalink: /pages/paging/
 ---
 
 # Paging
 
-When querying large tables, you should never load the entire dataset into memory at once. PikaORM provides a robust, built-in pagination API on both `PikaClassQuery` and `PikaQueryBuilder`.
+Do not pull a whole table into memory. `page()` and `pageSize()` slice a query into pages, and the query tracks the totals you need to render page controls.
 
-## Basic Pagination
+Paging is 1-indexed: the first page is page 1.
 
-Pagination is 1-indexed (the first page is page 1, not 0). 
-
-```java
-// Fetch the 3rd page of users, with 20 users per page
-PikaList<User> users = orm.query(User.class)
-    .where("is_active = :active", "active", true) //Another way to assign a variable
-    .page(3)
-    .pageSize(20)
-    .fetchList();
-```
-
-If you do not specify a `pageSize`, PikaORM defaults to `50`.
-
-## Pagination Metadata
-
-When you execute a paginated query, PikaORM automatically runs a background `COUNT(*)` query matching your current `.where()` conditions. This allows the resulting `QueryResult` (or the query builder itself) to provide accurate metadata for rendering UI elements.
+## Page a query
 
 ```java
-PikaClassQuery<User> query = orm.query(User.class).page(2);
-QueryResult<User> result = query.fetch();
-
-// Total number of rows matching the query across all pages
-long totalUsers = query.totalCount();
-
-// Total number of pages available (totalCount / pageSize)
-long maxPages = query.totalPages();
-
-// Boolean helpers for UI rendering
-boolean isFirst = query.isFirstPage(); // false (we are on page 2)
-boolean isLast = query.isLastPage();
+PikaList<User> users = User.find()
+        .where("active = :a", "a", true)
+        .page(3)
+        .pageSize(20)
+        .fetchList();
 ```
 
-## URL Helpers for Web Frameworks
+Leave off `pageSize()` and Pika uses the default, which is 20 (configurable below).
 
-Rendering "Next" and "Previous" links in a web template often requires tedious string manipulation to update query parameters. PikaORM provides built-in URL string manipulators that automatically update or append the `page=` parameter to a given URL.
+## Page metadata
+
+When you run a paged query, Pika also runs a `COUNT(*)` with the same `where` conditions, so it can tell you how many rows and pages exist. Read the totals straight off the query:
 
 ```java
-String currentUrl = "/admin/users?sort=desc&page=2";
+PikaClassQuery<User> q = User.find().where("active = :a", "a", true).page(2);
+PikaList<User> users = q.fetchList();
 
-// Returns "/admin/users?sort=desc&page=3"
-String nextUrl = query.nextPageURL(currentUrl);
-
-// Returns "/admin/users?sort=desc&page=1"
-String prevUrl = query.previousPageURL(currentUrl);
+long total    = q.totalCount();    // matching rows across all pages
+long pages    = q.totalPages();    // total pages at the current page size
+boolean first = q.isFirstPage();
+boolean last  = q.isLastPage();
 ```
 
-## Global Pagination Defaults
+## Page links
 
-You can configure the global default page size and the exact SQL dialect syntax for offsets when setting up the ORM:
+Building "next" and "previous" links means rewriting the `page=` query parameter by hand. Pika does it for you:
+
+```java
+String url  = "/users?sort=desc&page=2";
+String next = q.nextPageURL(url);       // /users?sort=desc&page=3
+String prev = q.previousPageURL(url);   // /users?sort=desc&page=1
+```
+
+Pass a second argument if your page parameter is not named `page`.
+
+## Defaults
+
+Set the default page size when you build the ORM. If your database has unusual offset syntax, override that too.
 
 ```java
 PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
-    .withDefaultPageSize(100) // Change the default from 50
-    // Provide a custom offset clause if you are using an obscure database dialect
-    // {0} is replaced by the limit, {1} is replaced by the offset
-    .withOffsetClause("LIMIT {0} OFFSET {1}") 
-    .makeDefaultORM();
+        .withDefaultPageSize(100)
+        .withOffsetClause("LIMIT {0} OFFSET {1}")  // {0} = limit, {1} = offset
+        .makeDefaultORM();
 ```
