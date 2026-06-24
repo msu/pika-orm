@@ -12,9 +12,9 @@
     </a>
 
     <nav class="topbar-nav" aria-label="Global">
-      {% for section in site.data.nav %}
+      {% for section in site.data.nav %}{% unless section.top_nav == false %}
       <a href="{{ section.pages[0].url | relative_url }}" class="topbar-nav-link">{{ section.category }}</a>
-      {% endfor %}
+      {% endunless %}{% endfor %}
     </nav>
   </div>
 

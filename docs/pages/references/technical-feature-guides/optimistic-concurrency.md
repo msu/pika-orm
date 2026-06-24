@@ -1,83 +1,78 @@
 ---
 layout: default
-title: "Optimistic Concurrency Control"
-description: "PikaORM Optimistic Concurrency: prevent lost updates and race conditions using version column tracking."
+title: "Optimistic Concurrency"
+description: "Prevent lost updates in PikaORM with a version column and optimistic concurrency control."
 active_page: optimistic-concurrency
 permalink: /pages/optimistic-concurrency/
 ---
 
-# Optimistic Concurrency Control
+# Optimistic Concurrency
 
-In concurrent applications, two users might try to edit the same record at the same time. If they both load the record, modify it, and save it, the second save will blindly overwrite the first user's changes.
+Two users load the same row, both edit it, both save. With no protection the second save silently overwrites the first. Optimistic concurrency control (OCC) catches that.
 
-PikaORM prevents this using **Optimistic Concurrency Control (OCC)**.
+## How it works
 
-## How it Works
+Give the table an integer `version` column. Pika scopes every update to the version it read:
 
-When OCC is active for a class, PikaORM expects the database table to have an integer column that tracks the version of the row.
+```sql
+UPDATE posts SET ..., version = 2 WHERE id = ? AND version = 1
+```
 
-1. You load the record (e.g., `version = 1`).
-2. You modify the record.
-3. You tell PikaORM to update it. PikaORM generates an SQL statement like this:
-   ```sql
-   UPDATE table SET ..., version = 2 WHERE id = ? AND version = 1
-   ```
-4. If another process updated the record between steps 1 and 3, the `version` in the database will be `2`. The `WHERE version = 1` clause will fail to match any rows.
-5. PikaORM notices that 0 rows were updated and returns `false` from `orm.update()`. If you are using `PikaBean`'s `.saveOrThrow()`, it throws a `ConcurrentModificationException`.
+If someone else changed the row first, its version is already 2, so `WHERE version = 1` matches nothing and the update touches 0 rows. Pika sees that and `update()` returns `false`. (Through `saveOrThrow()`, a failed save throws `IllegalStateException`.)
 
-## Enabling OCC
+## Turn it on
 
-By default, PikaORM looks for a field named exactly `version` on your domain object. If it finds one, OCC is automatically enabled for that class.
+Add a field named `version`. That alone enables OCC for the class.
 
 ```java
-public class Article {
-    private long id;
-    private String title;
-    
-    // The presence of this field automatically enables OCC
-    private Integer version;
-    
-    // getters and setters...
+public class Article extends PikaBean {
+    long id;
+    String title;
+    Integer version;   // the presence of this field turns on OCC
 }
 ```
 
-When you insert a new `Article`, PikaORM sets the version to `1`. Every time you update it, PikaORM increments the version.
-
-## Customizing the Version Column
-
-If your database uses a different column name for tracking versions (e.g., `opt_lock`), you can override the default globally:
+Pika sets `version` to 1 on insert and bumps it on every update. Handle a conflict by checking the return value:
 
 ```java
-PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
-    .withDefaultVersionColumnName("opt_lock")
+Article a = Article.find().byId(1L);
+a.setTitle("edited");
+if (!a.update()) {
+    // someone changed this row first: reload and retry, or tell the user
+}
+```
+
+## Customize the column
+
+For a different column name everywhere:
+
+```java
+new PikaORM("jdbc:sqlite:app.db")
+    .withDefaultVersionColumnName(clazz -> "opt_lock")
     .makeDefaultORM();
 ```
 
-Alternatively, you can customize it per-class using the Custom Mapping Pattern:
+Or per class, in the [mapping]({{ '/pages/mapping/' | relative_url }}):
 
 ```java
-public static Mapping mapping() {
-    return new Mapping() {
-        @Override
-        public FieldMapping mapField(Field field) {
-            if (field.getName().equals("optLock")) {
-                return map(field)
-                    .toColumn("opt_lock")
-                    .asVersionColumn() // Marks this field as the OCC tracker
-                    .withVersionIncrementer(v -> v == null ? 1 : ((Integer) v) + 1);
-            }
-            return defaultMapping(field);
-        }
-    };
+@Override
+public FieldMapping mapField(Field field) {
+    if (field.getName().equals("optLock")) {
+        return map(field)
+                .toColumn("opt_lock")
+                .asVersionColumn()
+                .withVersionIncrementer(v -> v == null ? 1 : ((Integer) v) + 1);
+    }
+    return defaultMapping(field);
 }
 ```
 
-## Disabling OCC
+## Turn it off
 
-If you have a field named `version` that is meant for something else (like an API version string) and you do not want PikaORM to use it for concurrency control, you can opt-out globally:
+If you have a `version` field that means something else (an API version, say), opt out so Pika leaves it alone:
 
 ```java
-PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
+new PikaORM("jdbc:sqlite:app.db")
     .withNoDefaultVersionColumn()
     .makeDefaultORM();
 ```

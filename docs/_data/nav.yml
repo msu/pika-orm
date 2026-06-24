@@ -31,9 +31,9 @@
     - title: "Mapping & Coercion"
       url: "/pages/mapping/"
       active_page: "mapping"
-    - title: "Query Caching"
-      url: "/pages/query-caching/"
-      active_page: "query-caching"
+    - title: "Caching"
+      url: "/pages/caching/"
+      active_page: "caching"
     - title: "Logging & Errors"
       url: "/pages/logging/"
       active_page: "logging"
@@ -72,6 +72,7 @@
 
 - category: "New to Databases"
   id: new-to-databases
+  top_nav: false
   pages:
     - title: "What are Databases?"
       url: "/pages/what-are-databases/"

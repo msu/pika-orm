@@ -1,32 +1,49 @@
 ---
 layout: default
 title: "Lifecycle Callbacks"
-description: "PikaORM Lifecycle Callbacks: beforeInsert, afterInsert, beforeUpdate, beforeDelete, and the PikaRecordLifecycle interface."
+description: "Run code at each step of a record's insert, update, delete, and select with PikaORM lifecycle hooks."
 active_page: lifecycle-callbacks
 permalink: /pages/lifecycle-callbacks/
 ---
 
 # Lifecycle Callbacks
 
-PikaORM allows your domain objects to hook into the database execution pipeline. You do this by implementing the `PikaRecordLifecycle` interface. 
+Hooks let an object run code at each step of its own insert, update, delete, and select. A `PikaBean` already implements them, so override only the ones you want. The classic use is timestamps:
 
-*(Note: If your class extends `PikaBean`, it implements this interface automatically, and you simply override the methods you need).*
+```java
+public class Post extends PikaBean {
+    String title;
+    LocalDateTime createdAt;
 
-## Available Hooks
+    @Override
+    public boolean beforeInsert() {
+        createdAt = LocalDateTime.now();   // stamp the row on the way in
+        return true;
+    }
 
-The interface provides default implementations for all methods (returning `true` or doing nothing), so you only need to implement the specific hooks you care about.
+    @Override
+    public boolean beforeUpdate(Map<String, Object> values) {
+        values.put("updated_at", LocalDateTime.now());   // add a column to this UPDATE
+        return true;
+    }
+}
+```
+
+(If you are not using `PikaBean`, implement `PikaRecordLifecycle` directly. It is the same interface.)
+
+## The hooks
+
+Every method has a default, so you implement only what you need.
 
 ```java
 public interface PikaRecordLifecycle {
-    
-    // Returning false from any of these boolean methods 
-    // silently aborts the operation.
+    // pre-operation: return false to abort
     default boolean validate() { return true; }
     default boolean beforeInsert() { return true; }
-    default boolean beforeUpdate(Map<String, Object> updateValues) { return true; }
+    default boolean beforeUpdate(Map<String, Object> values) { return true; }
     default boolean beforeDelete() { return true; }
-    
-    // Post-operation hooks
+
+    // post-operation
     default void afterInsert() {}
     default void afterSelect() {}
     default void afterUpdate() {}
@@ -34,53 +51,25 @@ public interface PikaRecordLifecycle {
 }
 ```
 
-## Execution Sequence
+## Order
 
-### INSERT Flow
+- **Insert**: `validate` then `beforeInsert` then the SQL then `afterInsert` (the generated primary key is set by the time `afterInsert` runs).
+- **Update**: `validate` then `beforeUpdate(values)` then the SQL then `afterUpdate`. The `values` map is the exact column payload about to be sent; mutate it to add or drop columns.
+- **Delete**: `beforeDelete` then the SQL then `afterDelete`.
+- **Select**: the SQL then `afterSelect`, which runs once fields are mapped (this is where `PikaBean` snapshots state for dirty tracking).
 
-1. `validate()`: Check business rules before any DB interaction.
-2. `beforeInsert()`: Last chance to modify fields (e.g., setting a `createdAt` timestamp) or abort.
-3. *PikaORM builds and executes the INSERT SQL statement.*
-4. `afterInsert()`: Runs after the row is created and the primary key has been generated and populated on the object.
+## Aborting
 
-### UPDATE Flow
+Return `false` from any pre-operation hook and Pika silently skips the operation: no SQL runs, and `insert` / `update` / `delete` report no rows affected. Nothing is thrown.
 
-1. `validate()`
-2. `beforeUpdate(Map updateValues)`: Runs right before the SQL is built. The map contains the exact key-value pairs that are about to be sent to the database. You can mutate this map to add/remove columns from the update payload.
-3. *PikaORM builds and executes the UPDATE SQL statement.*
-4. `afterUpdate()`
-
-### DELETE Flow
-
-1. `beforeDelete()`: Often used to manually cascade deletions to child records or prevent deletion based on business rules.
-2. *PikaORM executes the DELETE SQL statement.*
-3. `afterDelete()`
-
-### SELECT Flow
-
-1. *PikaORM executes the SELECT SQL statement and instantiates your object.*
-2. `afterSelect()`: Runs immediately after PikaORM has finished mapping data from the `ResultSet` into your fields. This is commonly used to take a snapshot of the object's original state (which is how the dirty-field optimization works in `PikaBean`).
-
-## Abort Semantics
-
-The pre-operation hooks (`validate`, `beforeInsert`, `beforeUpdate`, `beforeDelete`) all return a `boolean`. 
-
-If you return `false` from any of these methods, PikaORM will **silently abort** the database operation. It will not execute the SQL, and the `orm.insert()`, `orm.update()`, or `orm.delete()` method will simply return `0` or `false` (indicating no rows were affected). No exception is thrown by the ORM.
-
-If you want an exception to be thrown to halt an HTTP request or trigger a transaction rollback, you should explicitly throw a `RuntimeException` (or `IllegalStateException`) from within the hook.
+To actually stop the request or roll back a transaction, throw instead:
 
 ```java
-public class User implements PikaRecordLifecycle {
-    
-    private String username;
-
-    @Override
-    public boolean beforeInsert() {
-        if (username == null || username.isBlank()) {
-            // Throwing halts the entire transaction
-            throw new IllegalArgumentException("Username is required");
-        }
-        return true; 
-    }
+@Override
+public boolean beforeDelete() {
+    if (locked) throw new IllegalStateException("cannot delete a locked post");
+    return true;
 }
 ```
+
+For plain field checks, use [Validation & Forms]({{ '/pages/validation/' | relative_url }}). Reach for hooks when you need timestamps, cascades, or logic tied to one specific step.

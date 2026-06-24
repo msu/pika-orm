@@ -13,17 +13,20 @@
   </button>
   {% for section in site.data.nav %}
   <div class="nav-section">
-    <button
-      class="nav-section-header"
-      aria-expanded="true"
-      aria-controls="nav-section-{{ section.id }}"
-      data-section-id="{{ section.id }}"
-    >
-      <span class="nav-section-title">{{ section.category }}</span>
-      <svg class="nav-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="6 9 12 15 18 9"/>
-      </svg>
-    </button>
+    <div class="nav-section-header">
+      <a class="nav-section-title" href="{{ section.pages[0].url | relative_url }}">{{ section.category }}</a>
+      <button
+        class="nav-section-toggle"
+        aria-expanded="true"
+        aria-controls="nav-section-{{ section.id }}"
+        data-section-id="{{ section.id }}"
+        aria-label="Toggle {{ section.category }} section"
+      >
+        <svg class="nav-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+    </div>
     <ul class="nav-links" id="nav-section-{{ section.id }}" role="list">
       {% for nav_page in section.pages %}
       <li>

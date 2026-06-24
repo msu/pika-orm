@@ -92,7 +92,7 @@
 
 
   /* ── 3. NAV SECTION COLLAPSE ────────────────────────────── */
-  document.querySelectorAll('.nav-section-header').forEach(function (btn) {
+  document.querySelectorAll('.nav-section-toggle').forEach(function (btn) {
     const targetId = btn.getAttribute('aria-controls');
     const target   = document.getElementById(targetId);
     const key      = 'pika-nav-' + btn.getAttribute('data-section-id');

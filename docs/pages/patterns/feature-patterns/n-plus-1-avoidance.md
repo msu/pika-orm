@@ -25,7 +25,7 @@ for (Artist artist : artists) {
 
 If you render a table of 50 artists on a webpage, making 51 database round-trips will severely degrade performance.
 
-## Solution 1: Query Caching (The Easy Way)
+## Solution 1: Caching (The Easy Way)
 
 If you have multiple components on a page requesting the same relationships, wrapping the request in PikaORM's Query Cache will ensure each relation is loaded at most once per parent.
 
@@ -41,7 +41,7 @@ try {
     orm.endQueryCaching();
 }
 ```
-*Note: This does not solve the N+1 problem for the initial load, but it prevents it from becoming 2N+1 or worse.* See the [Query Caching]({{ '/pages/query-caching/' | relative_url }}) guide for more details.
+*Note: This does not solve the N+1 problem for the initial load, but it prevents it from becoming 2N+1 or worse.* See the [Caching]({{ '/pages/caching/' | relative_url }}) guide for more details.
 
 ## Solution 2: Bulk Loading with WHERE IN (The Performant Way)
 
