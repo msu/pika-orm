@@ -6,9 +6,9 @@ active_page: architecture
 permalink: /pages/architecture/
 ---
 
-# PikaORM: Technical System Architecture
+# Architecture
 
-> This document provides a complete graph-based map of every class, interface, and subsystem in PikaORM. It is the foundation for all documentation that follows. Each section describes a subsystem, shows its position in the overall graph.
+A map of PikaORM's classes, interfaces, and subsystems, and how they fit together. Each section covers one subsystem and its place in the whole.
 
 ---
 
@@ -83,7 +83,7 @@ classDiagram
         +update(Object) boolean
         +delete(Object) boolean
         +select(String, Map, Class) QueryResult
-        +withTransaction(Runnable) void
+        +inTransaction(Runnable) void
         +startQueryCaching() void
         +getMapping(Class) Mapping
         +coerce(Class, Object) T
@@ -406,7 +406,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph TransactionAPI ["Transaction API Surface"]
-        W["withTransaction(Runnable/Callable)\n= inTransaction()"]
+        W["inTransaction(Runnable/Callable)"]
         F["forceTransaction(Runnable/Callable)\nopens its own connection"]
         J["joinTransaction(Runnable/Callable)\nrequires active tx"]
         W --> ST[startTransaction]
@@ -416,8 +416,8 @@ flowchart TD
     end
 
     subgraph Nesting ["Nested Transactions"]
-        N1["outer withTransaction()"]
-        N2["inner withTransaction() — joins outer"]
+        N1["outer inTransaction()"]
+        N2["inner inTransaction() — joins outer"]
         N1 -->|transactionCount++| N2
         N2 -->|transactionCount--| N1
         N1 -->|"transactionCount == 0 → commit"| DB[(Database)]
@@ -474,7 +474,7 @@ flowchart TD
 
 ### 3.5 — Query Pipeline
 
-This is the most-used path in PikaORM. Three distinct entry points exist, each targeting a different usage level:
+The query path has three entry points, at different levels:
 
 ```mermaid
 flowchart LR
@@ -787,7 +787,7 @@ flowchart TD
         A1["orm.exec(CREATE TABLE IF NOT EXISTS pika_migrations)"]
         A1 --> A2["loadMigrations(orm)\n→ migrations() fills migrationsMap\n→ merge with persisted PikaMigration rows"]
         A2 --> A3["for each PikaMigration where !isApplied:\n  migration.runUp(orm)"]
-        A3 --> A4["runUp(orm):\n  withTransaction → exec each SQL\n  status=APPLIED\n  orm.insert(this) or orm.update(this)"]
+        A3 --> A4["runUp(orm):\n  inTransaction → exec each SQL\n  status=APPLIED\n  orm.insert(this) or orm.update(this)"]
     end
 
     DEF --> APPLY
@@ -882,34 +882,6 @@ flowchart TD
     end
 ```
 
----
+## Quick reference
 
-## 4. Feature-to-Entry-Point Map (Quick Reference)
-
-| Feature                 | Entry Point                                      | Returns                        |
-| ----------------------- | ------------------------------------------------ | ------------------------------ |
-| Find by PK              | `orm.find(C).byId(id)`                           | `T` or `null`                  |
-| Find by column          | `orm.find(C).byKey(col, val)`                    | `T` or `null`                  |
-| Query all               | `orm.find(C).all()`                              | `PikaClassQuery<T>`            |
-| Filtered query          | `orm.find(C).where(sql, Map)`                    | `PikaClassQuery<T>`            |
-| Raw typed query         | `orm.find(C).bySQL(sql, Map)`                    | `QueryResult<T>`               |
-| Raw untyped query       | `orm.select(sql, Map)`                           | `QueryResult<ResultMap>`       |
-| Streaming               | `orm.stream(C)` or `query.stream()`              | `Stream<T>`                    |
-| Insert one              | `orm.insert(obj)`                                | `Long` (generated PK)          |
-| Insert many             | `orm.insertAll(list)`                            | `void`                         |
-| Update                  | `orm.update(obj)`                                | `boolean`                      |
-| Delete                  | `orm.delete(obj)`                                | `boolean`                      |
-| Reload from DB          | `orm.reload(obj)`                                | `void`                         |
-| Raw SQL                 | `orm.exec(sql)`                                  | `boolean`                      |
-| One-to-many             | `orm.loadMany(one, ManyClass)`                   | `PikaManyRelation<T>`          |
-| Many-to-many            | `orm.loadManyThrough(one, JoinClass, ManyClass)` | `PikaManyThroughRelation<J,T>` |
-| Belongs-to              | `orm.load(obj, TargetClass)`                     | `T`                            |
-| Has-one reverse         | `orm.loadReverse(obj, TargetClass)`              | `T`                            |
-| Transaction             | `orm.withTransaction(Runnable)`                  | `void`                         |
-| Transaction (return)    | `orm.withTransaction(Callable)`                  | `T`                            |
-| Force new connection tx | `orm.forceTransaction(Runnable)`                 | `void`                         |
-| Join existing tx        | `orm.joinTransaction(Runnable)`                  | `void`                         |
-| Caching on              | `orm.startQueryCaching()`                        | `void`                         |
-| Caching off             | `orm.endQueryCaching()`                          | `void`                         |
-| Migrations              | `orm.withMigrations(m).applyMigrations()`        | `PikaORM` (fluent)             |
-| Type coercion           | `orm.coerce(Class, value)`                       | `T`                            |
+Every operation at a glance: see the [Cheat Sheet](/pages/cheat-sheet/).

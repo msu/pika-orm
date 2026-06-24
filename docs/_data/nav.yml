@@ -46,6 +46,9 @@
     - title: "Plain Java Objects"
       url: "/pages/plain-objects/"
       active_page: "plain-objects"
+    - title: "Cheat Sheet"
+      url: "/pages/cheat-sheet/"
+      active_page: "cheat-sheet"
     - title: "Philosophy of Pika"
       url: "/pages/philosophy/"
       active_page: "philosophy"
@@ -63,23 +66,16 @@
       url: "/pages/connection-pooling/"
       active_page: "connection-pooling"
 
-- category: "Reference"
-  id: reference
+- category: "Internals"
+  id: internals
+  top_nav: false
   pages:
+    - title: "How It Works"
+      url: "/pages/how-it-works/"
+      active_page: "how-it-works"
     - title: "Architecture"
       url: "/pages/architecture/"
       active_page: "architecture"
     - title: "Test Suite Guide"
       url: "/pages/understanding-test-suite/"
       active_page: "understanding-test-suite"
-
-- category: "New to Databases"
-  id: new-to-databases
-  top_nav: false
-  pages:
-    - title: "What are Databases?"
-      url: "/pages/what-are-databases/"
-      active_page: "what-are-databases"
-    - title: "What is an ORM?"
-      url: "/pages/what-is-an-orm/"
-      active_page: "what-is-an-orm"

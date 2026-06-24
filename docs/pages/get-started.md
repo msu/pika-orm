@@ -136,4 +136,4 @@ PikaList<Todo> open = Todo.find()
 - [CRUD]({{ '/pages/crud/' | relative_url }}) — the full create/read/update/delete surface
 - [Querying]({{ '/pages/querying/' | relative_url }}) — filtering, ordering, joins, and aggregates
 - [Validation & Forms]({{ '/pages/validation/' | relative_url }}) — validating beans and binding web form data
-- New to all this? Start with [What are Databases?]({{ '/pages/what-are-databases/' | relative_url }}) and [What is an ORM?]({{ '/pages/what-is-an-orm/' | relative_url }})
+- [Cheat Sheet]({{ '/pages/cheat-sheet/' | relative_url }}) — every operation at a glance
