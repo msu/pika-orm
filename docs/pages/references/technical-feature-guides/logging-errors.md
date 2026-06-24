@@ -89,8 +89,103 @@ orm.suppressQueries(() -> {
 
 This suppression is Thread-Local. It applies only to the current thread for the duration of the lambda execution, leaving global logging safely intact for other concurrent web requests.
 
-## Custom Loggers (SLF4J, Log4j2)
+## Connecting to Standard Logging Interfaces
 
-To route PikaORM logs to a standard enterprise logging framework, use the `.withLogger()` method. 
+To route PikaORM logs into a central logging framework (SLF4J, Log4j2, or `java.util.logging`), use the `.withLogger()` method with a lambda that switches on the PikaORM `Level` enum.
 
-See the [Connection to Standard Logging Interfaces]({{ '/pages/connection-logging/' | relative_url }}) pattern guide for complete code examples on wiring PikaORM to SLF4J, Log4j2, and `java.util.logging`.
+### SLF4J Integration
+
+This is the most common pattern.
+
+```java
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class DatabaseSetup {
+    
+    private static final Logger logger = LoggerFactory.getLogger("PikaORM");
+
+    public static void init() {
+        PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
+            .logQueries() // Enable query logging
+            .withLogger((level, msg, args) -> {
+                switch (level) {
+                    case TRACE -> logger.trace(msg, args);
+                    case DEBUG -> logger.debug(msg, args);
+                    case INFO  -> logger.info(msg, args);
+                    case WARN  -> logger.warn(msg, args);
+                    case ERROR -> logger.error(msg, args);
+                }
+            })
+            .makeDefaultORM();
+    }
+}
+```
+
+### Log4j2 Integration
+
+The pattern for Log4j2 is nearly identical to SLF4J.
+
+```java
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Level;
+
+public class DatabaseSetup {
+    
+    private static final Logger logger = LogManager.getLogger("PikaORM");
+
+    public static void init() {
+        PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
+            .logQueries()
+            .withLogger((pikaLevel, msg, args) -> {
+                Level log4jLevel = switch (pikaLevel) {
+                    case TRACE -> Level.TRACE;
+                    case DEBUG -> Level.DEBUG;
+                    case INFO  -> Level.INFO;
+                    case WARN  -> Level.WARN;
+                    case ERROR -> Level.ERROR;
+                };
+                logger.log(log4jLevel, msg, args);
+            })
+            .makeDefaultORM();
+    }
+}
+```
+
+### Java Util Logging (JUL)
+
+JUL requires mapping PikaORM's levels to JUL's standard levels (`FINER`, `FINE`, `INFO`, `WARNING`, `SEVERE`).
+
+```java
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class DatabaseSetup {
+    
+    private static final Logger logger = Logger.getLogger("PikaORM");
+
+    public static void init() {
+        PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
+            .logQueries()
+            .withLogger((pikaLevel, msg, args) -> {
+                Level julLevel = switch (pikaLevel) {
+                    case TRACE -> Level.FINER;
+                    case DEBUG -> Level.FINE;
+                    case INFO  -> Level.INFO;
+                    case WARN  -> Level.WARNING;
+                    case ERROR -> Level.SEVERE;
+                };
+                
+                // Format the message with arguments if present
+                if (args != null && args.length > 0) {
+                    // Quick string formatting for JUL
+                    msg = String.format(msg.replace("?", "%s"), args);
+                }
+                
+                logger.log(julLevel, msg);
+            })
+            .makeDefaultORM();
+    }
+}
+```

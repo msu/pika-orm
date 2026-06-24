@@ -3,10 +3,25 @@
 <meta name="description" content="{{ page.description | default: site.description | escape }}">
 <title>{% if page.title %}{{ page.title }} · PikaORM{% else %}PikaORM Documentation{% endif %}</title>
 
+<!-- Favicon -->
+<link rel="icon" type="image/png" href="{{ '/assets/img/favicon.png' | relative_url }}">
+
+<!-- Social / link previews -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PikaORM">
+<meta property="og:title" content="{% if page.title %}{{ page.title }}{% else %}PikaORM{% endif %}">
+<meta property="og:description" content="{{ page.description | default: site.description | escape }}">
+<meta property="og:image" content="{{ '/assets/img/og-card.png' | absolute_url }}">
+<meta property="og:url" content="{{ page.url | absolute_url }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{% if page.title %}{{ page.title }}{% else %}PikaORM{% endif %}">
+<meta name="twitter:description" content="{{ page.description | default: site.description | escape }}">
+<meta name="twitter:image" content="{{ '/assets/img/og-card.png' | absolute_url }}">
+
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <!-- Stylesheet -->
 <link rel="stylesheet" href="{{ '/assets/css/pika-style.css' | relative_url }}">

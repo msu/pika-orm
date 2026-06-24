@@ -381,6 +381,112 @@
   })();
 
 
+  /* ── 4b. CODE-BLOCK CARDS (header + copy button) ────────── */
+  (function enhanceCodeBlocks() {
+    // Rouge emits: <div class="language-X highlighter-rouge">
+    //                <div class="highlight"><pre class="highlight"><code>…
+    // Mermaid blocks are <code class="language-mermaid"> and are converted
+    // to .mermaid divs elsewhere — skip anything mermaid-related.
+    var blocks = document.querySelectorAll('.prose .highlight, .hero-code-inner .highlight');
+    if (!blocks.length) return;
+
+    blocks.forEach(function (highlight) {
+      // Guard: already wrapped, or no code to copy.
+      if (highlight.closest('.code-card')) return;
+      var code = highlight.querySelector('code');
+      if (!code) return;
+
+      // Skip mermaid (defensive — mermaid isn't wrapped in .highlight,
+      // but bail if the source class somehow indicates a diagram).
+      var outer = highlight.closest('[class*="language-"]') || highlight;
+      if (/language-mermaid/.test(outer.className) ||
+          /language-mermaid/.test(code.className)) {
+        return;
+      }
+
+      // Derive a label from the language-* class on the outer wrapper.
+      var label = 'CODE';
+      var m = (outer.className || '').match(/language-([a-z0-9+#-]+)/i);
+      if (m && m[1] && m[1] !== 'plaintext' && m[1] !== 'text') {
+        label = m[1].toUpperCase();
+      }
+
+      // Build the card frame.
+      var card = document.createElement('div');
+      card.className = 'code-card';
+
+      var header = document.createElement('div');
+      header.className = 'code-card-header';
+      header.innerHTML =
+        '<span class="code-card-dot" aria-hidden="true"></span>' +
+        '<span class="code-card-label"></span>';
+      header.querySelector('.code-card-label').textContent = label;
+
+      var footer = document.createElement('div');
+      footer.className = 'code-card-footer';
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'code-copy-btn';
+      btn.setAttribute('aria-label', 'Copy code to clipboard');
+      btn.textContent = 'Copy';
+
+      footer.appendChild(btn);
+
+      // Insert the card before the highlight, then move pieces inside.
+      var parent = outer.parentNode;
+      if (!parent) return;
+      parent.insertBefore(card, outer);
+      card.appendChild(header);
+      card.appendChild(highlight);
+      card.appendChild(footer);
+
+      // The outer .language-* wrapper is now empty; remove it if so.
+      if (outer !== highlight && !outer.children.length) {
+        outer.remove();
+      }
+
+      var resetTimer = null;
+      btn.addEventListener('click', function () {
+        var text = code.innerText;
+        var done = function () {
+          btn.textContent = 'Copied!';
+          btn.classList.add('is-copied');
+          if (resetTimer) clearTimeout(resetTimer);
+          resetTimer = setTimeout(function () {
+            btn.textContent = 'Copy';
+            btn.classList.remove('is-copied');
+          }, 1600);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done).catch(fallbackCopy);
+        } else {
+          fallbackCopy();
+        }
+
+        function fallbackCopy() {
+          try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            done();
+          } catch (_) {
+            btn.textContent = 'Error';
+            if (resetTimer) clearTimeout(resetTimer);
+            resetTimer = setTimeout(function () { btn.textContent = 'Copy'; }, 1600);
+          }
+        }
+      });
+    });
+  })();
+
+
   /* ── 5. GITHUB ALERTS ───────────────────────────────────── */
   (function initAlerts() {
     var bqs = document.querySelectorAll('.prose blockquote');

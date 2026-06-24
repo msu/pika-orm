@@ -1,57 +1,59 @@
 ---
 layout: default
 title: "Get Started with PikaORM"
-description: "PikaORM — the lightweight, minimal MicroORM for Java. No config files, zero magic, pure SQL power."
+description: "PikaORM - the lightweight, minimal MicroORM for Java. No config files, zero magic, pure SQL power."
 active_page: get-started
-permalink: /
+permalink: /pages/get-started/
 ---
 
 
-PikaORM is a lightweight Object Relational Mapper for Java. Check out our [Philosophy of Pika]({{ '/pages/philosophy/' | relative_url }}) to see why we built it the way we did.
+PikaORM is a lightweight MicroORM for Java: no config files, no annotations, just a fluent builder API and SQL when you want it. See the [Philosophy of Pika]({{ '/pages/philosophy/' | relative_url }}) for the why.
 
-## Core Essentials
+## Core Principles
 
-**1. Concision is key.**
-Pika approaches the ORM problem with simplicity:
-- No external configuration files or annotations.
-- Intuitive builder method-based API design.
-- Highly customizable mappings, models, and features — all using plain Java classes.
-- An easy-to-understand codebase for personal modification.
+- **Concision** - No config files or annotations. Map and query with a plain builder API over plain Java classes.
+- **Exposes SQL** - Drop to raw SQL anytime through multiple entry points.
+- **Dual paradigm** - A SQL-native side and a POJO side. Mix them as your domain needs.
 
-**2. Pika exposes SQL.**
-If you cannot do something simplistically with Pika logic, you are encouraged to use raw SQL. You are given multiple entry points to do this directly within the ORM.
+## A First Example
 
-**3. Dual database mapping paradigms.**
-Pika provides both a SQL-native paradigm and a POJO (Plain Old Java Object) leaning side. These are not mutually exclusive — you are encouraged to use both approaches as your domain requires.
+```java
+public class Todo {
+    Long id;
+    String title;
+    String description;
+
+    public Todo() {}
+    public Todo(String title, String description) {
+        this.title = title;
+        this.description = description;
+    }
+}
+
+// Connect and apply schema migrations
+PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
+        .makeDefaultORM()
+        .withMigrations(new AppMigrations())
+        .applyMigrations();
+
+// Insert a row
+orm.insert(new Todo("Read docs", "Finish the PikaORM guide"));
+
+// Fluent query
+PikaList<Todo> active = orm.query(Todo.class)
+        .where("completed = :val", "val", false)
+        .fetchList();
+```
 
 ## Supported Databases
 
-- **SQLite** — Use `.withSQLiteQuirks()` on ORM configuration for small corner cases.
-- **H2** — Supports In-Memory, Oracle, PostgreSQL, and SQLServer dialects.
-- **MariaDB** — Supported with standard JDBC usage.
+- **SQLite** - Use `.withSQLiteQuirks()` on ORM configuration for small corner cases.
+- **H2** - Supports In-Memory, Oracle, PostgreSQL, and SQLServer dialects.
+- **MariaDB** - Supported with standard JDBC usage.
 
-## Where Should I Start?
+## Where to Next
 
-Are you new to databases or ORMs? Check out our beginner guides first. If you already know SQL and ORMs, the chart below will point you to what you need.
-
-```mermaid
-flowchart TD
-    Start{"Where are you in your journey?"}
-
-    Start --> |"I don't know SQL"| ReadDB["What are Databases?"]
-    ReadDB --> ReadORM["What is an ORM?"]
-    ReadORM --> NextStep
-
-    Start --> |"I know SQL & ORMs"| NextStep{"What do you want to do?"}
-
-    NextStep --> |"Just show me code!"| Patterns[Patterns]
-    Patterns --> Quickstart["Web Quickstart"]
-    Patterns --> CommonPatterns["Feature Patterns (N+1, Caching, etc)"]
-
-    NextStep --> |"Understand the framework"| System[System Understanding]
-    System --> Phil["Philosophy of Pika"]
-    System --> Arch["Architecture"]
-
-    NextStep --> |"Technical reference"| Ref[Master Reference]
-    Ref --> TechGuides["Technical Feature Guides"]
-```
+- New to databases? [What are Databases?]({{ '/pages/what-are-databases/' | relative_url }}) then [What is an ORM?]({{ '/pages/what-is-an-orm/' | relative_url }})
+- Want a full walkthrough? [Web Quickstart]({{ '/pages/quickstart/' | relative_url }})
+- Feature docs? [Guides]({{ '/pages/querying/' | relative_url }})
+- Examples? [Avoiding N+1]({{ '/pages/n-plus-1-avoidance/' | relative_url }})
