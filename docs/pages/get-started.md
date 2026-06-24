@@ -8,7 +8,7 @@ permalink: /pages/get-started/
 
 # Get Started
 
-PikaORM is a lightweight ActiveRecord ORM for Java. Map a plain class to a table, get CRUD and a fluent query API for free, and drop to raw SQL whenever you want. No config files, no annotations. See the [Philosophy of Pika]({{ '/pages/philosophy/' | relative_url }}) for the reasoning.
+PikaORM is a lightweight ActiveRecord ORM for Java. Map a plain class to a table to get CRUD and a fluent query API, and drop to raw SQL whenever you want. There are no configuration files or annotations to write.
 
 ## Install
 

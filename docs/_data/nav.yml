@@ -49,9 +49,6 @@
     - title: "Cheat Sheet"
       url: "/pages/cheat-sheet/"
       active_page: "cheat-sheet"
-    - title: "Philosophy of Pika"
-      url: "/pages/philosophy/"
-      active_page: "philosophy"
 
 - category: "Examples"
   id: examples

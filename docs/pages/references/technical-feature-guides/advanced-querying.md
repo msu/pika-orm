@@ -113,6 +113,36 @@ Todo.find().byQuery()
         .fetchList();
 ```
 
+## Query records
+
+Not every query maps to an entity. For an aggregate, a report, or a custom join, map the rows to a Java `record` with `orm.select(sql, RecordClass)`. Pika matches each record component to a column by the usual convention (`titleCount` to `title_count`), so alias your columns to line up, then calls the record's canonical constructor.
+
+```java
+record TitleCount(String title, long count) {}
+
+PikaList<TitleCount> counts = orm.select("""
+        SELECT title, COUNT(*) AS count
+        FROM todos
+        GROUP BY title""", TitleCount.class).toList();
+```
+
+The tidy version keeps the SQL with the record, as a static method that returns the typed `QueryResult`. The record becomes a self-contained query:
+
+```java
+record TitleCount(String title, long count) {
+    static QueryResult<TitleCount> run() {
+        return PikaORM.get().select("""
+                SELECT title, COUNT(*) AS count
+                FROM todos
+                GROUP BY title""", TitleCount.class);
+    }
+}
+
+PikaList<TitleCount> counts = TitleCount.run().toList();
+```
+
+`PikaORM.get()` is the default ORM, so the record needs nothing passed in. This keeps reporting queries next to the type they produce.
+
 ## See the generated SQL
 
 `explain()` runs the database's query planner and returns its output. Reach for it when a query is slower than you expect.
@@ -123,4 +153,4 @@ Todo.find().where("completed = :d", "d", false).explain();
 
 ## Going further
 
-Paging large result sets has its own page: [Paging]({{ '/pages/paging/' | relative_url }}). For full SQL control or results that are not beans, see [Plain Java Objects]({{ '/pages/plain-objects/' | relative_url }}).
+Paging large result sets has its own page: [Paging]({{ '/pages/paging/' | relative_url }}). For raw SQL and using the ORM without beans, see [Plain Java Objects]({{ '/pages/plain-objects/' | relative_url }}).

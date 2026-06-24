@@ -73,16 +73,7 @@ Pass a class and Pika maps each row onto it:
 PikaList<Todo> todos = orm.select("SELECT * FROM todos WHERE completed = 0", Todo.class).toList();
 ```
 
-A `record` is a tidy fit for one-off shapes like an aggregate:
-
-```java
-record TitleCount(String title, long count) {}
-
-PikaList<TitleCount> counts = orm.select("""
-        SELECT title, COUNT(*) AS count
-        FROM todos
-        GROUP BY title""", TitleCount.class).toList();
-```
+You can also map a query straight onto a Java `record`, which is handy for aggregates and reports. That lives on the [Querying]({{ '/pages/querying/' | relative_url }}) page under Query records.
 
 Named parameters work in raw SQL too, supplied as a map:
 

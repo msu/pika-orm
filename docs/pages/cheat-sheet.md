@@ -47,6 +47,7 @@ Every common operation at a glance. `Todo` is a `PikaBean` with a static `find()
 | Page | `Todo.find().where(...).page(2).pageSize(20).fetchList()` |
 | Page totals | `query.totalCount()`, `query.totalPages()`, `query.hasNextPage()` |
 | Raw SQL | `orm.select("SELECT ...", Todo.class).toList()` |
+| Map to a record | `orm.select("SELECT ...", MyRecord.class).toList()` |
 
 ## Relationships (accessors on the bean)
 

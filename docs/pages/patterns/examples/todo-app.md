@@ -8,7 +8,7 @@ permalink: /pages/todo-app/
 
 # Todo App (Javalin)
 
-A working todo list backed by a SQLite database: add todos, check them off, delete them, and page through them. It is three short files and no DAO layer, no config, no annotations.
+A working todo list backed by a SQLite database: add todos, check them off, delete them, and page through them. It is three short files, with no separate data-access layer to write.
 
 You write the table as a migration, the row as a `Todo` bean, and four routes wired to [Javalin](https://javalin.io). Because the bean persists and validates itself, the route handlers stay a few lines each.
 

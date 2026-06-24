@@ -1,7 +1,7 @@
 ---
 layout: landing
 title: "PikaORM — The lightweight MicroORM for Java"
-description: "PikaORM — the lightweight, minimal MicroORM for Java. No config files, zero magic, just clean builder-style API over plain SQL."
+description: "A lightweight ActiveRecord ORM for Java with a fluent query API and direct access to SQL."
 permalink: /
 ---
 
@@ -42,9 +42,9 @@ permalink: /
       <h3>Relationships</h3>
       <p>Load related records without N+1.</p>
     </a>
-    <a class="docs-card" href="{{ '/pages/philosophy/' | relative_url }}">
-      <h3>Philosophy</h3>
-      <p>Why Pika is built the way it is.</p>
+    <a class="docs-card" href="{{ '/pages/cheat-sheet/' | relative_url }}">
+      <h3>Cheat Sheet</h3>
+      <p>Every operation at a glance.</p>
     </a>
   </div>
 </section>

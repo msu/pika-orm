@@ -8,7 +8,7 @@ permalink: /pages/relationships/
 
 # Relationships
 
-Pika resolves relationships at runtime from foreign key conventions. No annotations, no mapping files. You expose a relationship by adding an accessor to your bean that calls one of four helpers: `loadMany`, `loadManyThrough`, `load`, or `loadReverse`.
+Pika resolves relationships at runtime from foreign key conventions, with no annotations or mapping files to write. You expose a relationship by adding an accessor to your bean that calls one of four helpers: `loadMany`, `loadManyThrough`, `load`, or `loadReverse`.
 
 If you are not using beans, the same methods exist on the ORM instance (`orm.loadMany(artist, Album.class)`). See [Plain Java Objects]({{ '/pages/plain-objects/' | relative_url }}).
 

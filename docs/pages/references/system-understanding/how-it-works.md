@@ -8,7 +8,7 @@ permalink: /pages/how-it-works/
 
 # How It Works
 
-PikaORM has no annotations and no config files. It works out how to map your classes to tables at runtime, using Java reflection. This page shows the core of how. You do not need it to use Pika, but if you are learning how an ORM is built, start here.
+PikaORM figures out how to map your classes to tables at runtime, using Java reflection instead of annotations or config files. This page shows the core of how. You do not need it to use Pika, but if you are learning how an ORM is built, start here.
 
 ## The idea
 
