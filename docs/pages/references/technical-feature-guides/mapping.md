@@ -1,130 +1,88 @@
 ---
 layout: default
 title: "Mapping & Coercion"
-description: "How PikaORM maps Java classes to tables and columns, how to override the conventions, and how type coercion works."
+description: "How PikaORM maps classes to tables, how to override the conventions, and how to coerce database values into your field types."
 active_page: mapping
 permalink: /pages/mapping/
 ---
 
 # Mapping & Coercion
 
-PikaORM maps Java classes to tables and columns by convention. You only configure a mapping when your schema departs from those conventions or when a field holds a complex type.
+Pika maps classes to tables and columns by convention. You only write a mapping when your schema breaks from those conventions or a field holds a type the database does not store directly.
 
-## Default Conventions
+## Default conventions
 
-When you do not define a mapping for a class, PikaORM applies these rules:
+With no mapping defined, Pika applies these rules:
 
-- **Class to table**: `ClassName` becomes `snake_case` and is pluralized. `User` -> `users`, `BlogPost` -> `blog_posts`, `Category` -> `categories`.
-- **Field to column**: `fieldName` becomes `snake_case`. `firstName` -> `first_name`, `createdAt` -> `created_at`.
-- **Primary key**: a field named exactly `id` (case-sensitive) is the primary key. Without it, PikaORM cannot update or delete by identity.
-- **Foreign key**: for `.loadMany()`, the child table's FK column is the parent's singular table name plus `_id`. A `User` with many `Post`s expects a `user_id` column on `posts`.
-- **UUID**: a field named `uuid` is treated as a UUID column. If null on `INSERT`, PikaORM generates `java.util.UUID.randomUUID().toString()`.
-- **Version**: a field named `version` is treated as an optimistic-concurrency column and is auto-incremented on every `UPDATE`.
+- **Class to table**: the class name becomes `snake_case` and is pluralized. `User` to `users`, `BlogPost` to `blog_posts`.
+- **Field to column**: the field name becomes `snake_case`. `firstName` to `first_name`.
+- **Primary key**: a field named exactly `id` is the primary key. Without one, Pika cannot update or delete by identity.
+- **Foreign key**: the child's FK column is the parent's singular table name plus `_id`. A `User` with many `Post`s expects `user_id` on `posts`.
+- **UUID**: a field named `uuid` gets a generated `UUID.randomUUID().toString()` on insert if it is null.
+- **Version**: a field named `version` is an optimistic-concurrency column, bumped on every update.
 
-## Overriding the Defaults
+## Override the conventions
 
-### Global Overrides
+### For the whole database
 
-If your whole database follows a different standard (for example a legacy schema with singular tables and `CamelCase` columns), override the defaults on the `PikaORM` builder before `.makeDefaultORM()`:
+If your schema follows a different standard everywhere, override the defaults on the builder. Each takes a function, so the rule can depend on the class or field.
 
 ```java
 PikaORM orm = new PikaORM("jdbc:mysql://localhost/legacy_db")
-    // Override table naming: keep singular, exact class name
-    .withDefaultTableMapping(clazz -> clazz.getSimpleName())
-    
-    // Override column naming: just use the exact Java field name
-    .withDefaultColumnMapping(field -> field.getName())
-    
-    // Override the default primary key field name
-    .withDefaultIdField("primaryKey")
-    
-    // Override the default foreign key generation
-    .withDefaultFkColumn(parentClass -> parentClass.getSimpleName().toLowerCase() + "Id")
-    
-    // Override default version column name
-    .withDefaultVersionColumnName("opt_lock_version")
-    
-    // Opt-out of UUID auto-generation entirely
-    .withNoDefaultUUIDField()
-    
+    .withDefaultTableMapping(clazz -> clazz.getSimpleName())   // singular, exact class name
+    .withDefaultColumnMapping(field -> field.getName())        // exact Java field name
+    .withDefaultIdField(clazz -> "primaryKey")                 // PK field name
+    .withDefaultFkColumn(clazz -> clazz.getSimpleName().toLowerCase() + "Id")
     .makeDefaultORM();
 ```
 
-### Class-Specific Overrides
+### For one class
 
-Any class can define a `public static Mapping mapping()` method. If present, PikaORM ignores the global conventions for that class and uses the returned `Mapping`. This keeps mapping logic encapsulated in the class it belongs to.
+Give the class a `public static Mapping mapping()`. When it is present, Pika uses it instead of the conventions for that class, keeping the mapping next to the fields it describes.
 
-For a class you do not own (e.g. from a third-party library) and cannot add a static method to, register the mapping on the ORM instance:
-
-```java
-orm.withMapping(ThirdPartyClass.class, new Mapping() {
-    @Override
-    public String mapToTable() {
-        return "third_party_table";
-    }
-    // ... override mapField as needed
-});
-```
-
-## Custom Field Mapping
-
-`mapToTable()` overrides the table name; `mapField(Field)` controls per-field mapping. Build a field mapping with `map(field)` and chain the `FieldMapping` methods:
+For a class you do not own, register the mapping on the ORM instead:
 
 ```java
-public class FieldMapping {
-    // Core configuration methods
-    FieldMapping toColumn(String columnName)           // Set custom column name
-    FieldMapping asType(Class<?> dbClass)              // Set database storage type
-    FieldMapping asId()                                // Mark as ID column
-    FieldMapping asVersionColumn()                     // Mark as version column
-    
-    // Data transformation methods
-    FieldMapping transformForDB(UnaryOperator<Object> func)    // Java -> Database
-    FieldMapping transformFromDB(UnaryOperator<Object> func)   // Database -> Java
-    FieldMapping withVersionIncrementer(UnaryOperator<Object> incrementer)
-}
+orm.withMapping(ThirdPartyClass.class, "third_party_table");
 ```
 
-### Serializing a Complex Type
+## Custom field mapping
 
-Use `asType()` plus `transformForDB` / `transformFromDB` to store a complex field in a single column. This stores a `Map` as a JSON string:
+Inside a `Mapping`, override `mapField(Field)` and build each field's mapping with `map(field)`. The `FieldMapping` methods:
+
+- `toColumn(name)` -- use a specific column name.
+- `asType(Class)` -- store the field as a different type (usually `String.class`).
+- `asId()` / `asVersionColumn()` -- mark the primary key or version column.
+- `transformForDB(fn)` / `transformFromDB(fn)` -- convert the value on the way out and back in.
+
+Route fields with a `switch`, and always end with `defaultMapping(field)` so new simple fields keep mapping automatically. Use `ignore(field)` to skip one.
+
+### Storing a complex type in one column
+
+`asType(String.class)` plus the two transforms store any field as a single column. Here a `Map` is kept as JSON:
 
 ```java
 import com.google.gson.Gson;
 import edu.montana.pika.mapping.Mapping;
 import edu.montana.pika.mapping.FieldMapping;
 
-public class UserPreferences {
+public class UserPrefs {
+    long userId;
+    Map<String, Object> settings;
 
-    private long userId;
-    private Map<String, Object> settings;
-
-    // Standard getters/setters...
-    public long getUserId() { return userId; }
-    public Map<String, Object> getSettings() { return settings; }
-    
     public static Mapping mapping() {
         Gson gson = new Gson();
-        
         return new Mapping() {
-            @Override
-            public String mapToTable() {
-                return "user_prefs_table"; 
-            }
-            
-            @Override
-            public FieldMapping mapField(Field field) {
+            @Override public String mapToTable() { return "user_prefs"; }
+
+            @Override public FieldMapping mapField(Field field) {
                 return switch (field.getName()) {
-                    case "userId" -> map(field)
-                                        .toColumn("id")
-                                        .asId();
-                    
+                    case "userId"   -> map(field).toColumn("id").asId();
                     case "settings" -> map(field)
-                                        .toColumn("json_settings")
-                                        .asType(String.class)
-                                        .transformForDB(gson::toJson)
-                                        .transformFromDB(val -> gson.fromJson(String.valueOf(val), Map.class));
-                    
+                            .toColumn("json_settings")
+                            .asType(String.class)
+                            .transformForDB(gson::toJson)
+                            .transformFromDB(v -> gson.fromJson(String.valueOf(v), Map.class));
                     default -> defaultMapping(field);
                 };
             }
@@ -133,149 +91,50 @@ public class UserPreferences {
 }
 ```
 
-Notes on the pattern:
-
-- Return an inline `new Mapping() { ... }` and override only `mapToTable` and `mapField`.
-- Route fields with a `switch` on `field.getName()`. Use `ignore(field)` to skip a field.
-- Always include a `default -> defaultMapping(field)` case so newly added simple fields map automatically.
-- `transformForDB` / `transformFromDB` define how a value transitions between the Java type and the SQL type set by `asType()`.
-
-### Collection Serialization
-
-The same hooks serialize `List` or `Set` fields, e.g. as delimited strings. The mapping below also marks an optimistic-locking column with a custom incrementer:
-
-```java
-public static class MyMapping extends Mapping {
-    @Override
-    protected FieldMapping mapField(Field field) {
-        switch (field.getName()) {
-            case "tags":
-                return map(field)
-                    .toColumn("tags_csv")
-                    .asType(String.class)
-                    .transformForDB(this::serializeStringList)
-                    .transformFromDB(this::deserializeStringList);
-                    
-            case "categoryIds":
-                return map(field)
-                    .toColumn("category_ids")
-                    .asType(String.class)
-                    .transformForDB(this::serializeLongList)
-                    .transformFromDB(this::deserializeLongList);
-                    
-            case "keywords":
-                return map(field)
-                    .toColumn("keywords_set")
-                    .asType(String.class)
-                    .transformForDB(this::serializeStringSet)
-                    .transformFromDB(this::deserializeStringSet);
-                    
-            case "version":
-                return map(field)
-                    .toColumn("version_num")
-                    .asVersionColumn()
-                    .withVersionIncrementer(v -> v == null ? 1 : ((Integer) v) + 1);
-                    
-            default:
-                return defaultMapping(field);
-        }
-    }
-    
-    private String serializeStringList(Object obj) {
-        if (obj == null) return null;
-        List<String> list = (List<String>) obj;
-        return String.join(",", list);
-    }
-    
-    private List<String> deserializeStringList(Object csv) {
-        if (csv == null || ((String) csv).trim().isEmpty()) {
-            return new ArrayList<>();
-        }
-        return new ArrayList<>(Arrays.asList(((String) csv).split(",")));
-    }
-    
-    private String serializeLongList(Object obj) {
-        if (obj == null) return null;
-        List<Long> list = (List<Long>) obj;
-        return list.stream()
-            .map(String::valueOf)
-            .collect(Collectors.joining(","));
-    }
-    
-    private List<Long> deserializeLongList(Object csv) {
-        if (csv == null || ((String) csv).trim().isEmpty()) {
-            return new ArrayList<>();
-        }
-        return Arrays.stream(((String) csv).split(","))
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .map(Long::valueOf)
-            .collect(Collectors.toList());
-    }
-    
-    private String serializeStringSet(Object obj) {
-        if (obj == null) return null;
-        Set<String> set = (Set<String>) obj;
-        return String.join(",", set);
-    }
-    
-    private Set<String> deserializeStringSet(Object csv) {
-        if (csv == null || ((String) csv).trim().isEmpty()) {
-            return new HashSet<>();
-        }
-        return new HashSet<>(Arrays.asList(((String) csv).split(",")));
-    }
-}
-```
-
-The ORM detects an inner `Mapping` class (or static `mapping()` method) automatically; insert and read the entity as usual:
-
-```java
-PikaORM orm = new PikaORM("jdbc:sqlite:web.db")
-        .makeDefaultORM();
-
-HasCustomizedMetadata entity = new HasCustomizedMetadata();
-entity.setMap(Map.of("foo", 1.0, "bar", 2.0));
-
-orm.insert(entity);
-
-var retrieved = orm.find(HasCustomizedMetadata.class).byId(entity.getId());
-```
+The same pattern serializes a `List` or `Set`, for example joining a `List<String>` into a comma-separated column with `transformForDB(v -> String.join(",", (List<String>) v))` and splitting it back in `transformFromDB`.
 
 ## Coercion
 
-JDBC drivers return values in their own Java types (e.g. an SQLite driver may return `Integer` where Postgres returns `Long`). PikaORM's coercion system converts each raw value into the type declared by your Java field via `coerce(Class<?> targetClass, Object value)`.
+When you read a row, JDBC drivers hand back values in their own Java types (one driver returns `Integer` where another returns `Long`). Coercion converts each raw value into the type your field declares. It runs in this order, first match wins:
 
-The pipeline runs in order:
+1. `null`, or an empty string targeting a non-string field, becomes `null`.
+2. Each coercer you registered with `withCoercion()`, in order.
+3. The value is already the target type: returned as is.
+4. Enums, strings, numerics, temporals (`LocalDate`, `LocalDateTime`, `Date`), booleans.
 
-1. **Null check**: a `null` value, or an empty string `""` targeting a non-String field, returns `null`.
-2. **Custom coercers**: each coercer registered with `withCoercion()` is tried; the first non-null result wins.
-3. **Passthrough**: if the value is already an instance of `targetClass`, it is returned untouched.
-4. **Enums**: the value is stringified, upper-cased, and passed to `Enum.valueOf()`.
-5. **Strings**: returns `String.valueOf(value)`.
-6. **Numerics**: coerces to `Short`, `Integer`, `Long`, `Float`, `Double`, `BigInteger`, or `BigDecimal`.
-7. **Temporals**: parses strings or epoch numbers into `LocalDate`, `LocalDateTime`, or `java.util.Date`.
-8. **Booleans**: `null`, `0`, `"0"`, and `"false"` resolve to `false`; any other non-null value to `true`.
+If nothing matches, it throws `IllegalArgumentException`.
 
-If every step fails, it throws an `IllegalArgumentException`.
+### Custom coercers (and LocalDate)
 
-### Custom Coercers
+Your coercers run before the built-ins, so you can override how a type is read. Return `null` to defer to the next one.
 
-Inject your own coercion logic globally with `withCoercion(BiFunction)`. Return `null` to defer to the next coercer:
+Pika reads `LocalDate` from ISO strings like `2026-01-31` already. If a column uses another format, register a coercer:
 
 ```java
-import java.util.Currency;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
+DateTimeFormatter US = DateTimeFormatter.ofPattern("MM/dd/yyyy");
 
 PikaORM orm = new PikaORM("jdbc:sqlite:app.db")
-    .withCoercion((targetClass, rawValue) -> {
-        if (targetClass == Currency.class) {
-            return Currency.getInstance(String.valueOf(rawValue));
+    .withCoercion((targetType, raw) -> {
+        if (targetType == LocalDate.class && raw instanceof String s) {
+            return LocalDate.parse(s, US);
         }
-        return null; 
+        return null;   // not ours, let Pika's defaults handle it
     })
     .makeDefaultORM();
 ```
 
+Coercion only covers the database-to-Java direction. To control how the `LocalDate` is *written*, set the column type and transforms in the field mapping. Together these are the full round trip for a custom format:
+
+```java
+case "birthday" -> map(field)
+        .asType(String.class)
+        .transformForDB(d -> ((LocalDate) d).format(US))
+        .transformFromDB(s -> LocalDate.parse((String) s, US));
+```
+
 ### sloppyCoerce()
 
-`sloppyCoerce()` is a tolerant variant: if normal coercion throws and the input is not already a String, it converts the value to a `String` and runs the pipeline again. `PikaBean.setFieldsFrom(Map)` uses it internally to bind raw HTTP form parameters into typed fields without fatal casting exceptions.
+`sloppyCoerce()` is the forgiving version: if normal coercion fails and the value is not already a string, it stringifies the value and tries once more. `PikaBean.setFieldsFrom()` uses it to bind raw form parameters into typed fields without blowing up on a bad cast.
