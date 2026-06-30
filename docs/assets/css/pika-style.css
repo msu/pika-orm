@@ -28,7 +28,18 @@
   font-weight: 700;
   font-style: normal;
 }
-
+@font-face {
+    font-family: 'Hack';
+    src: url('../font/ttf/Hack-Regular.ttf') format('opentype');
+    font-weight: 500;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Hack';
+    src: url('../font/ttf/Hack-Bold.ttf') format('opentype');
+    font-weight: 700;
+    font-style: normal;
+}
 /* ── 1. DESIGN TOKENS ─────────────────────────────────────── */
 :root {
   /* Display font — headings, hero, brand. Body stays Atkinson. */
@@ -706,7 +717,7 @@ body.toc-collapsed .layout-center {
 
 /* Inline code */
 .prose code {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: Hack, "JetBrains Mono", monospace;
   font-size: 0.825em;
   font-weight: 500;
   color: var(--accent-dark);
@@ -824,7 +835,7 @@ body.toc-collapsed .layout-center {
 }
 
 .prose pre code {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: 'Hack', "JetBrains Mono", monospace;
   background: none;
   color: inherit;
   padding: 0;
