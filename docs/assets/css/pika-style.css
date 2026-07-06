@@ -46,8 +46,8 @@
   --font-display: 'Space Grotesk', 'Atkinson Hyperlegible Next', system-ui, sans-serif;
 
   /* Accent — one variable to retheme the whole site */
-  --accent: #7B6B43;
-  --accent-light: #E1BB80;
+  --accent: #ba6a24;
+  --accent-light: #e8a94f;
   --accent-dark: #352208;
 
   /* Surfaces */
@@ -227,8 +227,32 @@ body {
 }
 
 .topbar-logo {
-  height: 24px;
-  width: auto;
+    width: 50px;
+    height: 50px;
+}
+
+.svg-container {
+  /* Set the dimensions */
+  display: inline-block;
+
+  /* Define the fill color */
+  background-color: #fa8f28;
+
+  /* Use standard relative paths, NO curly braces! */
+  mask-image: url('../img/PIKAORM_Logo4.svg?v=3');
+  mask-size: cover;
+  mask-repeat: no-repeat;
+  mask-position: center;
+
+  /* Vendor prefixes for broader compatibility */
+  -webkit-mask-image: url('../img/PIKAORM_Logo4.svg?v=3');
+  -webkit-mask-size: cover;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+.hero-banner .svg-container{
+    width: 200px;
+    height: 200px;
 }
 
 .topbar-name {

@@ -8,9 +8,7 @@ permalink: /
 <section class="hero">
   <h1 class="visually-hidden">PikaORM</h1>
   <div class="hero-banner">
-    <div class="hero-logo-badge">
-      <img src="{{ '/assets/img/pika-icon.png' | relative_url }}" alt="PikaORM logo" class="hero-logo">
-    </div>
+    <div class="svg-container"></div>
     <div class="hero-banner-text">
       <p class="hero-wordmark">PikaORM</p>
       <p class="hero-lead">PikaORM is a simple ORM for Java, designed for the <a href="https://www.cs.montana.edu">Montana State University</a> Databases class. It follows the ActiveRecord pattern, mapping java classes to database tables. It features a fluent query API, validation, life-cycle callbacks and allows you to drop to raw SQL if you need to.</p>
