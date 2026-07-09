@@ -9,6 +9,7 @@ permalink: /pages/get-started/
 # Get Started
 
 PikaORM is a lightweight ActiveRecord ORM for Java. Map a plain class to a table to get CRUD and a fluent query API, and drop to raw SQL whenever you want. There are no configuration files or annotations to write.
+> If this is the first time you have worked with a ORM or Database, refer to our [Concepts]({{ '/pages/what-are-databases/' | relative_link }}) tab to get started!
 
 ## Install
 
@@ -16,9 +17,9 @@ Add PikaORM to your project (it targets Java 17):
 
 ```xml
 <dependency>
-    <groupId>edu.montana</groupId>
+    <groupId>edu.montana.cs.pika</groupId>
     <artifactId>pika-orm</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
 </dependency>
 ```
 
@@ -31,6 +32,7 @@ Add a JDBC driver for your database too — for SQLite:
     <version>3.49.1.0</version>
 </dependency>
 ```
+> See [Changelog]({{ '/pages/changelog/' | relative_url }}) for the proper version compatibility 
 
 ## Define your schema
 
