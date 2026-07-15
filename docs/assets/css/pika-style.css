@@ -375,7 +375,7 @@ body.toc-collapsed .next{
     align-items: center;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1200px) {
     .nav-chapters {
         display: none;
     }
