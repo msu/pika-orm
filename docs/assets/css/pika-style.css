@@ -1,56 +1,56 @@
 /* ============================================================
-   pika-style.css — PikaORM Documentation
-   Off-white / grey scheme. Change --accent to retheme.
+   pika-style.css — pikaorm documentation
+   off-white / grey scheme. change --accent to retheme.
    ============================================================ */
 
-/* ── 0. FONTS ─────────────────────────────────────────────────── */
+/* ── 0. fonts ─────────────────────────────────────────────────── */
 @font-face {
-  font-family: 'Atkinson Hyperlegible Next';
-  src: url('../font/Atkinson/AtkinsonHyperlegibleNext-Regular.otf') format('opentype');
+  font-family: 'atkinson hyperlegible next';
+  src: url('../font/atkinson/atkinsonhyperlegiblenext-regular.otf') format('opentype');
   font-weight: 400;
   font-style: normal;
 }
 @font-face {
-  font-family: 'Atkinson Hyperlegible Next';
-  src: url('../font/Atkinson/AtkinsonHyperlegibleNext-Medium.otf') format('opentype');
+  font-family: 'atkinson hyperlegible next';
+  src: url('../font/atkinson/atkinsonhyperlegiblenext-medium.otf') format('opentype');
   font-weight: 500;
   font-style: normal;
 }
 @font-face {
-  font-family: 'Atkinson Hyperlegible Next';
-  src: url('../font/Atkinson/AtkinsonHyperlegibleNext-SemiBold.otf') format('opentype');
+  font-family: 'atkinson hyperlegible next';
+  src: url('../font/atkinson/atkinsonhyperlegiblenext-semibold.otf') format('opentype');
   font-weight: 600;
   font-style: normal;
 }
 @font-face {
-  font-family: 'Atkinson Hyperlegible Next';
-  src: url('../font/Atkinson/AtkinsonHyperlegibleNext-Bold.otf') format('opentype');
+  font-family: 'atkinson hyperlegible next';
+  src: url('../font/atkinson/atkinsonhyperlegiblenext-bold.otf') format('opentype');
   font-weight: 700;
   font-style: normal;
 }
 @font-face {
-    font-family: 'Hack';
-    src: url('../font/ttf/Hack-Regular.ttf') format('opentype');
+    font-family: 'hack';
+    src: url('../font/ttf/hack-regular.ttf') format('opentype');
     font-weight: 500;
     font-style: normal;
 }
 @font-face {
-    font-family: 'Hack';
-    src: url('../font/ttf/Hack-Bold.ttf') format('opentype');
+    font-family: 'hack';
+    src: url('../font/ttf/hack-bold.ttf') format('opentype');
     font-weight: 700;
     font-style: normal;
 }
-/* ── 1. DESIGN TOKENS ─────────────────────────────────────── */
+/* ── 1. design tokens ─────────────────────────────────────── */
 :root {
-  /* Display font — headings, hero, brand. Body stays Atkinson. */
-  --font-display: 'Space Grotesk', 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+  /* display font — headings, hero, brand. body stays atkinson. */
+  --font-display: 'space grotesk', 'atkinson hyperlegible next', system-ui, sans-serif;
 
-  /* Accent — one variable to retheme the whole site */
+  /* accent — one variable to retheme the whole site */
   --accent: #ba6a24;
   --accent-light: #e8a94f;
   --accent-dark: #352208;
 
-  /* Surfaces */
+  /* surfaces */
   --bg: #f4f4f4;
   /* page background */
   --surface: #e4e4e4;
@@ -60,33 +60,33 @@
   --surface-3: #d1d1d1;
   /* dividers, borders */
 
-  /* Ink */
+  /* ink */
   --ink: #3b3835;
   --ink-muted: #706d6a;
   --ink-subtle: #a09d9a;
   --ink-inverted: #ffffff;
 
-  /* Topbar */
+  /* topbar */
   --topbar-h: 48px;
   --topbar-bg: rgba(249, 248, 246, 0.92);
 
-  /* Sidebars */
+  /* sidebars */
   --sidebar-left-w: 240px;
   --sidebar-right-w: 220px;
   --nav-rail-width: 44px;
 
-  /* Layout */
+  /* layout */
   --prose-max: 720px;
   --radius-sm: 4px;
   --radius: 6px;
   --radius-lg: 10px;
 
-  /* Transitions */
+  /* transitions */
   --t-fast: 0.12s ease;
   --t-med: 0.22s ease;
 }
 
-/* ── 2. RESET & BASE ──────────────────────────────────────── */
+/* ── 2. reset & base ──────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -103,7 +103,7 @@ html {
 }
 
 body {
-  font-family: 'Atkinson Hyperlegible Next', system-ui, -apple-system, sans-serif;
+  font-family: 'atkinson hyperlegible next', system-ui, -apple-system, sans-serif;
   font-size: 0.9375rem;
   /* 15px */
   line-height: 1.7;
@@ -123,7 +123,7 @@ body {
   }
 }
 
-/* ── 3. TOPBAR ────────────────────────────────────────────── */
+/* ── 3. topbar ────────────────────────────────────────────── */
 .topbar {
   position: fixed;
   top: 0;
@@ -156,8 +156,8 @@ body {
   flex-shrink: 0;
 }
 
-/* Topbar nav — left-aligned project links + right-aligned external links
-   (Notch pattern). Brand on the far left, search on the far right. */
+/* topbar nav — left-aligned project links + right-aligned external links
+   (notch pattern). brand on the far left, search on the far right. */
 .topbar-nav {
   display: flex;
   align-items: center;
@@ -180,8 +180,8 @@ body {
   text-decoration: none;
 }
 
-/* Topbar hamburger — mobile only. Opens the off-canvas sidebar on ≤800px.
-   On desktop the sidebar is collapsed via the chevron inside the sidebar. */
+/* topbar hamburger — mobile only. opens the off-canvas sidebar on ≤800px.
+   on desktop the sidebar is collapsed via the chevron inside the sidebar. */
 .sidebar-toggle {
   display: none;
   flex-direction: column;
@@ -213,7 +213,7 @@ body {
   transition: opacity var(--t-fast), transform var(--t-med);
 }
 
-/* Brand */
+/* brand */
 .topbar-brand {
   display: flex;
   align-items: center;
@@ -232,20 +232,20 @@ body {
 }
 
 .svg-container {
-  /* Set the dimensions */
+  /* set the dimensions */
   display: inline-block;
 
-  /* Define the fill color */
+  /* define the fill color */
   background-color: #fa8f28;
 
-  /* Use standard relative paths, NO curly braces! */
-  mask-image: url('../img/PIKAORM_Logo4.svg?v=3');
+  /* use standard relative paths, no curly braces! */
+  mask-image: url('../img/pikaorm_logo4.svg?v=3');
   mask-size: cover;
   mask-repeat: no-repeat;
   mask-position: center;
 
-  /* Vendor prefixes for broader compatibility */
-  -webkit-mask-image: url('../img/PIKAORM_Logo4.svg?v=3');
+  /* vendor prefixes for broader compatibility */
+  -webkit-mask-image: url('../img/pikaorm_logo4.svg?v=3');
   -webkit-mask-size: cover;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
@@ -263,7 +263,7 @@ body {
   color: var(--ink);
 }
 
-/* Search trigger button */
+/* search trigger button */
 .search-trigger {
   display: flex;
   align-items: center;
@@ -297,7 +297,7 @@ body {
   color: var(--ink-subtle);
 }
 
-/* GitHub icon */
+/* github icon */
 .topbar-github {
   display: flex;
   align-items: center;
@@ -311,14 +311,14 @@ body {
   color: var(--ink);
 }
 
-/* ── 4. LAYOUT SHELL ──────────────────────────────────────── */
+/* ── 4. layout shell ──────────────────────────────────────── */
 .layout-shell {
   display: flex;
   min-height: 100vh;
   padding-top: var(--topbar-h);
 }
 
-/* Center column — always centered */
+/* center column — always centered */
 .layout-center {
   flex: 1 1 0;
   min-width: 0;
@@ -329,9 +329,81 @@ body {
   transition: margin-left var(--t-med), margin-right var(--t-med);
 }
 
-/* Collapsed left sidebar — shrink content to the rail width (desktop) */
+/* collapsed left sidebar — shrink content to the rail width (desktop) */
 body.sidebar-collapsed .layout-center {
   margin-left: var(--nav-rail-width);
+}
+
+/* inner navigation bars ------------*/
+.next{
+    float: right;
+    right : var(--sidebar-right-w)
+}
+
+
+body.toc-collapsed .next{
+    float: right;
+    right: 15px
+}
+
+.fa-svg svg {
+    width: 1em;
+    height: 1em;
+    fill: var(--ink-subtle);
+    margin-bottom: -0.1em;
+}
+
+.prev {
+    float: left;
+}
+
+.nav-chapters {
+    font-size: 2.5em;
+    text-align: center;
+    text-decoration: none;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    margin: 0;
+    max-width: 150px;
+    min-width: 90px;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    transition: color 0.5s, background-color 0.5s;
+    align-items: center;
+}
+
+@media (max-width: 1000px) {
+    .nav-chapters {
+        display: none;
+    }
+}
+.nav-chapters:hover {
+    background-color: var(--ink-muted);
+}
+
+.side-nav-header-titles{
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    letter-spacing: 0.08em;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    text-decoration: none;
+    transition: color var(--t-fast);
+    align-content: center;
+}
+
+.side-nav-header-titles.right{
+    transform: rotate(360deg);
+}
+
+.side-nav-organisation{
+    display: flex;
+    align-items: center;
 }
 
 /* ── 5. SIDEBAR LEFT ─────────────────────────────────────── */
