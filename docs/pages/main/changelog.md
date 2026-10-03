@@ -11,6 +11,10 @@ permalink: /pages/changelog/
 > 
 > For a list of dependencies and versions please refer to our official [Maven Package](https://central.sonatype.com/artifact/edu.montana.cs.pika/pika-orm/versions) page. 
 
+## V0.1.1
+
+- Fix: `getErrors(field)`, `getErrorString(field)` and `getGeneralErrors()` no longer add an empty entry to the error map. Before this fix, `hasError(field)` and `hasErrors()` returned true after these calls.
+
 ## V1.0.0
 
 - PikaORM publicly launched! 
