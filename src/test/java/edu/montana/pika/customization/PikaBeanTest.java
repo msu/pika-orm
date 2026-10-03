@@ -217,6 +217,19 @@ public class PikaBeanTest extends TestBase {
     }
 
     @Test
+    void testReadingErrorsDoesNotAddErrors() {
+        initTestDb(SampleEPB.DDL);
+        SampleEPB model = new SampleEPB("test", 10, true, new Date(2021, 1, 1));
+
+        assertTrue(model.getErrors("field1").isEmpty());
+        assertEquals("", model.getErrorString("field1"));
+        assertTrue(model.getGeneralErrors().isEmpty());
+
+        assertFalse(model.hasError("field1"));
+        assertFalse(model.hasErrors());
+    }
+
+    @Test
     void testGetAllFieldErrors() {
         initTestDb(SampleEPB.DDL);
         SampleEPB model = new SampleEPB("test", 10, true, new Date(2021, 1, 1));

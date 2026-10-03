@@ -42,12 +42,12 @@ public class PikaBean implements PikaRecordLifecycle {
     }
 
     public PikaList<String> getGeneralErrors() {
-        return getErrorList(null);
+        return readErrorList(null);
     }
 
 
     public PikaList<String> getErrors(String field) {
-        return getErrorList(field);
+        return readErrorList(field);
     }
 
     public Map<String, PikaList<String>> getAllFieldErrors() {
@@ -58,7 +58,7 @@ public class PikaBean implements PikaRecordLifecycle {
     }
 
     public String getErrorString(String field) {
-        return getErrorList(field).stream().collect(Collectors.joining(", "));
+        return readErrorList(field).stream().collect(Collectors.joining(", "));
     }
 
     public boolean hasError(Field field) {
@@ -71,6 +71,12 @@ public class PikaBean implements PikaRecordLifecycle {
 
     private PikaList<String> getErrorList(String key) {
         return errors.computeIfAbsent(key, val -> new PikaList<>());
+    }
+
+    // read-only lookup: does not add an entry to the error map
+    private PikaList<String> readErrorList(String key) {
+        var list = errors.get(key);
+        return list == null ? new PikaList<>() : list;
     }
 
     public final boolean validate() {
