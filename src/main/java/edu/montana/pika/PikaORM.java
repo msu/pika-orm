@@ -23,6 +23,7 @@ import java.sql.*;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.Date;
 import java.util.concurrent.Callable;
@@ -342,6 +343,11 @@ public class PikaORM {
         return limitOffsetClause;
     }
 
+    // pass values as strings so MessageFormat does not add locale grouping separators (e.g. 1,000)
+    public String formatLimitOffset(long limit, long offset) {
+        return MessageFormat.format(limitOffsetClause, String.valueOf(limit), String.valueOf(offset));
+    }
+
     public int getDefaultPageSize() {
         return defaultPageSize;
     }
@@ -497,7 +503,7 @@ public class PikaORM {
         if (targetType.isInstance(value)) {
             return value;
         } else if (targetType.isEnum()) {
-            return Enum.valueOf(targetType, String.valueOf(value).toUpperCase());
+            return Enum.valueOf(targetType, String.valueOf(value).toUpperCase(Locale.ROOT));
         } else if (targetType == String.class) {
             return String.valueOf(value);
         } else if (Number.class.isAssignableFrom(targetType) && ("".equals(value) || "null".equals(value))) {

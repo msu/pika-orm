@@ -3,7 +3,6 @@ package edu.montana.pika.query;
 import edu.montana.pika.PikaORM;
 import edu.montana.pika.mapping.Mapping;
 
-import java.text.MessageFormat;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -20,13 +19,13 @@ public class PikaStreamFinder<T> {
         Mapping mapping = orm.getMapping(classToFind);
         String column = mapping.getIdColumn();
         Mapping mapping1 = orm.getMapping(classToFind);
-        String sql = "SELECT * FROM " + mapping1.getTableName() + "\nWHERE " + column + "=:arg " + MessageFormat.format(orm.getLimitOffsetClause(), 1, 0);
+        String sql = "SELECT * FROM " + mapping1.getTableName() + "\nWHERE " + column + "=:arg " + orm.formatLimitOffset(1, 0);
         return orm.stream(sql, Map.of("arg", id), classToFind);
     }
 
     public Stream<T> byKey(String col, Object value) {
         Mapping mapping = orm.getMapping(classToFind);
-        String sql = "SELECT * FROM " + mapping.getTableName() + "\nWHERE " + col + "=:arg " + MessageFormat.format(orm.getLimitOffsetClause(), 1, 0);
+        String sql = "SELECT * FROM " + mapping.getTableName() + "\nWHERE " + col + "=:arg " + orm.formatLimitOffset(1, 0);
         return orm.stream(sql, Map.of("arg", value), classToFind);
     }
 

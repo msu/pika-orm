@@ -161,7 +161,7 @@ public class Mapping {
     }
 
     private boolean columnExists(String columnName) {
-        return columnsInDb == null || columnsInDb.contains(columnName.toLowerCase());
+        return columnsInDb == null || columnsInDb.contains(columnName.toLowerCase(Locale.ROOT));
     }
 
     protected FieldMapping mapField(Field field) {

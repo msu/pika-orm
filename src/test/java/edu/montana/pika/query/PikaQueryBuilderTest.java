@@ -3,8 +3,11 @@ package edu.montana.pika.query;
 import edu.montana.pika.integration.model.pojos.Album;
 import org.junit.jupiter.api.Test;
 
+import java.util.Locale;
+
 import static edu.montana.pika.integration.ChinookTest.configureOrm;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class PikaQueryBuilderTest {
@@ -165,5 +168,20 @@ public class PikaQueryBuilderTest {
         assertEquals("The Song Remains The Same (Disc 2)", results.first().getString("Title"));
     }
 
-    
+    // Turkish locale upper-cases the "i" in "join" to a dotted capital I, so the JOIN check must not use the default locale
+    @Test
+    void testLowercaseJoinInTurkishLocaleIsNotPrefixed() {
+        var orm = configureOrm();
+        Locale old = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            var query = orm.queryBuilder("albums")
+                    .join("join tracks on albums.AlbumId = tracks.AlbumId");
+            String sql = query.generateSQL();
+            assertFalse(sql.contains("JOIN join"), sql);
+            assertEquals(3503, query.fetchList().size());
+        } finally {
+            Locale.setDefault(old);
+        }
+    }
 }

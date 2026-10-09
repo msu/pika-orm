@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.net.URL;
 import java.util.Date;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -266,6 +267,60 @@ public class PagingTest  extends TestBase {
 
         assertEquals(5, q.pageSize(5).fetchList().size());
         assertEquals(15, q.pageSize(15).fetchList().size());
+    }
+
+    // limit/offset values must not get locale grouping separators (e.g. OFFSET 1,000)
+    private void assertNoGrouping(PikaORM orm) {
+        String offsetSql = orm.find(SampleModel.class).all().pageSize(25).page(41).generateSQL();
+        assertTrue(offsetSql.endsWith(orm.formatLimitOffset(25, 1000)), offsetSql);
+        assertFalse(offsetSql.matches("(?s).*1\\D000.*"), offsetSql);
+
+        String limitSql = orm.find(SampleModel.class).all().pageSize(1000).page(1).generateSQL();
+        assertTrue(limitSql.endsWith(orm.formatLimitOffset(1000, 0)), limitSql);
+        assertFalse(limitSql.matches("(?s).*1\\D000.*"), limitSql);
+    }
+
+    @Test
+    void testLargeLimitAndOffsetHaveNoGroupingSeparators() {
+        var orm = initTestDb(SampleModel.DDL);
+        assertNoGrouping(orm);
+    }
+
+    @Test
+    void testLargeLimitAndOffsetHaveNoGroupingSeparatorsInGermanLocale() {
+        var orm = initTestDb(SampleModel.DDL);
+        Locale old = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.GERMANY);
+            assertNoGrouping(orm);
+        } finally {
+            Locale.setDefault(old);
+        }
+    }
+
+    @Test
+    void testDefaultClauseFormatsLargeValues() {
+        var orm = initTestDb(SampleModel.DDL).withOffsetClause("LIMIT {0} OFFSET {1}");
+        String sql = orm.find(SampleModel.class).all().pageSize(25).page(41).generateSQL();
+        assertTrue(sql.endsWith("LIMIT 25 OFFSET 1000"), sql);
+        sql = orm.find(SampleModel.class).all().pageSize(1000).page(1).generateSQL();
+        assertTrue(sql.endsWith("LIMIT 1000 OFFSET 0"), sql);
+    }
+
+    @Test
+    void testCustomClauseFormatsLargeValues() {
+        var orm = initTestDb(SampleModel.DDL).withOffsetClause("OFFSET {1} ROWS FETCH NEXT {0} ROWS ONLY");
+        String sql = orm.find(SampleModel.class).all().pageSize(25).page(41).generateSQL();
+        assertTrue(sql.endsWith("OFFSET 1000 ROWS FETCH NEXT 25 ROWS ONLY"), sql);
+    }
+
+    @Test
+    void testFetchPageWithOffsetOver1000() {
+        var orm = initTestDb(SampleModel.DDL);
+        seedPages(orm, 1001);
+        var page = orm.find(SampleModel.class).all().orderBy("id").pageSize(25).page(41).fetchList();
+        assertEquals(1, page.size());
+        assertEquals("sample 1000", page.first().getStrVal());
     }
 
 }

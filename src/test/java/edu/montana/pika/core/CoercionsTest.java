@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -319,5 +320,23 @@ public class CoercionsTest extends TestBase {
         assertEquals(-1000L, orm.coerce(Long.class, "-1000"));
         assertEquals(-3.14f, orm.coerce(Float.class, "-3.14"));
         assertEquals(-2.718, orm.coerce(Double.class, "-2.718"));
+    }
+
+    enum StatusEnum {
+        ACTIVE, INACTIVE
+    }
+
+    // Turkish locale upper-cases "i" to a dotted capital I, so "active" must not use the default locale
+    @Test
+    void testCoerceStringToEnumInTurkishLocale() {
+        var orm = initTestDb();
+        Locale old = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            assertEquals(StatusEnum.ACTIVE, orm.coerce(StatusEnum.class, "active"));
+            assertEquals(StatusEnum.INACTIVE, orm.coerce(StatusEnum.class, "inactive"));
+        } finally {
+            Locale.setDefault(old);
+        }
     }
 }

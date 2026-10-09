@@ -3,7 +3,6 @@ package edu.montana.pika.query;
 import edu.montana.pika.PikaORM;
 import edu.montana.pika.mapping.Mapping;
 
-import java.text.MessageFormat;
 import java.util.Map;
 
 public class PikaClassFinder<T> {
@@ -22,14 +21,14 @@ public class PikaClassFinder<T> {
         Mapping mapping = orm.getMapping(classToFind);
         String column = mapping.getIdColumn();
         Mapping mapping1 = orm.getMapping(classToFind);
-        String sql = "SELECT * FROM " + mapping1.getTableName() + "\nWHERE " + column + "=:arg " + MessageFormat.format(orm.getLimitOffsetClause(), 1, 0);
+        String sql = "SELECT * FROM " + mapping1.getTableName() + "\nWHERE " + column + "=:arg " + orm.formatLimitOffset(1, 0);
         QueryResult<T> result = orm.select(sql, Map.of("arg", id), classToFind);
         return result.first();
     }
 
     public T byKey(String col, Object value) {
         Mapping mapping = orm.getMapping(classToFind);
-        String sql = "SELECT * FROM " + mapping.getTableName() + "\nWHERE " + col + "=:arg " + MessageFormat.format(orm.getLimitOffsetClause(), 1, 0);
+        String sql = "SELECT * FROM " + mapping.getTableName() + "\nWHERE " + col + "=:arg " + orm.formatLimitOffset(1, 0);
         QueryResult<T> result = orm.select(sql, Map.of("arg", value), classToFind);
         return result.first();
     }
@@ -75,7 +74,7 @@ public class PikaClassFinder<T> {
         Mapping metaData = orm.getMapping(classToFind);
         String tableName = metaData.getTableName();
         String selectClause = "SELECT * FROM " + tableName + "\nWHERE ";
-        String sql = selectClause + whereClause + " " + MessageFormat.format(orm.getLimitOffsetClause(), 1, 0);
+        String sql = selectClause + whereClause + " " + orm.formatLimitOffset(1, 0);
         return orm.select(sql, args, classToFind).first();
     }
 

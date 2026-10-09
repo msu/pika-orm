@@ -8,7 +8,6 @@ import edu.montana.pika.util.LazyVar;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -226,11 +225,11 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
                 limit = pageSize;
             }
             long offset = (page - 1) * limit;
-            sql += "\n" + MessageFormat.format(orm.getLimitOffsetClause(), limit, offset);
+            sql += "\n" + orm.formatLimitOffset(limit, offset);
         } else if (pageSize != -1) {
             int offset = 0;
             int limit = pageSize;
-            sql += "\n" + MessageFormat.format(orm.getLimitOffsetClause(), limit, offset);
+            sql += "\n" + orm.formatLimitOffset(limit, offset);
         }
         return sql;
     }
@@ -284,7 +283,7 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
     }
 
     public PikaQuery<T> join(String joinSql) {
-        if (!joinSql.toUpperCase().contains("JOIN")) {
+        if (!joinSql.toUpperCase(Locale.ROOT).contains("JOIN")) {
             joinSql = "JOIN " + joinSql;
         }
         this.joins.add(joinSql);
@@ -477,7 +476,7 @@ public class PikaQuery<T> implements Callable<QueryResult<T>>, PikaIterable<T> {
             return orm.select(sql, valMap, resultClass, columns);
         });
         fetchFirstResult = new LazyVar<>(() -> {
-            String sql = generateSQLNoLimit() + " " + MessageFormat.format(orm.getLimitOffsetClause(), 1, 0);
+            String sql = generateSQLNoLimit() + " " + orm.formatLimitOffset(1, 0);
             return orm.select(sql, valMap, resultClass, columns).first();
         });
         totalCountResult = new LazyVar<>(() -> {
