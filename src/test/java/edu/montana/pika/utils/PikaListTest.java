@@ -1,6 +1,7 @@
 package edu.montana.pika.utils;
 
 import edu.montana.pika.query.PikaList;
+import edu.montana.pika.util.PikaMap;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -85,7 +86,7 @@ public class PikaListTest {
     @Test
     public void testToMap() {
         PikaList<String> words = new PikaList<>(Arrays.asList("apple", "apricot", "banana", "blueberry"));
-        Map<Character, List<String>> grouped = words.toMap(w -> w.charAt(0));
+        PikaMap<Character, PikaList<String>> grouped = words.toMap(w -> w.charAt(0));
 
         assertEquals(2, grouped.size());
         assertEquals(Arrays.asList("apple", "apricot"), grouped.get('a'));
@@ -95,7 +96,7 @@ public class PikaListTest {
     @Test
     public void testToOrderedMap() {
         PikaList<String> words = new PikaList<>(Arrays.asList("banana", "apple", "blueberry", "apricot"));
-        TreeMap<Character, List<String>> grouped = words.toOrderedMap(w -> w.charAt(0));
+        PikaMap<Character, PikaList<String>> grouped = words.toOrderedMap(w -> w.charAt(0));
 
         List<Character> keys = new ArrayList<>(grouped.keySet());
         assertEquals(Arrays.asList('a', 'b'), keys);
@@ -104,7 +105,7 @@ public class PikaListTest {
     @Test
     public void testToOrderedMapWithComparator() {
         PikaList<String> words = new PikaList<>(Arrays.asList("banana", "apple", "blueberry", "apricot"));
-        TreeMap<Character, List<String>> grouped = words.toOrderedMap(w -> w.charAt(0), Comparator.reverseOrder());
+        PikaMap<Character, PikaList<String>> grouped = words.toOrderedMap(w -> w.charAt(0), Comparator.reverseOrder());
 
         List<Character> keys = new ArrayList<>(grouped.keySet());
         assertEquals(Arrays.asList('b', 'a'), keys);
@@ -113,7 +114,7 @@ public class PikaListTest {
     @Test
     public void testToDistinctMap() {
         PikaList<String> words = new PikaList<>(Arrays.asList("apple", "apricot", "banana"));
-        Map<Character, String> distinctMap = words.toDistinctMap(w -> w.charAt(0));
+        PikaMap<Character, String> distinctMap = words.toDistinctMap(w -> w.charAt(0));
 
         assertEquals(2, distinctMap.size());
         assertEquals("apricot", distinctMap.get('a')); // last one wins
@@ -123,7 +124,7 @@ public class PikaListTest {
     @Test
     public void testToOrderedDistinctMap() {
         PikaList<String> words = new PikaList<>(Arrays.asList("banana", "apple"));
-        TreeMap<Character, String> distinctMap = words.toOrderedDistinctMap(w -> w.charAt(0));
+        PikaMap<Character, String> distinctMap = words.toOrderedDistinctMap(w -> w.charAt(0));
 
         List<Character> keys = new ArrayList<>(distinctMap.keySet());
         assertEquals(Arrays.asList('a', 'b'), keys);
@@ -132,7 +133,7 @@ public class PikaListTest {
     @Test
     public void testToOrderedDistinctMapWithComparator() {
         PikaList<String> words = new PikaList<>(Arrays.asList("banana", "apple"));
-        TreeMap<Character, String> distinctMap = words.toOrderedDistinctMap(w -> w.charAt(0), Comparator.reverseOrder());
+        PikaMap<Character, String> distinctMap = words.toOrderedDistinctMap(w -> w.charAt(0), Comparator.reverseOrder());
 
         List<Character> keys = new ArrayList<>(distinctMap.keySet());
         assertEquals(Arrays.asList('b', 'a'), keys);
