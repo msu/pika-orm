@@ -11,6 +11,14 @@ permalink: /pages/changelog/
 > 
 > For a list of dependencies and versions please refer to our official [Maven Package](https://central.sonatype.com/artifact/edu.montana.cs.pika/pika-orm/versions) page. 
 
+## Unreleased
+
+- Fix: a field set in `beforeInsert()` is now in the INSERT. Before this fix, Pika read the fields before the hook ran.
+- Breaking: `beforeUpdate(Map<String, Object>)` is now `beforeUpdate()`. Pika reads the fields after the hook, so a field set in `beforeUpdate()` is in the UPDATE. To add a column, set its field.
+- Change: `PikaORM.update()` removes the unchanged columns of a `PikaBean` after `beforeUpdate()`. An override of `beforeUpdate()` no longer turns off this removal.
+- Change: `insertAll` calls `validate()` and `beforeInsert()` for each item, and skips an item if a hook returns `false`. It makes UUIDs for UUID columns. It does not call `afterInsert()`, and does not set the generated ids.
+- Fix: `PikaBean.getOriginalValue(Field)` and `getOriginalValue(String)` accept a field name. Before this fix, they accepted only a column name. A column name still works.
+
 ## V0.1.3
 
 - Add: `PikaMap` and `PikaSet` collection classes.

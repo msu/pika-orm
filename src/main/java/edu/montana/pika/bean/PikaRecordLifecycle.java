@@ -1,7 +1,5 @@
 package edu.montana.pika.bean;
 
-import java.util.Map;
-
 public interface PikaRecordLifecycle {
 
     default boolean validate() {
@@ -12,7 +10,7 @@ public interface PikaRecordLifecycle {
         return true;
     }
 
-    default boolean beforeUpdate(Map<String, Object> valuesToUpdate) {
+    default boolean beforeUpdate() {
         return true;
     }
 

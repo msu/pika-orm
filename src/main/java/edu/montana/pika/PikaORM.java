@@ -1,5 +1,6 @@
 package edu.montana.pika;
 
+import edu.montana.pika.bean.PikaBean;
 import edu.montana.pika.bean.PikaManyRelation;
 import edu.montana.pika.bean.PikaManyThroughRelation;
 import edu.montana.pika.bean.PikaRecordLifecycle;
@@ -962,16 +963,16 @@ public class PikaORM {
         if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.validate()) {
             return null;
         }
+        if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.beforeInsert()) {
+            return null;
+        }
         Class<?> clazz = object.getClass();
         Mapping mapping = getMapping(clazz);
-        Map<String, Object> values = mapping.toDatabaseMap(object);// this is the place to check?
+        Map<String, Object> values = mapping.toDatabaseMap(object);
         String keyCol = null;
         if (mapping.hasIdColumn()) {
             keyCol = mapping.getIdColumn();
             values.remove(keyCol);
-        }
-        if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.beforeInsert()) {
-            return null;
         }
         Object newVersionValue = null;
         Object uuid = null;
@@ -1019,30 +1020,51 @@ public class PikaORM {
         }
 
         // Metadata
-        Object templateItem = items.get(0);
-        Class<?> templateClass = templateItem.getClass();
-        Mapping mapping = getMapping(templateClass);
-        Set<String> columns = mapping.toDatabaseMap(templateItem).keySet();
-        String tableName = mapping.getTableName();
-        String idColumn = mapping.getIdColumn();
-        columns.remove(idColumn);
-
-        // Query builder
-        StringBuilder sb = new StringBuilder("INSERT INTO ");
-        sb.append(tableName).append(" (")
-                .append(String.join(", ", columns)).append(") VALUES ");
-
-        // Map to
-        List<Object> values = new ArrayList<>();
+        Class<?> templateClass = items.get(0).getClass();
         for (Object item : items) {
             if (!templateClass.isInstance(item)) {
                 throw new IllegalStateException("All values passed to insertAll() must be the same type!  Expected " +
                         templateClass.getSimpleName() + " but found " + item.getClass().getSimpleName());
             }
+        }
+        Mapping mapping = getMapping(templateClass);
+        String tableName = mapping.getTableName();
+        String idColumn = mapping.hasIdColumn() ? mapping.getIdColumn() : null;
+        FieldMapping uuidFieldMapping = mapping.hasUUIDColumn() ? mapping.getUUIDMapping() : null;
 
+        // Hooks: like insert(Object), skip an item if validate() or beforeInsert() returns false
+        List<Object> insertedItems = new ArrayList<>();
+        List<Object> uuids = new ArrayList<>();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Object item : items) {
+            if (item instanceof PikaRecordLifecycle lifecycle && (!lifecycle.validate() || !lifecycle.beforeInsert())) {
+                continue;
+            }
             Map<String, Object> mapForItem = mapping.toDatabaseMap(item);
-            mapForItem.remove(idColumn);
+            if (idColumn != null) {
+                mapForItem.remove(idColumn);
+            }
+            Object uuid = null;
+            if (uuidFieldMapping != null && mapForItem.get(uuidFieldMapping.getColumnName()) == null) {
+                uuid = uuidFieldMapping.generateUUID();
+                mapForItem.put(uuidFieldMapping.getColumnName(), uuid);
+            }
+            insertedItems.add(item);
+            uuids.add(uuid);
+            rows.add(mapForItem);
+        }
+        if (rows.isEmpty()) {
+            return;
+        }
 
+        // Query builder
+        Set<String> columns = rows.get(0).keySet();
+        StringBuilder sb = new StringBuilder("INSERT INTO ");
+        sb.append(tableName).append(" (")
+                .append(String.join(", ", columns)).append(") VALUES ");
+
+        List<Object> values = new ArrayList<>();
+        for (Map<String, Object> mapForItem : rows) {
             Collection<Object> valuesForItem = mapForItem.values();
             values.addAll(valuesForItem);
 
@@ -1063,6 +1085,11 @@ public class PikaORM {
             logger.log(PikaLogger.Level.ERROR, "Exception in insertAll() with SQL {} & args {}: {}", insertString,
                     values, e.getMessage());
             throw rethrow(e);
+        }
+        for (int i = 0; i < insertedItems.size(); i++) {
+            if (uuids.get(i) != null) {
+                uuidFieldMapping.setFieldValue(insertedItems.get(i), uuids.get(i));
+            }
         }
     }
 
@@ -1113,6 +1140,10 @@ public class PikaORM {
         if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.validate()) {
             return false;
         }
+        // run the hook before the map is built, so that a field set in beforeUpdate() is in the UPDATE
+        if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.beforeUpdate()) {
+            return false;
+        }
         Class<?> clazz = object.getClass();
         Mapping mapping = getMapping(clazz);
         String tableName = mapping.getTableName();
@@ -1127,8 +1158,8 @@ public class PikaORM {
             currentVersionValue = mapping.getCurrentVersion(valuesToUpdate);
             nextVersionValue = mapping.incrementVersion(valuesToUpdate);
         }
-        if (object instanceof PikaRecordLifecycle lifecycle && !lifecycle.beforeUpdate(valuesToUpdate)) {
-            return false;
+        if (object instanceof PikaBean bean) {
+            bean.removeUnchangedColumns(valuesToUpdate);
         }
         boolean update = update(tableName, keyCol, keyVal, versionColumn, currentVersionValue, valuesToUpdate);
         if (mapping.hasVersionColumn() && update) {

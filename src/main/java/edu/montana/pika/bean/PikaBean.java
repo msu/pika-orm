@@ -125,11 +125,12 @@ public class PikaBean implements PikaRecordLifecycle {
     }
 
     public Object getOriginalValue(String fieldName) {
-        return originalValues.get(fieldName);
+        FieldMapping fieldMapping = orm().getMapping(getClass()).getFieldMappingForFieldName(fieldName);
+        String columnName = fieldMapping == null ? fieldName : fieldMapping.getColumnName();
+        return originalValues.get(columnName);
     }
 
-    @Override
-    public boolean beforeUpdate(Map<String, Object> valuesToUpdate) {
+    public void removeUnchangedColumns(Map<String, Object> valuesToUpdate) {
         Iterator<String> keys = valuesToUpdate.keySet().iterator();
         while (keys.hasNext()) {
             String key = keys.next();
@@ -140,7 +141,6 @@ public class PikaBean implements PikaRecordLifecycle {
                 }
             }
         }
-        return true;
     }
 
     public Long insert() {

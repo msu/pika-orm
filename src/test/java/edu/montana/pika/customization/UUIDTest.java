@@ -41,4 +41,20 @@ public class UUIDTest extends TestBase {
         assertEquals(preSetUUID, hasUUID.getUUID());
     }
 
+    @Test
+    void insertAllGeneratesAndSetsUUIDs() {
+        var orm = initTestDb(HasUUID.DDL);
+        var first = new HasUUID();
+        var second = new HasUUID();
+        String preSetUUID = UUID.randomUUID().toString();
+        second.setUUID(preSetUUID);
+        orm.insertAll(first, second);
+
+        assertNotNull(first.getUUID());
+        assertEquals(preSetUUID, second.getUUID());
+        var saved = orm.find(HasUUID.class).all().toList().map(HasUUID::getUUID);
+        assertTrue(saved.contains(first.getUUID()));
+        assertTrue(saved.contains(preSetUUID));
+    }
+
 }

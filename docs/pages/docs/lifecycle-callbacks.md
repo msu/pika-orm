@@ -14,6 +14,7 @@ Hooks let an object run code at each step of its own insert, update, delete, and
 public class Post extends PikaBean {
     String title;
     LocalDateTime createdAt;
+    LocalDateTime updatedAt;
 
     @Override
     public boolean beforeInsert() {
@@ -22,8 +23,8 @@ public class Post extends PikaBean {
     }
 
     @Override
-    public boolean beforeUpdate(Map<String, Object> values) {
-        values.put("updated_at", LocalDateTime.now());   // add a column to this UPDATE
+    public boolean beforeUpdate() {
+        updatedAt = LocalDateTime.now();   // a field set here is in the UPDATE
         return true;
     }
 }
@@ -40,7 +41,7 @@ public interface PikaRecordLifecycle {
     // pre-operation: return false to abort
     default boolean validate() { return true; }
     default boolean beforeInsert() { return true; }
-    default boolean beforeUpdate(Map<String, Object> values) { return true; }
+    default boolean beforeUpdate() { return true; }
     default boolean beforeDelete() { return true; }
 
     // post-operation
@@ -53,8 +54,9 @@ public interface PikaRecordLifecycle {
 
 ## Order
 
-- **Insert**: `validate` then `beforeInsert` then the SQL then `afterInsert` (the generated primary key is set by the time `afterInsert` runs).
-- **Update**: `validate` then `beforeUpdate(values)` then the SQL then `afterUpdate`. The `values` map is the exact column payload about to be sent; mutate it to add or drop columns.
+- **Insert**: `validate` then `beforeInsert` then the SQL then `afterInsert`. Pika reads the fields after `beforeInsert`, so a field set in `beforeInsert` is in the INSERT. The generated primary key is set when `afterInsert` runs.
+- **Bulk insert** (`insertAll`): `validate` then `beforeInsert` for each item, then one SQL statement. If a hook returns `false`, Pika skips that item. Pika does not call `afterInsert`, and does not set the generated ids.
+- **Update**: `validate` then `beforeUpdate` then the SQL then `afterUpdate`. Pika reads the fields after `beforeUpdate`, so a field set in `beforeUpdate` is in the UPDATE. For a `PikaBean`, Pika then removes the columns that did not change.
 - **Delete**: `beforeDelete` then the SQL then `afterDelete`.
 - **Select**: the SQL then `afterSelect`, which runs once fields are mapped (this is where `PikaBean` snapshots state for dirty tracking).
 

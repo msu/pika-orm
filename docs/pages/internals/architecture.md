@@ -249,7 +249,7 @@ classDiagram
         <<interface>>
         +validate() boolean
         +beforeInsert() boolean
-        +beforeUpdate(Map) boolean
+        +beforeUpdate() boolean
         +beforeDelete() boolean
         +afterInsert() void
         +afterSelect() void
@@ -548,13 +548,13 @@ flowchart TD
     end
 
     subgraph BULK ["insertAll(List)"]
-        B1["All items same class\nBuild single INSERT with\nmultiple VALUES rows\n(?, ?, ...), (?, ?, ...)"]
-        B1 --> B2["prepareStatement\nexecuteUpdate"]
+        B0["All items same class"] --> B1["For each item:\nvalidate + beforeInsert\nskip item on false\ntoDatabaseMap, auto-generate UUID"]
+        B1 --> B2["Build single INSERT with\nmultiple VALUES rows\n(?, ?, ...), (?, ?, ...)\nprepareStatement, executeUpdate\nset UUID fields"]
     end
 
     subgraph UPDATE ["update(Object)"]
-        U1[PikaRecordLifecycle.validate] --> U2["Mapping.toDatabaseMap()\nremove id col\ncapture currentVersion / nextVersion"]
-        U2 --> U3[PikaRecordLifecycle.beforeUpdate]
+        U1[PikaRecordLifecycle.validate] --> U2[PikaRecordLifecycle.beforeUpdate]
+        U2 --> U3["Mapping.toDatabaseMap()\nremove id col\ncapture currentVersion / nextVersion\nPikaBean.removeUnchangedColumns()"]
         U3 --> U4["Build UPDATE SQL\n'UPDATE table SET col=?,... WHERE id=? AND version=?'"]
         U4 --> U5["mapping.updateVersionValue()\nreturn rowsAffected == 1"]
         U5 --> U6[PikaRecordLifecycle.afterUpdate]
@@ -645,7 +645,7 @@ flowchart TD
 
     PikaBean --> PRL[PikaRecordLifecycle]
     PRL -.->|"afterSelect() sets persisted=true\nand snapshots originalValues"| EPB_PERSIST
-    EPB_PERSIST -.->|"beforeUpdate() strips unchanged fields\noptimising UPDATE payloads"| EPB_CRUD
+    EPB_PERSIST -.->|"removeUnchangedColumns() strips unchanged fields\noptimising UPDATE payloads"| EPB_CRUD
 
     PikaBean -.->|"save() dispatches"| D{"isPersisted?"}
     D -->|yes| UPD["orm().update(this)"]
@@ -654,7 +654,7 @@ flowchart TD
     INS -->|"marks persisted again"| EPB_PERSIST
 ```
 
-**Dirty-field optimisation:** `beforeUpdate()` compares the current field map against `originalValues` (captured at select-time or after the last write). Fields whose value is unchanged are silently removed from the `UPDATE` payload, minimising unnecessary DB writes.
+**Dirty-field optimisation:** `PikaORM.update()` calls `PikaBean.removeUnchangedColumns()` after `beforeUpdate()`. It compares the current field map against `originalValues` (captured at select-time or after the last write). Fields whose value is unchanged are silently removed from the `UPDATE` payload, minimising unnecessary DB writes.
 
 **Error API:**
 
@@ -690,7 +690,7 @@ sequenceDiagram
     Note over ORM,Lifecycle: UPDATE flow
     Caller->>ORM: update(object)
     ORM->>Lifecycle: validate() → false = abort
-    ORM->>Lifecycle: beforeUpdate(valuesToUpdate) → false = abort
+    ORM->>Lifecycle: beforeUpdate() → false = abort
     ORM->>ORM: build + execute UPDATE SQL
     ORM->>Lifecycle: afterUpdate()
 
