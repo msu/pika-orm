@@ -11,13 +11,21 @@ permalink: /pages/changelog/
 > 
 > For a list of dependencies and versions please refer to our official [Maven Package](https://central.sonatype.com/artifact/edu.montana.cs.pika/pika-orm/versions) page. 
 
-## Unreleased
+## V0.1.4
 
 - Fix: a field set in `beforeInsert()` is now in the INSERT. Before this fix, Pika read the fields before the hook ran.
 - Breaking: `beforeUpdate(Map<String, Object>)` is now `beforeUpdate()`. Pika reads the fields after the hook, so a field set in `beforeUpdate()` is in the UPDATE. To add a column, set its field.
 - Change: `PikaORM.update()` removes the unchanged columns of a `PikaBean` after `beforeUpdate()`. An override of `beforeUpdate()` no longer turns off this removal.
 - Change: `insertAll` calls `validate()` and `beforeInsert()` for each item, and skips an item if a hook returns `false`. It makes UUIDs for UUID columns. It does not call `afterInsert()`, and does not set the generated ids.
 - Fix: `PikaBean.getOriginalValue(Field)` and `getOriginalValue(String)` accept a field name. Before this fix, they accepted only a column name. A column name still works.
+- Fix: the migrations `console()` reads `System.in`. Before this fix, it threw a `NullPointerException` without a terminal, for example in an IDE run window. At the end of input, the console stops.
+- Fix: migrations `down()` deletes the migration row by `uuid`. Before this fix, it threw `IllegalStateException: ... has no id column`.
+- Fix: migrations `show` accepts a migration with no up or no down SQL. `down()` on a migration with no down SQL throws a clear error.
+- Fix: migrations `show` prints the applied date. It prints a blank, not `null`, for a missing date or description.
+- Fix: migrations `up()` and `down()` log the name of the migration.
+- Fix: migrations use the default ORM if no ORM is set. Before this fix, `console`, `show`, `up`, `down` and `applyAll` threw a `NullPointerException`.
+- Fix: `PikaMigration.toString()` no longer throws for a migration in the database. The `raw` console command also works.
+- Fix: the migrations console prints text that contains `%`. Before this fix, it threw a format exception.
 
 ## V0.1.3
 
