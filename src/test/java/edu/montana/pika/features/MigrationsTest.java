@@ -114,6 +114,19 @@ public class MigrationsTest extends TestBase {
     }
 
     @Test
+    void upThenDownRemovesMigration() {
+        var orm = initTestDb();
+        MigrationsFile1 migrations = new MigrationsFile1();
+        orm.withMigrations(migrations);
+
+        migrations.up();
+        assertEquals(1, orm.find(PikaMigration.class).count());
+
+        migrations.down();
+        assertEquals(0, orm.find(PikaMigration.class).count());
+    }
+
+    @Test
     void consoleWorksWithoutATerminal() {
         var orm = initTestDb();
         MigrationFileForConsoleTesting migrations = new MigrationFileForConsoleTesting();

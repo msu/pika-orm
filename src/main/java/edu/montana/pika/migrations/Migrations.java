@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.text.MessageFormat;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -296,12 +297,8 @@ public abstract class Migrations {
                 }
                 this.status = MigrationStatus.APPLIED;
                 this.appliedAt = new Date().getTime();
-                if (this.uuid == null) {
-                    this.uuid = "" + UUID.randomUUID();
-                    orm.insert(this);
-                } else {
-                    orm.update(this);
-                }
+                this.uuid = "" + UUID.randomUUID();
+                orm.insert(this);
             });
         }
 
@@ -313,7 +310,7 @@ public abstract class Migrations {
                         orm.exec(sql);
                     }
                 }
-                orm.delete(this);
+                orm.exec("DELETE FROM pika_migrations WHERE uuid = :uuid", Map.of("uuid", uuid));
             });
         }
 
