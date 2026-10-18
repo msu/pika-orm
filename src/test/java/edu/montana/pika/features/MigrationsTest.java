@@ -217,6 +217,27 @@ public class MigrationsTest extends TestBase {
         assertStringContains(runConsole(migrations, "raw\n"), "name='migration1'");
     }
 
+    static class PercentMigrations extends Migrations {
+        @Override
+        public void migrations() {
+            add(makeMigration("percent").description("100% done").up("CREATE TABLE percents (id INTEGER PRIMARY KEY, s TEXT DEFAULT '100%')"));
+        }
+    }
+
+    @Test
+    void consolePrintsTextWithPercentSign() {
+        var orm = initTestDb();
+        PercentMigrations migrations = new PercentMigrations();
+        orm.withMigrations(migrations);
+        migrations.up();
+
+        String out = runConsole(migrations, "show\nraw\n50%\n");
+
+        assertStringContains(showRow(out, "percent"), "100% done");
+        assertStringContains(out, "DEFAULT '100%'");
+        assertStringContains(out, "Unknown command : 50%");
+    }
+
     // the console output also has log lines, so find the row for one migration
     private static String showRow(String output, String name) {
         return output.lines().filter(line -> line.startsWith(name + " ")).findFirst().orElseThrow();

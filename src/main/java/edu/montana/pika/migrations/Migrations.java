@@ -91,24 +91,24 @@ public abstract class Migrations {
             String cmd = line.strip();
             //noinspection IfCanBeSwitch
             if (cmd.equals("show")) {
-                console.printf(show());
+                console.print(show());
             } else if (cmd.equals("raw")) {
                 var mergedMigrations = loadMigrations(orm);
-                console.printf(new PikaList<>(mergedMigrations.values()).toString("\n"));
+                console.println(new PikaList<>(mergedMigrations.values()).toString("\n"));
             } else if (cmd.equals("up")) {
                 up();
             } else if (cmd.equals("down")) {
                 down();
             } else if (cmd.equals("all")) {
                 applyAll();
-                console.printf("All pending migrations have been applied");
+                console.println("All pending migrations have been applied");
             } else if (cmd.equals("help") || cmd.equals("?")) {
-                console.printf(HELP_MSG);
+                console.print(HELP_MSG);
             } else if (cmd.equals("exit") || cmd.equals("quit")) {
                 break;
             } else {
-                console.printf("Unknown command : " + cmd + "\n");
-                console.printf(HELP_MSG);
+                console.println("Unknown command : " + cmd);
+                console.print(HELP_MSG);
             }
         }
     }
