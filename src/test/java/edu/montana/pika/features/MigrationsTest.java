@@ -18,7 +18,9 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -171,6 +173,21 @@ public class MigrationsTest extends TestBase {
         assertFalse(after.contains("null"), after);
         // Date.toString() ends with the year
         assertStringContains(after, String.valueOf(java.time.Year.now().getValue()));
+    }
+
+    @Test
+    void upAndDownLogTheMigrationName() {
+        var orm = initTestDb();
+        MigrationsFile1 migrations = new MigrationsFile1();
+        orm.withMigrations(migrations);
+        List<String> messages = new ArrayList<>();
+        orm.withLogger((level, msg, args) -> messages.add(level + " " + msg));
+
+        migrations.up();
+        migrations.down();
+
+        assertTrue(messages.contains("INFO Applying migration migration1"), messages.toString());
+        assertTrue(messages.contains("INFO Backing out migration migration1"), messages.toString());
     }
 
     // the console output also has log lines, so find the row for one migration

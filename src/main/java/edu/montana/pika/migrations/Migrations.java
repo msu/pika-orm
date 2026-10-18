@@ -137,6 +137,7 @@ public abstract class Migrations {
         var values = new PikaList<>(mergedMigrations.values());
         var firstUnappliedMigration = values.firstWhere(PikaMigration::isPending);
         if (firstUnappliedMigration != null) {
+            orm.getLogger().log(PikaLogger.Level.INFO, "Applying migration " + firstUnappliedMigration.name);
             firstUnappliedMigration.runUp(orm);
         } else {
             orm.getLogger().log(PikaLogger.Level.WARN, "No pending migrations were found in migrations file to apply");
@@ -151,6 +152,7 @@ public abstract class Migrations {
         var values = new PikaList<>(mergedMigrations.values());
         var lastAppliedMigration = values.lastWhere(PikaMigration::isApplied);
         if (lastAppliedMigration != null) {
+            orm.getLogger().log(PikaLogger.Level.INFO, "Backing out migration " + lastAppliedMigration.name);
             lastAppliedMigration.runDown(orm);
         } else {
             orm.getLogger().log(PikaLogger.Level.WARN, "No applied migrations were found in migrations file to back out");
