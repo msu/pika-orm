@@ -340,7 +340,7 @@ public abstract class Migrations {
 
 
         public String toString() {
-            return "Migration{id=%d, appliedAt=%d, name='%s', description='%s', up='%s', down='%s', status=%s}".formatted(uuid, appliedAt, name, description, up, down, status);
+            return "Migration{uuid=%s, appliedAt=%d, name='%s', description='%s', up='%s', down='%s', status=%s}".formatted(uuid, appliedAt, name, description, up, down, status);
         }
 
         public Object getDebugString() {

@@ -204,6 +204,19 @@ public class MigrationsTest extends TestBase {
         assertStringContains(runConsole(migrations, "show\n"), "migration1");
     }
 
+    @Test
+    void toStringWorksForPersistedMigration() {
+        var orm = initTestDb();
+        MigrationsFile1 migrations = new MigrationsFile1();
+        orm.withMigrations(migrations);
+        migrations.up();
+
+        PikaMigration persisted = orm.find(PikaMigration.class).all().toList().get(0);
+
+        assertStringContains(persisted.toString(), "name='migration1'");
+        assertStringContains(runConsole(migrations, "raw\n"), "name='migration1'");
+    }
+
     // the console output also has log lines, so find the row for one migration
     private static String showRow(String output, String name) {
         return output.lines().filter(line -> line.startsWith(name + " ")).findFirst().orElseThrow();
