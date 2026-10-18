@@ -10,7 +10,11 @@ import edu.montana.pika.migrations.MultiStatementMigration;
 import edu.montana.pika.migrations.MigrationFileForConsoleTesting;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Date;
@@ -107,6 +111,29 @@ public class MigrationsTest extends TestBase {
 
         assertEquals(1, demoModel.size());
         assertEquals("foo", demoModel.get(0).getStrVal());
+    }
+
+    @Test
+    void consoleWorksWithoutATerminal() {
+        var orm = initTestDb();
+        MigrationFileForConsoleTesting migrations = new MigrationFileForConsoleTesting();
+        orm.withMigrations(migrations);
+
+        InputStream originalIn = System.in;
+        PrintStream originalOut = System.out;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            // no "exit", so the console must also stop at the end of input
+            System.setIn(new ByteArrayInputStream("help\nall\n".getBytes()));
+            System.setOut(new PrintStream(out));
+            migrations.console();
+        } finally {
+            System.setIn(originalIn);
+            System.setOut(originalOut);
+        }
+
+        assertStringContains(out.toString(), "Migrations Commands");
+        assertEquals(3, orm.find(PikaMigration.class).count());
     }
 
     /*

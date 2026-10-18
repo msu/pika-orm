@@ -4,13 +4,16 @@ import edu.montana.pika.PikaORM;
 import edu.montana.pika.logging.PikaLogger;
 import edu.montana.pika.query.PikaList;
 
-import java.io.Console;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.text.MessageFormat;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
+
+import static edu.montana.pika.PikaORM.safely;
 
 @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
 
@@ -75,10 +78,16 @@ public abstract class Migrations {
     public void console() {
         getORM();
         orm.exec(PikaMigration.DDL);
-        Console console = System.console();
+        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+        var console = System.out;
         System.out.println("Welcome to PikaORM Migrations, type ? for help");
         while (true) {
-            String cmd = console.readLine("migrations > ").strip();
+            console.print("migrations > ");
+            String line = safely(in::readLine);
+            if (line == null) {
+                break; // end of input
+            }
+            String cmd = line.strip();
             //noinspection IfCanBeSwitch
             if (cmd.equals("show")) {
                 console.printf(show());
