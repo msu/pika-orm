@@ -157,6 +157,27 @@ public class MigrationsTest extends TestBase {
         assertEquals(1, orm.find(PikaMigration.class).count());
     }
 
+    @Test
+    void showPrintsAppliedDateAfterUp() {
+        var orm = initTestDb();
+        MigrationsFile1 migrations = new MigrationsFile1();
+        orm.withMigrations(migrations);
+
+        String before = showRow(runConsole(migrations, "show\n"), "migration1");
+        assertFalse(before.contains("null"), before);
+
+        migrations.up();
+        String after = showRow(runConsole(migrations, "show\n"), "migration1");
+        assertFalse(after.contains("null"), after);
+        // Date.toString() ends with the year
+        assertStringContains(after, String.valueOf(java.time.Year.now().getValue()));
+    }
+
+    // the console output also has log lines, so find the row for one migration
+    private static String showRow(String output, String name) {
+        return output.lines().filter(line -> line.startsWith(name + " ")).findFirst().orElseThrow();
+    }
+
     private static String runConsole(Migrations migrations, String input) {
         InputStream originalIn = System.in;
         PrintStream originalOut = System.out;

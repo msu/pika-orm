@@ -124,7 +124,7 @@ public abstract class Migrations {
         sb.append("-------------------------------------------------------------------------------------------------------------------------------------------------------\n");
         for (PikaMigration value : mergedMigrations.values()) {
             sb.append(String.format(formatString,
-                    value.getName(), value.getStatus(), value.appliedAtForDisplay(), value.description, value.upForDisplay(), value.downForDisplay()));
+                    value.getName(), value.getStatus(), value.appliedAtForDisplay(), Objects.toString(value.description, ""), value.upForDisplay(), value.downForDisplay()));
         }
         return sb.toString();
     }
@@ -211,6 +211,7 @@ public abstract class Migrations {
                 // update ID
                 existingMigration.uuid = persistedMigration.uuid;
                 existingMigration.status = persistedMigration.status;
+                existingMigration.appliedAt = persistedMigration.appliedAt;
                 persistedMigrations.remove(persistedMigration);
             }
         }
@@ -364,7 +365,7 @@ public abstract class Migrations {
 
         public Object appliedAtForDisplay() {
             if (appliedAt == null) {
-                return null;
+                return "";
             } else {
                 return new Date(appliedAt);
             }
