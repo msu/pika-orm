@@ -303,6 +303,9 @@ public abstract class Migrations {
         }
 
         void runDown(PikaORM orm) {
+            if (down == null) {
+                throw new IllegalStateException("Migration " + name + " has no down SQL. Add down(...) to the migration to back it out.");
+            }
             orm.inTransaction(() -> {
                 String[] upSqlSplitOnSemicolons = getDownSqlSplitOnSemicolons();
                 for (String sql : upSqlSplitOnSemicolons) {
@@ -341,15 +344,18 @@ public abstract class Migrations {
         }
 
         public Object upForDisplay() {
-            String[] lines = up.split("\n");
-            for (int i = 0; i < lines.length; i++) {
-                lines[i] = lines[i].strip();
-            }
-            return String.join(" ", lines);
+            return forDisplay(up);
         }
 
         public Object downForDisplay() {
-            String[] lines = down.split("\n");
+            return forDisplay(down);
+        }
+
+        private static String forDisplay(String sql) {
+            if (sql == null) {
+                return "";
+            }
+            String[] lines = sql.split("\n");
             for (int i = 0; i < lines.length; i++) {
                 lines[i] = lines[i].strip();
             }

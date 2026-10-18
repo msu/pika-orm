@@ -5,6 +5,7 @@ import edu.montana.pika.migrations.Migrations.PikaMigration;
 import edu.montana.pika.migrations.Migrations.MigrationStatus;
 import edu.montana.pika.TestBase;
 import edu.montana.pika.migrations.MigrationDemoModel;
+import edu.montana.pika.migrations.Migrations;
 import edu.montana.pika.migrations.MigrationsFile1;
 import edu.montana.pika.migrations.MultiStatementMigration;
 import edu.montana.pika.migrations.MigrationFileForConsoleTesting;
@@ -126,26 +127,61 @@ public class MigrationsTest extends TestBase {
         assertEquals(0, orm.find(PikaMigration.class).count());
     }
 
+    static class NoDownMigrations extends Migrations {
+        @Override
+        public void migrations() {
+            add(makeMigration("no down").up("CREATE TABLE no_downs (id INTEGER PRIMARY KEY)"));
+        }
+    }
+
     @Test
-    void consoleWorksWithoutATerminal() {
+    void showWorksWithNoDown() {
         var orm = initTestDb();
-        MigrationFileForConsoleTesting migrations = new MigrationFileForConsoleTesting();
+        NoDownMigrations migrations = new NoDownMigrations();
         orm.withMigrations(migrations);
 
+        String out = runConsole(migrations, "show\n");
+
+        assertStringContains(out, "no down");
+    }
+
+    @Test
+    void downWithNoDownThrowsClearError() {
+        var orm = initTestDb();
+        NoDownMigrations migrations = new NoDownMigrations();
+        orm.withMigrations(migrations);
+        migrations.up();
+
+        var e = assertThrows(IllegalStateException.class, migrations::down);
+        assertEquals("Migration no down has no down SQL. Add down(...) to the migration to back it out.", e.getMessage());
+        assertEquals(1, orm.find(PikaMigration.class).count());
+    }
+
+    private static String runConsole(Migrations migrations, String input) {
         InputStream originalIn = System.in;
         PrintStream originalOut = System.out;
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
-            // no "exit", so the console must also stop at the end of input
-            System.setIn(new ByteArrayInputStream("help\nall\n".getBytes()));
+            System.setIn(new ByteArrayInputStream(input.getBytes()));
             System.setOut(new PrintStream(out));
             migrations.console();
         } finally {
             System.setIn(originalIn);
             System.setOut(originalOut);
         }
+        return out.toString();
+    }
 
-        assertStringContains(out.toString(), "Migrations Commands");
+    @Test
+    void consoleWorksWithoutATerminal() {
+        var orm = initTestDb();
+        MigrationFileForConsoleTesting migrations = new MigrationFileForConsoleTesting();
+        orm.withMigrations(migrations);
+
+        // no "exit", so the console must also stop at the end of input
+        String out = runConsole(migrations, "help\nall\n");
+
+        assertStringContains(out, "Migrations Commands");
         assertEquals(3, orm.find(PikaMigration.class).count());
     }
 
