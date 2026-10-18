@@ -190,6 +190,20 @@ public class MigrationsTest extends TestBase {
         assertTrue(messages.contains("INFO Backing out migration migration1"), messages.toString());
     }
 
+    @Test
+    void migrationsUseDefaultORM() {
+        var orm = initTestDb(); // makes it the default ORM
+        MigrationsFile1 migrations = new MigrationsFile1(); // no withMigrations(), so no ORM is set
+
+        migrations.applyAll();
+        assertEquals(1, orm.find(PikaMigration.class).count());
+        migrations.down();
+        assertEquals(0, orm.find(PikaMigration.class).count());
+        migrations.up();
+        assertEquals(1, orm.find(PikaMigration.class).count());
+        assertStringContains(runConsole(migrations, "show\n"), "migration1");
+    }
+
     // the console output also has log lines, so find the row for one migration
     private static String showRow(String output, String name) {
         return output.lines().filter(line -> line.startsWith(name + " ")).findFirst().orElseThrow();

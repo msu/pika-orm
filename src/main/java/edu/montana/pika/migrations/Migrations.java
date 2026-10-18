@@ -77,7 +77,7 @@ public abstract class Migrations {
     }
 
     public void console() {
-        getORM();
+        var orm = getORM();
         orm.exec(PikaMigration.DDL);
         BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
         var console = System.out;
@@ -114,7 +114,7 @@ public abstract class Migrations {
     }
 
     private String show() {
-        getORM();
+        var orm = getORM();
         orm.exec(PikaMigration.DDL);
         var mergedMigrations = loadMigrations(orm);
 
@@ -130,7 +130,7 @@ public abstract class Migrations {
     }
 
     public void up() {
-        getORM();
+        var orm = getORM();
         orm.exec(PikaMigration.DDL);
         var mergedMigrations = loadMigrations(orm);
 
@@ -145,7 +145,7 @@ public abstract class Migrations {
     }
 
     public void down() {
-        getORM();
+        var orm = getORM();
         orm.exec(PikaMigration.DDL);
         var mergedMigrations = loadMigrations(orm);
 
@@ -163,6 +163,7 @@ public abstract class Migrations {
      * Applies all outstanding migrations in the order they are declared
      */
     public void applyAll() {
+        var orm = getORM();
         orm.inTransaction(() -> {
             orm.getLogger().log(PikaLogger.Level.INFO, "Applying migrations");
             orm.exec(PikaMigration.DDL);
